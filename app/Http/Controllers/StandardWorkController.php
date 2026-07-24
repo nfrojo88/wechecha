@@ -7,6 +7,7 @@ use App\Models\StandardWorkManpower;
 use App\Models\StandardWorkEquipment;
 use App\Models\Product;
 use App\Models\EquipmentMaster;
+use App\Models\ManpowerRole;
 use Illuminate\Http\Request;
 
 class StandardWorkController extends Controller
@@ -27,9 +28,10 @@ class StandardWorkController extends Controller
 
     public function create()
     {
-        $products      = Product::where('is_active', true)->orderBy('name')->get(['id','name','unit','category']);
-        $equipmentList = EquipmentMaster::where('is_active', true)->orderBy('name')->get(['id','name','unit']);
-        return view('standard_works.create', compact('products', 'equipmentList'));
+        $products       = Product::where('is_active', true)->orderBy('name')->get(['id','name','unit','category']);
+        $equipmentList  = EquipmentMaster::where('is_active', true)->orderBy('name')->get(['id','name','unit']);
+        $manpowerRoles  = ManpowerRole::orderBy('name')->get();
+        return view('standard_works.create', compact('products', 'equipmentList', 'manpowerRoles'));
     }
 
     public function store(Request $request)
