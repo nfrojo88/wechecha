@@ -448,6 +448,11 @@ Route::middleware(['auth'])->group(function () {
     // Standard Works (Conversion Ratios)
     Route::resource('standard-works', App\Http\Controllers\StandardWorkController::class)->except(['edit','update']);
 
+    // Manpower Roles (predefined selectable list)
+    Route::get('manpower-roles',              [App\Http\Controllers\ManpowerRoleController::class, 'index'])->name('manpower-roles.index');
+    Route::post('manpower-roles',             [App\Http\Controllers\ManpowerRoleController::class, 'store'])->name('manpower-roles.store');
+    Route::delete('manpower-roles/{manpowerRole}', [App\Http\Controllers\ManpowerRoleController::class, 'destroy'])->name('manpower-roles.destroy');
+
     // Weekly Dispatches
     Route::resource('weekly-dispatches', App\Http\Controllers\WeeklyDispatchController::class)->only(['index', 'show']);
     // ─── Phase 4 Procurement ────────────────────────────────────────────────
