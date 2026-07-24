@@ -741,9 +741,9 @@ function calcRow(sIdx, rowId) {
             pdrEl.innerHTML = `
                 <div style="line-height:1.3;">
                     <span class="badge bg-primary bg-opacity-15 text-primary px-2 py-1" style="font-size:12px;">
-                        <i class="fa-solid fa-bolt me-1"></i>${perDay} ${unitLabel}
+                        <i class="fa-solid fa-users me-1"></i>${perDayLabel} ${unitLabel}
                     </span>
-                    <div class="text-muted" style="font-size:10px; margin-top:2px;">${dur} day schedule &bull; ${qty} total</div>
+                    <div class="text-muted" style="font-size:10px; margin-top:2px;">${dur} day &bull; ${qty} man-days total</div>
                 </div>`;
         } else {
             pdrEl.innerHTML = `<span class="text-muted" style="font-size:11px;">—</span>`;
