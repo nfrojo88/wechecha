@@ -18,7 +18,7 @@ class ToolTransactionController extends Controller
     public function create()
     {
         $projects = Project::where('status', 'active')->get();
-        $equipments = EquipmentMaster::where('status', 'active')->get();
+        $equipments = EquipmentMaster::where('is_active', true)->get();
         return view('tool-transactions.create', compact('projects', 'equipments'));
     }
 
