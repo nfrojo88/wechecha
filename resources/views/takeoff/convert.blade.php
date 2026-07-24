@@ -258,20 +258,25 @@
             @endif
         </div>
         <div class="d-flex align-items-center gap-3">
-            @if($section->task && $section->task->duration_days)
+            @if($section->task && $section->schedule_duration_days)
                 <div class="d-flex align-items-center gap-1">
                     <i class="fa-solid fa-calendar-days text-info fa-sm"></i>
                     <span class="text-muted small fw-semibold">Schedule Duration:</span>
-                    <span class="fw-bold text-primary" style="font-size:14px;">{{ $section->task->duration_days }}</span>
+                    <span class="fw-bold text-primary" style="font-size:14px;">{{ $section->schedule_duration_days }}</span>
                     <span class="text-muted small fw-semibold">Days</span>
                     {{-- Hidden input used by JS calcRow --}}
-                    <input type="hidden" class="sec-duration" id="sec-dur-{{ $sIdx }}" value="{{ $section->task->duration_days }}">
+                    <input type="hidden" class="sec-duration" id="sec-dur-{{ $sIdx }}" value="{{ $section->schedule_duration_days }}">
                 </div>
             @else
                 <div class="d-flex align-items-center gap-1">
                     <i class="fa-solid fa-triangle-exclamation text-warning fa-sm"></i>
-                    <span class="text-warning small fw-semibold">No schedule task linked — duration unknown</span>
-                    {{-- fallback=1 so calcRow doesn't break --}}
+                    <span class="text-warning small fw-semibold">
+                        @if(!$section->task)
+                            No schedule task linked
+                        @else
+                            Task has no start/end date set in schedule
+                        @endif
+                    </span>
                     <input type="hidden" class="sec-duration" id="sec-dur-{{ $sIdx }}" value="1">
                 </div>
             @endif
