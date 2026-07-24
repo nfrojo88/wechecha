@@ -327,12 +327,14 @@ class TakeoffController extends Controller
 
     public function convert(TakeoffSheet $takeoff)
     {
-        $takeoff->load(['sections.items', 'project', 'creator']);
+        $takeoff->load(['sections.items', 'sections.task', 'project', 'creator']);
 
         // Build section totals: sum of all item result_quantities per section
         foreach ($takeoff->sections as $section) {
             $section->total_quantity = $section->items->sum('result_quantity');
             $section->primary_unit   = $section->items->first()?->result_unit ?? '';
+            // Default schedule duration comes from linked schedule task if present
+            $section->schedule_duration_days = $section->task?->duration_days ?: 3;
         }
 
         // Load all standard works with their sub-resources for the dropdowns
