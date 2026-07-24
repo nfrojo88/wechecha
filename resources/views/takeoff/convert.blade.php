@@ -258,11 +258,23 @@
             @endif
         </div>
         <div class="d-flex align-items-center gap-3">
-            <div class="d-flex align-items-center gap-1">
-                <span class="text-muted small fw-semibold">Schedule Duration:</span>
-                <input type="number" min="1" step="1" class="form-control form-control-sm sec-duration" id="sec-dur-{{ $sIdx }}" value="{{ $section->schedule_duration_days }}" style="width:70px; font-weight:700;" oninput="updateAllSectionRows({{ $sIdx }})">
-                <span class="text-muted small fw-semibold">Days</span>
-            </div>
+            @if($section->task && $section->task->duration_days)
+                <div class="d-flex align-items-center gap-1">
+                    <i class="fa-solid fa-calendar-days text-info fa-sm"></i>
+                    <span class="text-muted small fw-semibold">Schedule Duration:</span>
+                    <span class="fw-bold text-primary" style="font-size:14px;">{{ $section->task->duration_days }}</span>
+                    <span class="text-muted small fw-semibold">Days</span>
+                    {{-- Hidden input used by JS calcRow --}}
+                    <input type="hidden" class="sec-duration" id="sec-dur-{{ $sIdx }}" value="{{ $section->task->duration_days }}">
+                </div>
+            @else
+                <div class="d-flex align-items-center gap-1">
+                    <i class="fa-solid fa-triangle-exclamation text-warning fa-sm"></i>
+                    <span class="text-warning small fw-semibold">No schedule task linked — duration unknown</span>
+                    {{-- fallback=1 so calcRow doesn't break --}}
+                    <input type="hidden" class="sec-duration" id="sec-dur-{{ $sIdx }}" value="1">
+                </div>
+            @endif
             <span class="text-muted small">Section Total:</span>
             <span class="qty-pill">{{ number_format($section->total_quantity, 3) }} {{ $section->primary_unit }}</span>
         </div>
