@@ -234,6 +234,7 @@
                         </tr>
                     </thead>
                     <tbody id="manpower-body">
+                        @forelse(old('manpower', []) as $i => $mp)
                         <tr>
                             <td>
                                 <select name="manpower[{{ $i }}][role]" class="form-select form-select-sm mp-role-select">
