@@ -213,9 +213,14 @@
                     <p class="text-muted small mb-0">Leave quantity as <strong>0</strong> if not used</p>
                 </div>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addRow('manpower')">
-                <i class="fa-solid fa-plus me-1"></i>Add Role
-            </button>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openManageRoles()">
+                    <i class="fa-solid fa-gears me-1"></i>Manage Roles
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addRow('manpower')">
+                    <i class="fa-solid fa-plus me-1"></i>Add Role
+                </button>
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -229,17 +234,26 @@
                         </tr>
                     </thead>
                     <tbody id="manpower-body">
-                        @forelse(old('manpower', []) as $i => $mp)
                         <tr>
-                            <td><input type="text" name="manpower[{{ $i }}][role]"
-                                       class="form-control form-control-sm"
-                                       value="{{ $mp['role'] ?? '' }}"
-                                       placeholder="e.g. Mason, Helper, Foreman"></td>
+                            <td>
+                                <select name="manpower[{{ $i }}][role]" class="form-select form-select-sm mp-role-select">
+                                    <option value="">— Select Role —</option>
+                                    @foreach($manpowerRoles as $mpRole)
+                                        <option value="{{ $mpRole->name }}" data-unit="{{ $mpRole->default_unit }}"
+                                            {{ ($mp['role'] ?? '') == $mpRole->name ? 'selected' : '' }}>
+                                            {{ $mpRole->name }}
+                                        </option>
+                                    @endforeach
+                                    <option value="__custom__">+ Type custom role...</option>
+                                </select>
+                                <input type="text" name="manpower[{{ $i }}][role]" class="form-control form-control-sm mt-1 mp-custom-input d-none"
+                                       value="{{ $mp['role'] ?? '' }}" placeholder="Enter role name">
+                            </td>
                             <td><input type="number" step="0.001" min="0" name="manpower[{{ $i }}][quantity]"
                                        class="form-control form-control-sm qty-input"
                                        value="{{ $mp['quantity'] ?? 0 }}" placeholder="0.000"></td>
                             <td>
-                                <select name="manpower[{{ $i }}][unit]" class="form-select form-select-sm">
+                                <select name="manpower[{{ $i }}][unit]" class="form-select form-select-sm mp-unit-select">
                                     <option value="">— Unit —</option>
                                     <option value="day"  @selected(($mp['unit'] ?? '') == 'day')>day</option>
                                     <option value="hr"   @selected(($mp['unit'] ?? '') == 'hr')>hr</option>
@@ -252,13 +266,23 @@
                         </tr>
                         @empty
                         <tr>
-                            <td><input type="text" name="manpower[0][role]"
-                                       class="form-control form-control-sm"
-                                       placeholder="e.g. Mason, Helper, Foreman"></td>
+                            <td>
+                                <select name="manpower[0][role]" class="form-select form-select-sm mp-role-select">
+                                    <option value="">— Select Role —</option>
+                                    @foreach($manpowerRoles as $mpRole)
+                                        <option value="{{ $mpRole->name }}" data-unit="{{ $mpRole->default_unit }}">
+                                            {{ $mpRole->name }}
+                                        </option>
+                                    @endforeach
+                                    <option value="__custom__">+ Type custom role...</option>
+                                </select>
+                                <input type="text" name="manpower[0][role]" class="form-control form-control-sm mt-1 mp-custom-input d-none"
+                                       placeholder="Enter role name">
+                            </td>
                             <td><input type="number" step="0.001" min="0" name="manpower[0][quantity]"
                                        class="form-control form-control-sm qty-input" value="0" placeholder="0.000"></td>
                             <td>
-                                <select name="manpower[0][unit]" class="form-select form-select-sm">
+                                <select name="manpower[0][unit]" class="form-select form-select-sm mp-unit-select">
                                     <option value="">— Unit —</option>
                                     <option value="day">day</option>
                                     <option value="hr">hr</option>
