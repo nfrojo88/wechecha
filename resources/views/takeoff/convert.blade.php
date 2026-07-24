@@ -251,11 +251,16 @@
         <div class="d-flex align-items-center gap-2">
             <i class="fa-solid fa-layer-group text-primary fa-sm"></i>
             <span class="section-name">{{ $section->name }}</span>
+            @if($section->task)
+                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 ms-1" title="Linked to WBS Task: {{ $section->task->name }}">
+                    <i class="fa-solid fa-link me-1"></i>Task: {{ $section->task->wbs_code ? $section->task->wbs_code.' - ' : '' }}{{ $section->task->name }}
+                </span>
+            @endif
         </div>
         <div class="d-flex align-items-center gap-3">
             <div class="d-flex align-items-center gap-1">
                 <span class="text-muted small fw-semibold">Schedule Duration:</span>
-                <input type="number" min="1" step="1" class="form-control form-control-sm sec-duration" id="sec-dur-{{ $sIdx }}" value="3" style="width:70px; font-weight:700;" oninput="updateAllSectionRows({{ $sIdx }})">
+                <input type="number" min="1" step="1" class="form-control form-control-sm sec-duration" id="sec-dur-{{ $sIdx }}" value="{{ $section->schedule_duration_days }}" style="width:70px; font-weight:700;" oninput="updateAllSectionRows({{ $sIdx }})">
                 <span class="text-muted small fw-semibold">Days</span>
             </div>
             <span class="text-muted small">Section Total:</span>
