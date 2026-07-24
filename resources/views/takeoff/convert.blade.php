@@ -711,14 +711,22 @@ function calcRow(sIdx, rowId) {
     const type  = row.querySelector('.r-type')?.value || 'material';
     const dur   = Math.max(1, parseFloat(document.getElementById(`sec-dur-${sIdx}`)?.value) || 1);
 
-    // For Manpower and Equipment, total effort (man-days / machine-hours) scales with Schedule Duration (days)
+    // For Manpower and Equipment:
+    //   ratio = productivity rate (e.g. 10 m2 per worker per day)
+    //   perDay = workers needed per day = Total ÷ (Ratio × Duration)
+    //   qty (total man-days) = perDay × Duration = Total ÷ Ratio
+    // For Material: qty = Total × Ratio (e.g. 13 HCB per m2)
     let qty = 0;
+    let perDay = 0;
     if (type === 'manpower' || type === 'equipment') {
-        qty = parseFloat((total * ratio * dur).toFixed(3));
+        // How many workers/machines needed each day
+        perDay = ratio > 0 ? (total / (ratio * dur)) : 0;
+        // Total man-days = perDay × duration (used for cost calc)
+        qty    = parseFloat((perDay * dur).toFixed(3));
     } else {
         qty = parseFloat((total * ratio).toFixed(3));
     }
-    const cost  = parseFloat((qty * rate).toFixed(2));
+    const cost = parseFloat((qty * rate).toFixed(2));
 
     row.querySelector('.r-qty').value  = qty;
     row.querySelector(`#rc-${rowId}`).textContent = cost.toLocaleString('en-US',{minimumFractionDigits:2});
@@ -728,8 +736,8 @@ function calcRow(sIdx, rowId) {
     const pdrEl = row.querySelector(`#pdr-${rowId}`);
     if (pdrEl) {
         if (type === 'manpower' || type === 'equipment') {
-            const perDay = (qty / dur).toFixed(2);
-            const unitLabel = type === 'manpower' ? '/day' : '/day';
+            const perDayLabel = perDay.toFixed(2);
+            const unitLabel = type === 'manpower' ? 'workers/day' : 'units/day';
             pdrEl.innerHTML = `
                 <div style="line-height:1.3;">
                     <span class="badge bg-primary bg-opacity-15 text-primary px-2 py-1" style="font-size:12px;">
