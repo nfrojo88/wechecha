@@ -1,0 +1,318 @@
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Models\Employee;
+use App\Models\OtpVerification;
+use App\Services\SmsEthiopiaService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+
+class PhonePasswordResetController extends Controller
+{
+    protected $smsService;
+
+    public function __construct(SmsEthiopiaService $smsService)
+    {
+        $this->middleware('guest');
+        $this->smsService = $smsService;
+    }
+
+    /**
+     * Normalize phone number to local (09...) and international (+2519...) formats
+     */
+    private function normalizePhone($phone)
+    {
+        $phone = preg_replace('/[^\d+]/', '', $phone);
+        
+        if (preg_match('/^0(9|7)\d{8}$/', $phone)) {
+            return [
+                'local' => $phone, 
+                'intl' => '+251' . substr($phone, 1)
+            ];
+        }
+        
+        if (preg_match('/^\+251(9|7)\d{8}$/', $phone)) {
+            return [
+                'local' => '0' . substr($phone, 4), 
+                'intl' => $phone
+            ];
+        }
+
+        if (preg_match('/^251(9|7)\d{8}$/', $phone)) {
+            return [
+                'local' => '0' . substr($phone, 3), 
+                'intl' => '+' . $phone
+            ];
+        }
+
+        return ['local' => $phone, 'intl' => $phone];
+    }
+
+    /**
+     * Show the forgot password form
+     */
+    public function showForgotForm()
+    {
+        return view('auth.forgot-password');
+    }
+
+    /**
+     * Process phone number and send OTP
+     */
+    public function sendResetOtp(Request $request)
+    {
+        $request->validate([
+            'phone' => 'required|string|min:10|max:15',
+        ]);
+
+        $phoneFormats = $this->normalizePhone($request->phone);
+        $intlPhone = $phoneFormats['intl'];
+        $localPhone = $phoneFormats['local'];
+
+        // Find the user by phone number
+        $employee = Employee::where('phone', $intlPhone)
+            ->orWhere('phone', $localPhone)
+            ->first();
+
+        if (!$employee || !$employee->user_id) {
+            $user = User::where('email', $intlPhone)->orWhere('email', $localPhone)->first();
+            if (!$user) {
+                return back()->withErrors([
+                    'phone' => 'No active user account found with this phone number.'
+                ])->withInput();
+            }
+        } else {
+            $user = User::find($employee->user_id);
+            if (!$user) {
+                return back()->withErrors([
+                    'phone' => 'No user account found linked to this employee record.'
+                ])->withInput();
+            }
+        }
+
+        // Generate OTP
+        $otp = SmsEthiopiaService::generateOTP();
+        
+        // Delete old OTPs for this phone
+        OtpVerification::where('phone', $intlPhone)
+            ->where('created_at', '<', now()->subMinutes(10))
+            ->delete();
+
+        // Create new OTP record
+        OtpVerification::create([
+            'phone' => $intlPhone,
+            'otp' => $otp,
+            'expires_at' => now()->addMinutes(10),
+            'attempts' => 0,
+            'verified' => false,
+        ]);
+
+        // Send OTP via SMS
+        $result = $this->smsService->sendOTP($intlPhone, $otp);
+
+        session()->put('reset_phone', $intlPhone);
+
+        if ($result['success']) {
+            return redirect()->route('password.verify')
+                ->with('success', 'Password reset code sent to your phone. Please check your messages.');
+        } else {
+            \Log::warning("SMS Failed - Showing OTP for testing", [
+                'phone' => $intlPhone,
+                'otp' => $otp,
+                'error' => $result['message']
+            ]);
+            
+            return redirect()->route('password.verify')
+                ->with('warning', 'SMS service temporarily unavailable. Please use the code below.')
+                ->with('debug_otp', $otp); // TEMPORARY: For testing only
+        }
+    }
+
+    /**
+     * Show OTP verification form
+     */
+    public function showVerifyOtpForm()
+    {
+        if (!session('reset_phone')) {
+            return redirect()->route('password.request')->withErrors(['phone' => 'Session expired. Please enter your phone number first.']);
+        }
+
+        return view('auth.reset-otp');
+    }
+
+    /**
+     * Verify OTP
+     */
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'otp' => 'required|string|size:6',
+        ]);
+
+        $phone = session('reset_phone');
+        if (!$phone) {
+            return redirect()->route('password.request')->withErrors(['phone' => 'Session expired. Please start again.']);
+        }
+
+        $otpRecord = OtpVerification::where('phone', $phone)
+            ->where('verified', false)
+            ->latest()
+            ->first();
+
+        if (!$otpRecord) {
+            return back()->withErrors(['otp' => 'OTP not found. Please request a new one.']);
+        }
+
+        if ($otpRecord->attempts >= 3) {
+            return back()->withErrors(['otp' => 'Too many failed attempts. Please request a new OTP.']);
+        }
+
+        if ($otpRecord->isExpired()) {
+            return back()->withErrors(['otp' => 'OTP expired. Please request a new one.']);
+        }
+
+        if ($otpRecord->isValid($request->otp)) {
+            $otpRecord->markAsVerified();
+            session()->put('reset_verified', true);
+
+            return redirect()->route('password.reset')
+                ->with('success', 'Code verified successfully! Please create your new password.');
+        } else {
+            $otpRecord->incrementAttempts();
+            return back()->withErrors([
+                'otp' => 'Invalid verification code. Attempts remaining: ' . (3 - $otpRecord->attempts)
+            ])->withInput();
+        }
+    }
+
+    /**
+     * Show Reset Password form
+     */
+    public function showResetForm()
+    {
+        if (!session('reset_phone') || !session('reset_verified')) {
+            return redirect()->route('password.request')->withErrors(['phone' => 'Unauthorized access. Please verify your phone number.']);
+        }
+
+        return view('auth.reset-password');
+    }
+
+    /**
+     * Update the password
+     */
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $phone = session('reset_phone');
+        if (!$phone || !session('reset_verified')) {
+            return redirect()->route('password.request')->withErrors(['phone' => 'Session expired or unauthorized. Please start again.']);
+        }
+
+        $phoneFormats = $this->normalizePhone($phone);
+        
+        $employee = Employee::where('phone', $phoneFormats['intl'])
+            ->orWhere('phone', $phoneFormats['local'])
+            ->first();
+
+        $user = null;
+        if ($employee && $employee->user_id) {
+            $user = User::find($employee->user_id);
+        } else {
+            $user = User::where('email', $phoneFormats['intl'])->orWhere('email', $phoneFormats['local'])->first();
+        }
+
+        if (!$user) {
+            return redirect()->route('password.request')->withErrors(['phone' => 'User account not found.']);
+        }
+
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        session()->forget(['reset_phone', 'reset_verified']);
+
+        return redirect()->route('login')
+            ->with('success', 'Your password has been reset successfully! Please log in with your new password.');
+    }
+
+    /**
+     * Resend OTP
+     */
+    public function resendOtp(Request $request)
+    {
+        $phone = session('reset_phone');
+        if (!$phone) {
+            return redirect()->route('password.request')->withErrors(['phone' => 'Session expired. Please start again.']);
+        }
+
+        $otp = SmsEthiopiaService::generateOTP();
+        OtpVerification::where('phone', $phone)->delete();
+
+        OtpVerification::create([
+            'phone' => $phone,
+            'otp' => $otp,
+            'expires_at' => now()->addMinutes(10),
+            'attempts' => 0,
+        ]);
+
+        $result = $this->smsService->sendOTP($phone, $otp);
+
+        if ($result['success']) {
+            return back()->with('success', 'A new code has been sent to your phone number.');
+        } else {
+            \Log::warning("SMS Failed - Showing OTP for testing", [
+                'phone' => $phone,
+                'otp' => $otp,
+                'error' => $result['message']
+            ]);
+            
+            return back()
+                ->with('warning', 'SMS service temporarily unavailable.')
+                ->with('debug_otp', $otp);
+        }
+    }
+
+    /**
+     * Redirect to the correct dashboard based on role
+     */
+    protected function redirectTo()
+    {
+        $user = auth()->user();
+        if (!$user || !$user->roles || $user->roles->isEmpty()) {
+            return '/';
+        }
+
+        $role = $user->roles->first()->name;
+        
+        return match($role) {
+            'global_admin', 'admin' => route('dashboard.admin'),
+            'gm'                  => route('dashboard.gm'),
+            'planning'            => route('dashboard.planning'),
+            'planning_manager'    => route('dashboard.planning'),
+            'technical_manager'   => route('dashboard.planning'),
+            'coordinator'         => route('dashboard.coordinator'),
+            'site_engineer'       => route('dashboard.site-engineer'),
+            'foreman'             => route('dashboard.foreman'),
+            'store_manager'       => route('dashboard.store-manager'),
+            'store_keeper'        => route('dashboard.store-manager'),
+            'hr', 'hr_officer'    => route('dashboard.hr'),
+            'finance', 'finance_head' => route('dashboard.finance'),
+            'purchase', 'purchase_manager', 'market_research' => route('dashboard.purchase'),
+            'contract_admin'      => route('dashboard.contract-admin'),
+            'bid_team'            => route('bidding.index'),
+            'secretary'           => route('dashboard.coordinator'),
+            'general_service'     => route('dashboard.coordinator'),
+            'law'                 => route('subcon.index'),
+            'marketing'           => route('bidding.index'),
+            'audit_team'          => route('audit.index'),
+            default               => route('dashboard.admin'),
+        };
+    }
+}

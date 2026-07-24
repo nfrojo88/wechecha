@@ -1,0 +1,131 @@
+:root {
+    --cp-sidebar-width: 250px;
+    --cp-sidebar-collapsed: 70px;
+    --cp-header-height: 56px;
+    --cp-body-bg: #f0f2f5;
+    --cp-sidebar-bg: #1e293b;
+    --cp-sidebar-text: #94a3b8;
+    --cp-sidebar-active: #3b82f6;
+    --cp-card-bg: #ffffff;
+    --cp-border-color: #e2e8f0;
+    --cp-text-primary: #1e293b;
+    --cp-text-secondary: #64748b;
+    --cp-radius: 8px;
+    --cp-transition: all 0.2s ease;
+}
+
+body {
+    background-color: var(--cp-body-bg);
+    color: var(--cp-text-primary);
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    width: var(--cp-sidebar-width);
+    background-color: var(--cp-sidebar-bg);
+    color: var(--cp-sidebar-text);
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1000;
+    transition: var(--cp-transition);
+    overflow-y: auto;
+}
+
+.sidebar.collapsed {
+    width: var(--cp-sidebar-collapsed);
+}
+
+.sidebar-header {
+    height: var(--cp-header-height);
+    display: flex;
+    align-items: center;
+    padding: 0 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.sidebar-nav {
+    padding: 1rem 0;
+    list-style: none;
+    margin: 0;
+}
+
+.sidebar-nav-item {
+    padding: 0.5rem 1.5rem;
+}
+
+.sidebar-nav-link {
+    color: var(--cp-sidebar-text);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--cp-radius);
+    transition: var(--cp-transition);
+}
+
+.sidebar-nav-link:hover, .sidebar-nav-link.active {
+    background-color: rgba(255,255,255,0.05);
+    color: #fff;
+}
+
+.sidebar-nav-link.active {
+    background-color: var(--cp-sidebar-active);
+}
+
+/* Main Content Styles */
+.main-content {
+    margin-left: var(--cp-sidebar-width);
+    min-height: 100vh;
+    transition: var(--cp-transition);
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar.collapsed ~ .main-content {
+    margin-left: var(--cp-sidebar-collapsed);
+}
+
+.top-header {
+    height: var(--cp-header-height);
+    background-color: var(--cp-card-bg);
+    border-bottom: 1px solid var(--cp-border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 999;
+}
+
+.content-wrapper {
+    padding: 1.5rem;
+    flex: 1;
+}
+
+/* Auth Pages */
+.auth-wrapper {
+    background-color: var(--cp-sidebar-bg);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.auth-card {
+    background: var(--cp-card-bg);
+    width: 100%;
+    max-width: 400px;
+    border-radius: var(--cp-radius);
+    padding: 2rem;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}

@@ -1,0 +1,334 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use App\Models\Project;
+use App\Models\User;
+use App\Models\Inventory;
+use App\Models\Transfer;
+use App\Models\DeliveryReceipt;
+
+class DashboardController extends Controller
+{
+    // ─── Safely get a count from any model to avoid crashes on missing tables ───
+    private function safe(callable $fn, $default = 0)
+    {
+        try {
+            return $fn();
+        } catch (\Throwable $e) {
+            return $default;
+        }
+    }
+
+    // ─── Admin ──────────────────────────────────────────────────────────────────
+    public function admin()
+    {
+        $kpi = [
+            'total_projects'   => $this->safe(fn() => \App\Models\Project::where('status', 'active')->count()),
+            'total_employees'  => $this->safe(fn() => \App\Models\Employee::where('status', 'active')->count()),
+            'monthly_expenses' => $this->safe(fn() => \App\Models\Expense::whereMonth('expense_date', now()->month)->sum('amount')),
+            'inventory_value'  => $this->safe(fn() => \App\Models\Inventory::sum('total_value')),
+        ];
+
+        $usersByRole = $this->safe(fn() =>
+            User::join('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
+                ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+                ->select('roles.name', DB::raw('count(*) as total'))
+                ->groupBy('roles.name')->get(),
+            collect()
+        );
+
+        $projectBudgets = $this->safe(fn() =>
+            Project::withSum('budgets as budgeted_total', 'budgeted_amount')
+                   ->withSum('budgets as actual_total', 'actual_amount')
+                   ->take(5)->get(),
+            collect()
+        );
+
+        $activityLogs = $this->safe(fn() => \App\Models\ActivityLog::with('user')->latest()->take(20)->get(), collect());
+        
+        $unassignedUsers = $this->safe(fn() => User::whereDoesntHave('roles')->with('employee')->latest()->get(), collect());
+        
+        $ticketStats = $this->safe(fn() => [
+            'open' => \App\Models\SupportTicket::where('status', 'open')->count(),
+            'in_progress' => \App\Models\SupportTicket::where('status', 'in_progress')->count(),
+            'resolved' => \App\Models\SupportTicket::where('status', 'resolved')->count(),
+            'total' => \App\Models\SupportTicket::count(),
+        ], ['open' => 0, 'in_progress' => 0, 'resolved' => 0, 'total' => 0]);
+
+        $recentTickets = $this->safe(fn() => \App\Models\SupportTicket::with('user')->latest()->take(5)->get(), collect());
+
+        return view('dashboard.admin', compact('kpi', 'usersByRole', 'projectBudgets', 'activityLogs', 'unassignedUsers', 'ticketStats', 'recentTickets'));
+    }
+
+    // ─── GM ─────────────────────────────────────────────────────────────────────
+    public function gm()
+    {
+        $kpi = [
+            'active_projects'     => $this->safe(fn() => \App\Models\Project::where('status', 'active')->count()),
+            'total_contract_value'=> $this->safe(fn() => \App\Models\Project::sum('contract_value'), 0),
+            'budget_utilization'  => $this->safe(function() {
+                $contractValue = \App\Models\Project::sum('contract_value');
+                $expenseValue = \Illuminate\Support\Facades\DB::table('expenses')->sum('amount') ?? 0;
+                return $contractValue > 0 ? round(($expenseValue / $contractValue) * 100, 1) : 0;
+            }),
+            'pending_approvals'   => $this->safe(fn() => \App\Models\Employee::where('is_approved_by_gm', false)->orWhereNull('is_approved_by_gm')->count(), 0),
+            'total_employees'     => $this->safe(fn() => \App\Models\Employee::where('status', 'active')->count(), 0),
+            'pending_expenses'    => $this->safe(fn() => \Illuminate\Support\Facades\DB::table('expenses')->where('status', 'pending')->count(), 0),
+            'pending_payroll'     => $this->safe(fn() => \Illuminate\Support\Facades\DB::table('payrolls')->where('status', 'pending')->count(), 0),
+            'open_issues'         => $this->safe(fn() => \App\Models\Issue::where('status', 'open')->count(), 0),
+        ];
+
+        $projectStatus = $this->safe(fn() =>
+            Project::select('status', DB::raw('count(*) as total'))->groupBy('status')->get(),
+            collect()
+        );
+
+        $recentProjects = $this->safe(fn() => Project::latest()->take(5)->get(), collect());
+        $pendingEmployees = $this->safe(fn() => \App\Models\Employee::where(function($q) {
+            $q->where('is_approved_by_gm', false)->orWhereNull('is_approved_by_gm');
+        })->latest()->take(5)->get(), collect());
+        $recentExpenses = $this->safe(fn() => \Illuminate\Support\Facades\DB::table('expenses')
+            ->orderByDesc('created_at')->take(5)->get(), collect());
+
+        return view('dashboard.gm', compact('kpi', 'projectStatus', 'recentProjects', 'pendingEmployees', 'recentExpenses'));
+    }
+
+    // ─── Planning (used by: planning, planning_manager, technical_manager) ───────
+    public function planning()
+    {
+        $projects = Project::where('status', 'active')->get();
+        $erpPlans = \App\Models\ErpPlanHeader::with('project', 'creator')->latest()->take(5)->get();
+        $schedules = \App\Models\Schedule::with('project')->latest()->take(5)->get();
+        $takeoffs = \App\Models\TakeoffSheet::with('project', 'creator')->latest()->take(5)->get();
+
+        return view('dashboard.planning', compact('projects', 'erpPlans', 'schedules', 'takeoffs'));
+    }
+
+    // ─── Coordinator (also: secretary, general_service) ─────────────────────────
+    public function coordinator()
+    {
+        $kpi = [
+            'total_inventory_value' => $this->safe(fn() => \App\Models\Inventory::sum('total_value')),
+            'schedules_today'       => $this->safe(fn() => \App\Models\Schedule::whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->count()),
+            'daily_reports_today'   => $this->safe(fn() => \App\Models\DailyReport::whereDate('report_date', now())->count()),
+            'material_requests'     => $this->safe(fn() => \App\Models\MaterialRequest::where('status', 'pending')->count()),
+            'pending_plans'         => $this->safe(fn() => \App\Models\ProjectPlanWorkflow::where('status', 'planning_manager_approved')->count()),
+        ];
+
+        $recentSchedules = $this->safe(fn() => \App\Models\Schedule::with('project')->latest()->take(5)->get(), collect());
+        $recentDailyReports = $this->safe(fn() => \App\Models\DailyReport::with('project', 'creator')->latest()->take(5)->get(), collect());
+        $pendingPlansFromPlanning = $this->safe(fn() => \App\Models\ProjectPlanWorkflow::with(['project', 'planningManager', 'creator'])
+            ->where('status', 'planning_manager_approved')
+            ->latest()
+            ->take(10)
+            ->get(), collect());
+        $erpPlans = $this->safe(fn() => \App\Models\ErpPlanHeader::with('project', 'creator')->latest()->take(5)->get(), collect());
+
+        return view('dashboard.coordinator', compact('kpi', 'recentSchedules', 'recentDailyReports', 'pendingPlansFromPlanning', 'erpPlans'));
+    }
+
+    // ─── Site Engineer ──────────────────────────────────────────────────────────
+    public function siteEngineer()
+    {
+        $kpi = [
+            'my_material_requests' => $this->safe(fn() => \App\Models\MaterialRequest::where('requested_by', auth()->id())->count()),
+            'issues_reported'      => $this->safe(fn() => \App\Models\Issue::where('reported_by', auth()->id())->count()),
+            'attendance_today'     => $this->safe(fn() => \App\Models\Attendance::whereDate('attendance_date', now())->where('status', 'present')->count()),
+            'waste_recorded'       => $this->safe(fn() => \App\Models\Waste::whereMonth('waste_date', now()->month)->count()),
+        ];
+
+        $recentMR = $this->safe(fn() => \App\Models\MaterialRequest::where('requested_by', auth()->id())->with('project')->latest()->take(5)->get(), collect());
+
+        return view('dashboard.site-engineer', compact('kpi', 'recentMR'));
+    }
+
+    // ─── Foreman ────────────────────────────────────────────────────────────────
+    public function foreman()
+    {
+        $kpi = [
+            'attendance_today' => $this->safe(fn() => \App\Models\Attendance::whereDate('attendance_date', now())->where('status', 'present')->count()),
+            'my_mr_pending'    => $this->safe(fn() => \App\Models\MaterialRequest::where('requested_by', auth()->id())->where('status', 'pending')->count()),
+            'daily_reports'    => $this->safe(fn() => \App\Models\DailyReport::whereMonth('report_date', now()->month)->count()),
+            'issues_open'      => $this->safe(fn() => \App\Models\Issue::where('status', 'open')->count()),
+        ];
+
+        $recentDaily = $this->safe(fn() => \App\Models\DailyReport::with('project')->latest()->take(5)->get(), collect());
+
+        return view('dashboard.foreman', compact('kpi', 'recentDaily'));
+    }
+
+    // ─── Store Manager / Store Keeper ───────────────────────────────────────────
+    public function storeManager()
+    {
+        $kpi = [
+            'total_items'      => $this->safe(fn() => Inventory::count()),
+            'total_value'      => $this->safe(fn() => Inventory::sum(DB::raw('quantity_on_hand * unit_cost')), 0),
+            'low_stock'        => $this->safe(fn() => Inventory::whereColumn('quantity_on_hand', '<=', 'min_stock')->count()),
+            'pending_transfers'=> $this->safe(fn() => Transfer::where('status', 'draft')->count()),
+            'recent_receipts'  => $this->safe(fn() => DeliveryReceipt::whereMonth('receipt_date', now()->month)->count()),
+        ];
+
+        $lowStockItems = $this->safe(fn() => Inventory::with('product', 'store')
+            ->whereColumn('quantity_on_hand', '<=', 'min_stock')
+            ->take(8)
+            ->get(), collect());
+
+        return view('dashboard.store-manager', compact('kpi', 'lowStockItems'));
+    }
+
+    // ─── HR / HR Officer ────────────────────────────────────────────────────────
+    public function hr()
+    {
+        $kpi = [
+            'total_employees'  => $this->safe(fn() => \App\Models\Employee::where('status', 'active')->count()),
+            'present_today'    => $this->safe(fn() => \App\Models\Attendance::whereDate('attendance_date', now())->where('status', 'present')->count()),
+            'pending_payroll'  => $this->safe(fn() => \App\Models\Payroll::where('status', 'pending')->count()),
+            'open_requests'    => $this->safe(fn() => \App\Models\ManpowerRequest::where('status', 'pending')->count()),
+        ];
+
+        $recentPayrolls = $this->safe(fn() => \App\Models\Payroll::with('employee')->latest()->take(5)->get(), collect());
+
+        return view('dashboard.hr', compact('kpi', 'recentPayrolls'));
+    }
+
+    // ─── Finance / Finance Head ─────────────────────────────────────────────────
+    public function finance()
+    {
+        $kpi = [
+            'total_income'    => $this->safe(fn() => \App\Models\IncomeRecord::sum('amount')),
+            'total_expense'   => $this->safe(fn() => \App\Models\Expense::sum('amount')),
+            'cash_balance'    => $this->safe(fn() => \App\Models\BankAccount::sum('current_balance')),
+            'pending_payments'=> $this->safe(fn() => \App\Models\Payment::where('status', 'pending')->count()),
+        ];
+
+        $recentJournals = $this->safe(fn() => \App\Models\JournalEntry::latest()->take(5)->get(), collect());
+        
+        $coas = $this->safe(fn() => \App\Models\ChartOfAccount::with('parent')->orderBy('code')->get(), collect());
+        $parentCoas = $this->safe(fn() => \App\Models\ChartOfAccount::whereNull('parent_id')->orderBy('code')->get(), collect());
+
+        return view('dashboard.finance', compact('kpi', 'recentJournals', 'coas', 'parentCoas'));
+    }
+
+    // ─── Purchase / Purchase Manager / Market Research ──────────────────────────
+    public function purchase()
+    {
+        $kpi = [
+            'pending_prs' => $this->safe(fn() => \App\Models\PurchaseRequest::where('status', 'submitted')->count()),
+            'active_pos'  => $this->safe(fn() => \App\Models\PurchaseOrder::where('status', 'confirmed')->count()),
+            'total_spend' => $this->safe(fn() => \App\Models\PurchaseOrder::where('status', 'delivered')->sum('grand_total')),
+            'vendors'     => $this->safe(fn() => \App\Models\Supplier::count()),
+        ];
+
+        $recentPOs = $this->safe(fn() => \App\Models\PurchaseOrder::with('supplier')->latest()->take(5)->get(), collect());
+
+        return view('dashboard.purchase', compact('kpi', 'recentPOs'));
+    }
+
+    // ─── Contract Admin ─────────────────────────────────────────────────────────
+    public function contractAdmin()
+    {
+        // ── KPI Cards ──────────────────────────────────────────────────────────
+        $kpi = [
+            'active_projects'       => $this->safe(fn() => \App\Models\Project::where('status', 'active')->count()),
+            'total_boq_value'       => $this->safe(fn() => \App\Models\Boq::where('status', 'approved')->sum('total_amount')),
+            'pending_client_ipcs'   => $this->safe(fn() => \App\Models\ClientIpc::whereIn('status', ['submitted', 'under_review'])->count()),
+            'payment_this_month'    => $this->safe(fn() => \App\Models\Payment::whereMonth('payment_date', now()->month)->sum('amount')),
+            'total_certified'       => $this->safe(fn() => \App\Models\ClientIpc::whereIn('status', ['approved', 'paid'])->sum('gross_amount')),
+            'pending_subcon_ipcs'   => $this->safe(fn() => \App\Models\IpcRecord::where('status', 'submitted')->count()),
+        ];
+
+        // ── BOQ Progress per Project ─────────────────────────────────────────
+        // For each active project: BOQ total, total certified by client IPCs, total paid, % complete
+        $projectBOQProgress = $this->safe(function () {
+            return \App\Models\Project::where('status', 'active')
+                ->with(['boqs' => fn($q) => $q->where('status', 'approved')->withSum('items as boq_total', DB::raw('quantity * unit_rate'))])
+                ->get()
+                ->map(function ($project) {
+                    $boqTotal = $project->boqs->sum('boq_total') ?: $project->boqs->sum('total_amount');
+                    $certified = \App\Models\ClientIpc::where('project_id', $project->id)
+                        ->whereIn('status', ['approved', 'paid'])->sum('gross_amount');
+                    $paid = \App\Models\Payment::where('project_id', $project->id)->sum('amount');
+                    $pct = $boqTotal > 0 ? round(($certified / $boqTotal) * 100, 1) : 0;
+                    return [
+                        'project'   => $project,
+                        'boq_total' => $boqTotal,
+                        'certified' => $certified,
+                        'paid'      => $paid,
+                        'pct'       => min($pct, 100),
+                    ];
+                });
+        }, collect());
+
+        // ── Company (Client) IPCs ────────────────────────────────────────────
+        $clientIpcs = $this->safe(
+            fn() => \App\Models\ClientIpc::with(['project', 'createdBy'])->latest()->take(15)->get(),
+            collect()
+        );
+
+        // ── Subcontractor IPCs (pending action) ──────────────────────────────
+        $subconIpcs = $this->safe(
+            fn() => \App\Models\IpcRecord::with(['agreement.subcontractor' => fn($q) => $q->select('id', 'name')])->latest()->take(10)->get(),
+            collect()
+        );
+
+        // ── Recent Payments ──────────────────────────────────────────────────
+        $recentPayments = $this->safe(
+            fn() => \App\Models\Payment::with('project')->latest('payment_date')->take(8)->get(),
+            collect()
+        );
+
+        // ── Earned Value from Daily Reports ──────────────────────────────────
+        // Group daily report items by project → calculate earned value
+        // DailyReportItem has schedule_task_id; ScheduleTask can link to BOQ via schedule
+        // Since no direct boq_item_id, we compute: SUM of daily report items' quantities
+        // mapped to BOQ unit rates where description matches, OR we show the daily work value
+        // as a % of BOQ for the project by using the project's reported progress.
+        $dailyEarnedValue = $this->safe(function () {
+            return \App\Models\Project::where('status', 'active')
+                ->get()
+                ->map(function ($project) {
+                    // Total daily report items qty × their unit rate (from schedule task → BOQ item)
+                    $earned = \App\Models\DailyReport::where('project_id', $project->id)
+                        ->where('status', 'approved')
+                        ->with('items')
+                        ->get()
+                        ->flatMap(fn($r) => $r->items)
+                        ->sum(fn($item) => ($item->quantity ?? 0) * ($item->unit_rate ?? 0));
+
+                    // BOQ certified (approved client IPCs)
+                    $certified = \App\Models\ClientIpc::where('project_id', $project->id)
+                        ->whereIn('status', ['approved', 'paid'])->sum('gross_amount');
+
+                    $boqTotal = \App\Models\Boq::where('project_id', $project->id)
+                        ->where('status', 'approved')->sum('total_amount');
+
+                    return [
+                        'project'   => $project,
+                        'earned'    => $earned,
+                        'certified' => $certified,
+                        'boq_total' => $boqTotal,
+                    ];
+                })->filter(fn($row) => $row['boq_total'] > 0 || $row['earned'] > 0);
+        }, collect());
+
+        // ── BOQ List ─────────────────────────────────────────────────────────
+        $allBoqs = $this->safe(
+            fn() => \App\Models\Boq::with('project')->latest()->get(),
+            collect()
+        );
+
+        // ── Subcontract Agreements (recent) ──────────────────────────────────
+        $recentSubcons = $this->safe(
+            fn() => \App\Models\SubconAgreement::with('subcontractor')->latest()->take(5)->get(),
+            collect()
+        );
+
+        return view('dashboard.contract-admin', compact(
+            'kpi', 'projectBOQProgress', 'clientIpcs', 'subconIpcs',
+            'recentPayments', 'dailyEarnedValue', 'allBoqs', 'recentSubcons'
+        ));
+    }
+}

@@ -1,0 +1,505 @@
+@extends('layouts.app')
+
+@php
+    $productsJson  = $products->map(fn($p)  => ['id'=>$p->id,'name'=>$p->name,'unit'=>$p->unit])->values();
+    $equipmentJson = $equipmentList->map(fn($e) => ['id'=>$e->id,'name'=>$e->name,'unit'=>$e->unit])->values();
+@endphp
+
+@section('title', 'New Standard Work')
+
+@push('styles')
+<style>
+.resource-card { border-left: 4px solid transparent; }
+.resource-card.material  { border-left-color: #22c55e; }
+.resource-card.manpower  { border-left-color: #3b82f6; }
+.resource-card.equipment { border-left-color: #f59e0b; }
+
+.section-header-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+}
+
+.resource-table thead th {
+    font-size: 11px; font-weight: 700; letter-spacing: .5px;
+    text-transform: uppercase; color: #6b7280;
+    background: #f9fafb; padding: 10px 12px;
+}
+.resource-table td { padding: 8px 12px; vertical-align: middle; }
+.resource-table tbody tr:hover { background: #fafafa; }
+
+.qty-input { font-variant-numeric: tabular-nums; }
+.row-remove-btn { opacity: .4; transition: opacity .15s; }
+.row-remove-btn:hover { opacity: 1; }
+</style>
+@endpush
+
+@section('content')
+<div class="d-flex align-items-center mb-4">
+    <a href="{{ route('standard-works.index') }}" class="btn btn-sm btn-outline-secondary me-3">
+        <i class="fa-solid fa-arrow-left"></i>
+    </a>
+    <div>
+        <h1 class="page-title mb-1">
+            <i class="fa-solid fa-sliders me-2 text-primary"></i>New Standard Work
+        </h1>
+        <p class="text-muted small mb-0">Fill in the work details and add resources under each category.</p>
+    </div>
+</div>
+
+@if($errors->any())
+<div class="alert alert-danger alert-dismissible fade show mb-4">
+    <i class="fa-solid fa-circle-exclamation me-2"></i>
+    <strong>Please fix the following errors:</strong>
+    <ul class="mb-0 mt-1">
+        @foreach($errors->all() as $error)
+            <li>{{ $error }}</li>
+        @endforeach
+    </ul>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
+
+<form method="POST" action="{{ route('standard-works.store') }}" id="standardWorkForm">
+    @csrf
+
+    {{-- ── Work Information Card ── --}}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent py-3">
+            <h5 class="mb-0"><i class="fa-solid fa-info-circle me-2 text-primary"></i>Work Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+
+                {{-- Work Name --}}
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Work Name <span class="text-danger">*</span></label>
+                    <input type="text" name="name"
+                           class="form-control @error('name') is-invalid @enderror"
+                           value="{{ old('name') }}"
+                           placeholder="e.g. Plain Concrete Grade C-20" required>
+                    @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
+                {{-- Unit --}}
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Unit of Measure <span class="text-danger">*</span></label>
+                    <select name="unit" id="workUnitInput" class="form-select @error('unit') is-invalid @enderror" required>
+                        <option value="">— Select Unit —</option>
+                        <option value="m³"      @selected(old('unit') == 'm³')>m³ (Cubic Meter)</option>
+                        <option value="m²"      @selected(old('unit') == 'm²')>m² (Square Meter)</option>
+                        <option value="lm"      @selected(old('unit') == 'lm')>lm (Linear Meter)</option>
+                        <option value="kg"      @selected(old('unit') == 'kg')>kg (Kilogram)</option>
+                        <option value="ton"     @selected(old('unit') == 'ton')>ton</option>
+                        <option value="pcs"     @selected(old('unit') == 'pcs')>pcs (Pieces)</option>
+                        <option value="lump sum" @selected(old('unit') == 'lump sum')>lump sum</option>
+                        <option value="hr"      @selected(old('unit') == 'hr')>hr (Hour)</option>
+                        <option value="day"     @selected(old('unit') == 'day')>day (Day)</option>
+                        <option value="lit"     @selected(old('unit') == 'lit')>lit (Liter)</option>
+                    </select>
+                    @error('unit')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
+                {{-- Description --}}
+                <div class="col-md-9">
+                    <label class="form-label fw-semibold">Description</label>
+                    <textarea name="description" rows="2" class="form-control"
+                              placeholder="Optional notes about this standard work…">{{ old('description') }}</textarea>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════
+         MATERIAL SECTION
+    ══════════════════════════════════════════ --}}
+    <div class="card border-0 shadow-sm mb-4 resource-card material">
+        <div class="card-header bg-transparent py-3 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <span class="section-header-icon bg-success bg-opacity-10 text-success">
+                    <i class="fa-solid fa-cubes"></i>
+                </span>
+                <div>
+                    <h5 class="mb-0">Material Lines
+                        <span class="badge bg-success bg-opacity-10 text-success ms-2 small" id="mat-count">1 row</span>
+                    </h5>
+                    <p class="text-muted small mb-0">Leave quantity as <strong>0</strong> if not used</p>
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-success" onclick="addRow('materials')">
+                <i class="fa-solid fa-plus me-1"></i>Add Material
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0 resource-table">
+                    <thead>
+                        <tr>
+                            <th>Material Name</th>
+                            <th style="width:180px">Quantity <span class="unit-per-label text-muted fw-normal" style="font-size:11px"></span></th>
+                            <th style="width:130px">Unit</th>
+                            <th style="width:50px"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="materials-body">
+                        @forelse(old('materials', []) as $i => $mat)
+                        <tr>
+                            <td>
+                                <select name="materials[{{ $i }}][material_name]"
+                                        class="form-select form-select-sm mat-select"
+                                        onchange="fillUnit(this,'materials')" data-idx="{{ $i }}">
+                                    <option value="">— Select Material —</option>
+                                    @foreach($products as $p)
+                                    <option value="{{ $p->name }}" data-unit="{{ $p->unit }}"
+                                        @selected(($mat['material_name'] ?? '') === $p->name)>
+                                        {{ $p->name }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td><input type="number" step="0.001" min="0" name="materials[{{ $i }}][quantity]"
+                                       class="form-control form-control-sm qty-input"
+                                       value="{{ $mat['quantity'] ?? 0 }}" placeholder="0.000"></td>
+                            <td><input type="text" name="materials[{{ $i }}][unit]"
+                                       class="form-control form-control-sm mat-unit-{{ $i }}"
+                                       value="{{ $mat['unit'] ?? '' }}" placeholder="auto-filled"></td>
+                            <td><button type="button" class="btn btn-sm btn-outline-danger row-remove-btn"
+                                        onclick="removeRow(this,'mat-count')">
+                                <i class="fa-solid fa-times"></i></button></td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td>
+                                <select name="materials[0][material_name]"
+                                        class="form-select form-select-sm mat-select"
+                                        onchange="fillUnit(this,'materials')" data-idx="0">
+                                    <option value="">— Select Material —</option>
+                                    @foreach($products as $p)
+                                    <option value="{{ $p->name }}" data-unit="{{ $p->unit }}">{{ $p->name }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td><input type="number" step="0.001" min="0" name="materials[0][quantity]"
+                                       class="form-control form-control-sm qty-input" value="0" placeholder="0.000"></td>
+                            <td><input type="text" name="materials[0][unit]"
+                                       class="form-control form-control-sm mat-unit-0"
+                                       placeholder="auto-filled" readonly></td>
+                            <td><button type="button" class="btn btn-sm btn-outline-danger row-remove-btn"
+                                        onclick="removeRow(this,'mat-count')">
+                                <i class="fa-solid fa-times"></i></button></td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════
+         MANPOWER SECTION
+    ══════════════════════════════════════════ --}}
+    <div class="card border-0 shadow-sm mb-4 resource-card manpower">
+        <div class="card-header bg-transparent py-3 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <span class="section-header-icon bg-primary bg-opacity-10 text-primary">
+                    <i class="fa-solid fa-person-digging"></i>
+                </span>
+                <div>
+                    <h5 class="mb-0">Manpower Roles
+                        <span class="badge bg-primary bg-opacity-10 text-primary ms-2 small" id="mp-count">1 row</span>
+                    </h5>
+                    <p class="text-muted small mb-0">Leave quantity as <strong>0</strong> if not used</p>
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addRow('manpower')">
+                <i class="fa-solid fa-plus me-1"></i>Add Role
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0 resource-table">
+                    <thead>
+                        <tr>
+                            <th>Role / Trade</th>
+                            <th style="width:180px">Quantity <span class="unit-per-label text-muted fw-normal" style="font-size:11px"></span></th>
+                            <th style="width:130px">Unit</th>
+                            <th style="width:50px"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="manpower-body">
+                        @forelse(old('manpower', []) as $i => $mp)
+                        <tr>
+                            <td><input type="text" name="manpower[{{ $i }}][role]"
+                                       class="form-control form-control-sm"
+                                       value="{{ $mp['role'] ?? '' }}"
+                                       placeholder="e.g. Mason, Helper, Foreman"></td>
+                            <td><input type="number" step="0.001" min="0" name="manpower[{{ $i }}][quantity]"
+                                       class="form-control form-control-sm qty-input"
+                                       value="{{ $mp['quantity'] ?? 0 }}" placeholder="0.000"></td>
+                            <td>
+                                <select name="manpower[{{ $i }}][unit]" class="form-select form-select-sm">
+                                    <option value="">— Unit —</option>
+                                    <option value="day"  @selected(($mp['unit'] ?? '') == 'day')>day</option>
+                                    <option value="hr"   @selected(($mp['unit'] ?? '') == 'hr')>hr</option>
+                                    <option value="pcs"  @selected(($mp['unit'] ?? '') == 'pcs')>pcs</option>
+                                </select>
+                            </td>
+                            <td><button type="button" class="btn btn-sm btn-outline-danger row-remove-btn"
+                                        onclick="removeRow(this,'mp-count')">
+                                <i class="fa-solid fa-times"></i></button></td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td><input type="text" name="manpower[0][role]"
+                                       class="form-control form-control-sm"
+                                       placeholder="e.g. Mason, Helper, Foreman"></td>
+                            <td><input type="number" step="0.001" min="0" name="manpower[0][quantity]"
+                                       class="form-control form-control-sm qty-input" value="0" placeholder="0.000"></td>
+                            <td>
+                                <select name="manpower[0][unit]" class="form-select form-select-sm">
+                                    <option value="">— Unit —</option>
+                                    <option value="day">day</option>
+                                    <option value="hr">hr</option>
+                                    <option value="pcs">pcs</option>
+                                </select>
+                            </td>
+                            <td><button type="button" class="btn btn-sm btn-outline-danger row-remove-btn"
+                                        onclick="removeRow(this,'mp-count')">
+                                <i class="fa-solid fa-times"></i></button></td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════
+         EQUIPMENT SECTION
+    ══════════════════════════════════════════ --}}
+    <div class="card border-0 shadow-sm mb-4 resource-card equipment">
+        <div class="card-header bg-transparent py-3 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <span class="section-header-icon bg-warning bg-opacity-10 text-warning">
+                    <i class="fa-solid fa-tractor"></i>
+                </span>
+                <div>
+                    <h5 class="mb-0">Equipment Lines
+                        <span class="badge bg-warning bg-opacity-10 text-warning ms-2 small" id="eq-count">1 row</span>
+                    </h5>
+                    <p class="text-muted small mb-0">Leave quantity as <strong>0</strong> if not used</p>
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-warning" onclick="addRow('equipment')">
+                <i class="fa-solid fa-plus me-1"></i>Add Equipment
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0 resource-table">
+                    <thead>
+                        <tr>
+                            <th>Equipment Name</th>
+                            <th style="width:180px">Quantity <span class="unit-per-label text-muted fw-normal" style="font-size:11px"></span></th>
+                            <th style="width:130px">Unit</th>
+                            <th style="width:50px"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="equipment-body">
+                        @forelse(old('equipment', []) as $i => $eq)
+                        <tr>
+                            <td>
+                                <select name="equipment[{{ $i }}][equipment_name]"
+                                        class="form-select form-select-sm eq-select"
+                                        onchange="fillUnit(this,'equipment')" data-idx="{{ $i }}">
+                                    <option value="">— Select Equipment —</option>
+                                    @foreach($equipmentList as $e)
+                                    <option value="{{ $e->name }}" data-unit="{{ $e->unit }}"
+                                        @selected(($eq['equipment_name'] ?? '') === $e->name)>
+                                        {{ $e->name }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td><input type="number" step="0.001" min="0" name="equipment[{{ $i }}][quantity]"
+                                       class="form-control form-control-sm qty-input"
+                                       value="{{ $eq['quantity'] ?? 0 }}" placeholder="0.000"></td>
+                            <td><input type="text" name="equipment[{{ $i }}][unit]"
+                                       class="form-control form-control-sm eq-unit-{{ $i }}"
+                                       value="{{ $eq['unit'] ?? '' }}" placeholder="auto-filled"></td>
+                            <td><button type="button" class="btn btn-sm btn-outline-danger row-remove-btn"
+                                        onclick="removeRow(this,'eq-count')">
+                                <i class="fa-solid fa-times"></i></button></td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td>
+                                <select name="equipment[0][equipment_name]"
+                                        class="form-select form-select-sm eq-select"
+                                        onchange="fillUnit(this,'equipment')" data-idx="0">
+                                    <option value="">— Select Equipment —</option>
+                                    @foreach($equipmentList as $e)
+                                    <option value="{{ $e->name }}" data-unit="{{ $e->unit }}">{{ $e->name }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td><input type="number" step="0.001" min="0" name="equipment[0][quantity]"
+                                       class="form-control form-control-sm qty-input" value="0" placeholder="0.000"></td>
+                            <td><input type="text" name="equipment[0][unit]"
+                                       class="form-control form-control-sm eq-unit-0"
+                                       placeholder="auto-filled" readonly></td>
+                            <td><button type="button" class="btn btn-sm btn-outline-danger row-remove-btn"
+                                        onclick="removeRow(this,'eq-count')">
+                                <i class="fa-solid fa-times"></i></button></td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {{-- ── Actions ── --}}
+    <div class="d-flex justify-content-end gap-2 mb-5">
+        <a href="{{ route('standard-works.index') }}" class="btn btn-secondary">
+            <i class="fa-solid fa-xmark me-1"></i>Cancel
+        </a>
+        <button type="submit" class="btn btn-primary" id="submitBtn">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Save Standard Work
+        </button>
+    </div>
+</form>
+@endsection
+
+@push('scripts')
+<script>
+    /* ─── Product & Equipment data from PHP ─── */
+    const PRODUCTS  = @json($productsJson);
+    const EQUIPMENT = @json($equipmentJson);
+
+    /* ─── Row counters ─── */
+    const counts = { materials: 1, manpower: 1, equipment: 1 };
+
+    /* ─── Auto-fill unit when a material/equipment select changes ─── */
+    function fillUnit(selectEl, section) {
+        const chosen = selectEl.options[selectEl.selectedIndex];
+        const unit   = chosen ? (chosen.dataset.unit || '') : '';
+        const row    = selectEl.closest('tr');
+        const unitInput = row.querySelector('input[name*="[unit]"]');
+        if (unitInput) {
+            unitInput.value    = unit;
+            unitInput.readOnly = !!unit;
+        }
+    }
+
+    const configs = {
+        materials: { countId: 'mat-count' },
+        manpower:  { countId: 'mp-count'  },
+        equipment: { countId: 'eq-count'  },
+    };
+
+    /* ─── Row count badge helper ─── */
+    function updateCount(countId, tbody) {
+        const el = document.getElementById(countId);
+        if (!el) return;
+        const n = tbody.querySelectorAll('tr').length;
+        el.textContent = n + (n === 1 ? ' row' : ' rows');
+    }
+
+    /* ─── Build <option> list ─── */
+    function buildOptions(list) {
+        return list.map(item =>
+            `<option value="${item.name}" data-unit="${item.unit}">${item.name}</option>`
+        ).join('');
+    }
+
+    /* ─── Add row ─── */
+    function addRow(section) {
+        const idx   = counts[section]++;
+        const cfg   = configs[section];
+        const tbody = document.getElementById(section + '-body');
+        const row   = document.createElement('tr');
+
+        let firstCell, thirdCell;
+
+        if (section === 'materials') {
+            firstCell = `<select name="materials[${idx}][material_name]"
+                                 class="form-select form-select-sm mat-select"
+                                 onchange="fillUnit(this,'materials')" data-idx="${idx}">
+                             <option value="">— Select Material —</option>
+                             ${buildOptions(PRODUCTS)}
+                         </select>`;
+            thirdCell = `<input type="text" name="materials[${idx}][unit]"
+                                class="form-control form-control-sm" placeholder="auto-filled" readonly>`;
+        } else if (section === 'equipment') {
+            firstCell = `<select name="equipment[${idx}][equipment_name]"
+                                 class="form-select form-select-sm eq-select"
+                                 onchange="fillUnit(this,'equipment')" data-idx="${idx}">
+                             <option value="">— Select Equipment —</option>
+                             ${buildOptions(EQUIPMENT)}
+                         </select>`;
+            thirdCell = `<input type="text" name="equipment[${idx}][unit]"
+                                class="form-control form-control-sm" placeholder="auto-filled" readonly>`;
+        } else {
+            // manpower
+            firstCell = `<input type="text" name="manpower[${idx}][role]"
+                                class="form-control form-control-sm"
+                                placeholder="e.g. Mason, Helper, Carpenter">`;
+            thirdCell = `<select name="manpower[${idx}][unit]" class="form-select form-select-sm">
+                             <option value="">— Unit —</option>
+                             <option value="day">day</option>
+                             <option value="hr">hr</option>
+                             <option value="pcs">pcs</option>
+                         </select>`;
+        }
+
+        row.innerHTML = `
+            <td>${firstCell}</td>
+            <td><input type="number" step="0.001" min="0" name="${section}[${idx}][quantity]"
+                       class="form-control form-control-sm qty-input" value="0" placeholder="0.000"></td>
+            <td>${thirdCell}</td>
+            <td><button type="button" class="btn btn-sm btn-outline-danger row-remove-btn"
+                        onclick="removeRow(this,'${cfg.countId}')">
+                    <i class="fa-solid fa-times"></i>
+                </button></td>`;
+        tbody.appendChild(row);
+        updateCount(cfg.countId, tbody);
+    }
+
+    /* ─── Remove row (keep at least 1) ─── */
+    function removeRow(btn, countId) {
+        const row   = btn.closest('tr');
+        const tbody = row.parentElement;
+        if (tbody.querySelectorAll('tr').length > 1) {
+            row.remove();
+        } else {
+            // Clear but keep the row
+            row.querySelectorAll('input').forEach(i => {
+                i.value = i.type === 'number' ? '0' : '';
+            });
+            row.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+        }
+        updateCount(countId, tbody);
+    }
+
+    /* ─── Update Quantity header based on Work Unit ─── */
+    const workUnitInput = document.getElementById('workUnitInput');
+    function updateUnitLabels() {
+        const unit = workUnitInput.value.trim();
+        const text = unit ? `(per 1 ${unit})` : '';
+        document.querySelectorAll('.unit-per-label').forEach(el => el.textContent = text);
+    }
+    workUnitInput.addEventListener('change', updateUnitLabels);
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateUnitLabels();
+        // Init all counts
+        ['materials','manpower','equipment'].forEach(s => {
+            const tbody = document.getElementById(s + '-body');
+            if (tbody) updateCount(configs[s].countId, tbody);
+        });
+    });
+</script>
+@endpush

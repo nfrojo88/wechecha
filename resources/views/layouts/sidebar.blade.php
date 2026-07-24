@@ -1,0 +1,919 @@
+<div class="sidebar-scroll">
+    <ul class="sidebar-nav">
+
+        <li class="sidebar-nav-item">
+            <a href="{{ route('dashboard') }}" class="sidebar-nav-link {{ request()->routeIs('dashboard*') ? 'active' : '' }}">
+                <i class="fa-solid fa-gauge-high"></i>
+                <span>Dashboard</span>
+            </a>
+        </li>
+
+        {{-- General Manager Section --}}
+        @role('gm')
+
+        <li class="sidebar-nav-item">
+            <a href="{{ route('dashboard.gm') }}" class="sidebar-nav-link {{ request()->routeIs('dashboard.gm') ? 'active' : '' }}">
+                <i class="fa-solid fa-gauge-high text-primary"></i>
+                <span>GM Dashboard</span>
+            </a>
+        </li>
+
+        @endrole
+        {{-- Masters --}}
+
+        @canany(['projects.view', 'planning.view', 'schedule.view', 'stores.view', 'stores.create', 'stores.edit', 'stores.delete', 'products.view', 'products.create', 'products.edit', 'products.delete'])
+
+        @canany(['projects.view', 'planning.view', 'schedule.view'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('projects.index') }}" class="sidebar-nav-link {{ request()->routeIs('projects.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-building"></i>
+                <span>Projects</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['stores.view', 'stores.create', 'stores.edit', 'stores.delete'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('stores.index') }}" class="sidebar-nav-link {{ request()->routeIs('stores.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-warehouse"></i>
+                <span>Stores</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['products.view', 'products.create', 'products.edit', 'products.delete'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('products.index') }}" class="sidebar-nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-boxes-stacked"></i>
+                <span>Products</span>
+            </a>
+        </li>
+        @endcanany
+        @endcanany
+
+        {{-- Inventory --}}
+        @canany(['inventory.view', 'inventory.view_all_stores', 'inventory.*'])
+
+        <li class="sidebar-nav-item">
+            <a href="{{ route('inventory.index') }}" class="sidebar-nav-link {{ request()->routeIs('inventory.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-clipboard-list"></i>
+                <span>Stock Levels</span>
+            </a>
+        </li>
+        @endcanany
+
+        {{-- Store Manager Hub --}}
+        @if(auth()->check() && auth()->user()->hasAnyRole(['store_manager', 'store_keeper', 'admin', 'global_admin']))
+
+        <li class="sidebar-nav-item">
+            <a href="{{ route('store-manager.dashboard') }}" class="sidebar-nav-link {{ request()->routeIs('store-manager.dashboard') ? 'active' : '' }}">
+                <i class="fa-solid fa-gauge-high text-primary"></i>
+                <span>Dashboard</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('store-manager.inventory.all') }}" class="sidebar-nav-link {{ request()->routeIs('store-manager.inventory.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-boxes-stacked text-info"></i>
+                <span>All Inventory</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('store-manager.transfers.create') }}" class="sidebar-nav-link {{ request()->routeIs('store-manager.transfers.create') ? 'active' : '' }}">
+                <i class="fa-solid fa-exchange-alt text-success"></i>
+                <span>Create Transfer</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('store-manager.transfers.index') }}" class="sidebar-nav-link {{ request()->routeIs('store-manager.transfers.index') || request()->routeIs('store-manager.transfers.show') ? 'active' : '' }}">
+                <i class="fa-solid fa-truck-moving text-warning"></i>
+                <span>Transfer List</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('store-manager.material-requests.index') }}" class="sidebar-nav-link {{ request()->routeIs('store-manager.material-requests.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-clipboard-list text-danger"></i>
+                <span>Material Requests</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('store-manager.slips.create') }}" class="sidebar-nav-link {{ request()->routeIs('store-manager.slips.create') ? 'active' : '' }}">
+                <i class="fa-solid fa-receipt text-success"></i>
+                <span>Create Slip</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('store-manager.slips.index') }}" class="sidebar-nav-link {{ request()->routeIs('store-manager.slips.index') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-invoice text-secondary"></i>
+                <span>Slip Records</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('store-manager.issued.index') }}" class="sidebar-nav-link {{ request()->routeIs('store-manager.issued.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-hand-holding text-warning"></i>
+                <span>Issued Materials</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('store-manager.products.index') }}" class="sidebar-nav-link {{ request()->routeIs('store-manager.products.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-book text-primary"></i>
+                <span>Material Catalog</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('store-manager.slip-sequences.index') }}" class="sidebar-nav-link {{ request()->routeIs('store-manager.slip-sequences.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-stream text-info"></i>
+                <span>Slip Sequences</span>
+            </a>
+        </li>
+        @endif
+
+        {{-- Planning Section --}}
+        @if(auth()->user() && (auth()->user()->hasAnyPermission(['planning.boq.manage', 'boq.view', 'boq.create', 'schedule.view', 'schedule.approve', 'schedule.create', 'schedule.edit', 'schedule.*', 'planning.view', 'planning.*', 'takeoff.view', 'takeoff.create', 'takeoff.edit', 'takeoff.*', 'resources.dispatch', 'material_planning.view', 'material_planning.*', 'material_requests.view', 'material_requests.create', 'material_requests.approve', 'material_requests.issue', 'material_requests.*', 'reports.view', 'reports.weekly.view', 'reports.*.view', 'finance.budgets.manage']) || auth()->user()->hasRole(['planning_manager', 'planning', 'technical_manager'])))
+
+        @role('planning_manager|planning|technical_manager')
+        <li class="sidebar-nav-item">
+            <a href="{{ route('planning-manager.emergency-requests') }}"
+               class="sidebar-nav-link {{ request()->routeIs('planning-manager.emergency-requests*') ? 'active' : '' }}">
+                <i class="fa-solid fa-bell-exclamation" style="color:#f87171;"></i>
+                <span>Emergency Approvals</span>
+            </a>
+        </li>
+        @role('planning_manager')
+        <li class="sidebar-nav-item">
+            <a href="{{ route('planning.team.index') }}"
+               class="sidebar-nav-link {{ request()->routeIs('planning.team.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-users-gear" style="color:#f472b6;"></i>
+                <span>Assign Team</span>
+            </a>
+        </li>
+        @endrole
+        <li class="sidebar-nav-item">
+            <a href="{{ route('planning-manager.resource-report') }}"
+               class="sidebar-nav-link {{ request()->routeIs('planning-manager.resource-report*') ? 'active' : '' }}">
+                <i class="fa-solid fa-chart-bar" style="color:#34d399;"></i>
+                <span>Resource Report</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('planning-manager.weekly-plan-setup') }}"
+               class="sidebar-nav-link {{ request()->routeIs('planning-manager.weekly-plan-setup*') ? 'active' : '' }}">
+                <i class="fa-solid fa-calendar-check" style="color:#a78bfa;"></i>
+                <span>Weekly Plan Setup</span>
+            </a>
+        </li>
+        @endrole
+
+        @canany(['planning.boq.manage', 'boq.view', 'boq.create'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('boqs.index') }}" class="sidebar-nav-link {{ request()->routeIs('boqs.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-invoice-dollar"></i>
+                <span>BOQ</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['schedule.view', 'schedule.approve', 'schedule.create', 'schedule.edit', 'schedule.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('schedules.index') }}" class="sidebar-nav-link {{ request()->routeIs('schedules.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-calendar-days"></i>
+                <span>Schedules</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['planning.view', 'planning.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('erp-plans.index') }}" class="sidebar-nav-link {{ request()->routeIs('erp-plans.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-diagram-project"></i>
+                <span>ERP Plans</span>
+            </a>
+        </li>
+        @endcanany
+        @hasanyrole('planning_manager|planning|technical_manager|admin|global_admin')
+        <li class="sidebar-nav-item">
+            <a href="{{ route('standard-works.index') }}" class="sidebar-nav-link {{ request()->routeIs('standard-works.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-ruler-combined"></i>
+                <span>Standard Work</span>
+            </a>
+        </li>
+        @endhasanyrole
+        @canany(['takeoff.view', 'takeoff.create', 'takeoff.edit', 'takeoff.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('takeoff.index') }}" class="sidebar-nav-link {{ request()->routeIs('takeoff.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-ruler-combined"></i>
+                <span>Quantity Takeoff</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['resources.dispatch', 'planning.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('dispatches.index') }}" class="sidebar-nav-link {{ request()->routeIs('dispatches.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-truck-fast"></i>
+                <span>Weekly Dispatches</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['material_planning.view', 'material_planning.*', 'planning.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('material-plans.index') }}" class="sidebar-nav-link {{ request()->routeIs('material-plans.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-list-check"></i>
+                <span>Material Plans</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['material_requests.view', 'material_requests.create', 'material_requests.approve', 'material_requests.issue', 'material_requests.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('material-requests.index') }}" class="sidebar-nav-link {{ request()->routeIs('material-requests.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-cart-flatbed"></i>
+                <span>Material Requests</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['material_damage_reports.view', 'material_damage_reports.create', 'material_damage_reports.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('material-damage-reports.index') }}" class="sidebar-nav-link {{ request()->routeIs('material-damage-reports.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>Damage Reports</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['tool_transactions.view', 'tool_transactions.create', 'tool_transactions.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('tool-transactions.index') }}" class="sidebar-nav-link {{ request()->routeIs('tool-transactions.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-toolbox"></i>
+                <span>Tool Check-out</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['reports.view', 'reports.weekly.view', 'reports.*.view'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('weekly-reports.index') }}" class="sidebar-nav-link {{ request()->routeIs('weekly-reports.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-chart-bar"></i>
+                <span>Weekly Reports</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['finance.budgets.manage', 'finance.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('budgets.index') }}" class="sidebar-nav-link {{ request()->routeIs('budgets.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-sack-dollar"></i>
+                <span>Project Budgets</span>
+            </a>
+        </li>
+        @endcanany
+        @endcanany
+
+        {{-- Procurement / Stores --}}
+        @if(auth()->check() && (auth()->user()->hasAnyRole(['Purchase Manager', 'purchase_manager', 'admin', 'global_admin']) || auth()->user()->canAny(['inventory.view', 'inventory.*', 'purchases.suppliers.manage', 'suppliers.*', 'material_requests.view', 'material_requests.create', 'material_requests.approve', 'material_requests.issue', 'material_requests.*', 'purchases.requests.create', 'purchases.view', 'purchases.receive', 'purchases.*', 'transfers.view', 'transfers.*'])))
+
+        <li class="sidebar-nav-item">
+            <a href="{{ route('dashboard.purchase') }}" class="sidebar-nav-link {{ request()->routeIs('dashboard.purchase') ? 'active' : '' }}">
+                <i class="fa-solid fa-chart-line text-info"></i>
+                <span>Purchase Dashboard</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('products.index') }}" class="sidebar-nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-box text-warning"></i>
+                <span>Material Catalog</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('price-intelligence.index') }}" class="sidebar-nav-link {{ request()->routeIs('price-intelligence.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-chart-line text-success"></i>
+                <span>Price Intelligence</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('material-demand.index') }}" class="sidebar-nav-link {{ request()->routeIs('material-demand.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-cubes text-primary"></i>
+                <span>Material Demand</span>
+            </a>
+        </li>
+        @canany(['purchases.suppliers.manage', 'suppliers.*', 'purchases.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('suppliers.index') }}" class="sidebar-nav-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-truck"></i>
+                <span>Suppliers</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['material_requests.view', 'material_requests.create', 'material_requests.approve', 'material_requests.issue', 'material_requests.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('material-requests.index') }}" class="sidebar-nav-link {{ request()->routeIs('material-requests.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-cart-flatbed"></i>
+                <span>Material Requests</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['purchases.requests.create', 'purchases.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('purchase-requests.index') }}" class="sidebar-nav-link {{ request()->routeIs('purchase-requests.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-invoice"></i>
+                <span>Purchase Requests</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['purchases.view', 'purchases.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('purchase-orders.index') }}" class="sidebar-nav-link {{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-contract"></i>
+                <span>Purchase Orders</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['purchases.receive', 'purchases.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('delivery-receipts.index') }}" class="sidebar-nav-link {{ request()->routeIs('delivery-receipts.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-boxes-packing"></i>
+                <span>Delivery Receipts</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['transfers.view', 'transfers.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('transfers.index') }}" class="sidebar-nav-link {{ request()->routeIs('transfers.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-exchange-alt"></i>
+                <span>Transfers</span>
+            </a>
+        </li>
+        @endcanany
+        @endcanany
+
+        {{-- Coordinator Tools --}}
+        @if(auth()->check() && (auth()->user()->hasAnyRole(['Coordinator', 'coordinator', 'admin', 'global_admin'])))
+
+        <li class="sidebar-nav-item">
+            <a href="{{ route('dashboard.coordinator') }}" class="sidebar-nav-link {{ request()->routeIs('dashboard.coordinator') ? 'active' : '' }}">
+                <i class="fa-solid fa-users-viewfinder text-primary"></i>
+                <span>Coordinator Dashboard</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('schedules.index') }}" class="sidebar-nav-link {{ request()->routeIs('schedules.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-calendar-alt text-success"></i>
+                <span>Site Schedules</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('inventory.index') }}" class="sidebar-nav-link {{ request()->routeIs('inventory.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-boxes text-info"></i>
+                <span>Global Inventory</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('daily-reports.index') }}" class="sidebar-nav-link {{ request()->routeIs('daily-reports.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-contract text-warning"></i>
+                <span>Daily Site Reports</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('coordinator.forecast') }}" class="sidebar-nav-link {{ request()->routeIs('coordinator.forecast') ? 'active' : '' }}">
+                <i class="fa-solid fa-chart-pie text-danger"></i>
+                <span>Forecast Demand</span>
+            </a>
+        </li>
+        @endif
+
+        {{-- Site Engineer Tools --}}
+        @if(auth()->check() && (auth()->user()->hasAnyRole(['site_engineer', 'admin', 'global_admin'])))
+
+        <li class="sidebar-nav-item">
+            <a href="{{ route('dashboard.site-engineer') }}" class="sidebar-nav-link {{ request()->routeIs('dashboard.site-engineer') ? 'active' : '' }}">
+                <i class="fa-solid fa-hard-hat text-warning"></i>
+                <span>Site Engineer Dashboard</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('dispatches.index') }}" class="sidebar-nav-link {{ request()->routeIs('dispatches.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-calendar-week text-info"></i>
+                <span>Weekly Plans</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('daily-reports.index') }}" class="sidebar-nav-link {{ request()->routeIs('daily-reports.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-signature text-success"></i>
+                <span>Daily Reports</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('weekly-reports.index') }}" class="sidebar-nav-link {{ request()->routeIs('weekly-reports.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-chart-bar text-primary"></i>
+                <span>Weekly Reports</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('boqs.index') }}" class="sidebar-nav-link {{ request()->routeIs('boqs.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-invoice-dollar text-danger"></i>
+                <span>Site BOQ</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('ipcs.index') }}" class="sidebar-nav-link {{ request()->routeIs('ipcs.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-money-check-dollar text-success"></i>
+                <span>Takeoffs & Payments</span>
+            </a>
+        </li>
+        @endif
+
+        {{-- Foreman Tools --}}
+        @if(auth()->check() && (auth()->user()->hasAnyRole(['foreman', 'admin', 'global_admin'])))
+
+        <li class="sidebar-nav-item">
+            <a href="{{ route('dashboard.foreman') }}" class="sidebar-nav-link {{ request()->routeIs('dashboard.foreman') ? 'active' : '' }}">
+                <i class="fa-solid fa-hard-hat text-primary"></i>
+                <span>Foreman Dashboard</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('attendance.index') }}" class="sidebar-nav-link {{ request()->routeIs('attendance.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-users text-success"></i>
+                <span>Team Attendance</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('material-requests.index') }}" class="sidebar-nav-link {{ request()->routeIs('material-requests.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-cart-flatbed text-danger"></i>
+                <span>Material Requests</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('daily-reports.index') }}" class="sidebar-nav-link {{ request()->routeIs('daily-reports.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-signature text-success"></i>
+                <span>Daily Reports</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('issues.index') }}" class="sidebar-nav-link {{ request()->routeIs('issues.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-triangle-exclamation text-warning"></i>
+                <span>Report Issues</span>
+            </a>
+        </li>
+        @endif
+
+        {{-- Engineer Work Schedule --}}
+        @if(auth()->check() && auth()->user()->hasAnyRole(['admin', 'global_admin', 'planning_manager', 'planning', 'technical_manager', 'site_engineer', 'foreman']))
+
+        {{-- Planners: Full calendar / management view --}}
+        @if(auth()->user()->hasAnyRole(['admin', 'global_admin', 'planning_manager', 'planning', 'technical_manager']))
+        <li class="sidebar-nav-item">
+            <a href="{{ route('eng-schedule.index') }}" class="sidebar-nav-link {{ request()->routeIs('eng-schedule.index') ? 'active' : '' }}">
+                <i class="fa-solid fa-calendar-days text-primary"></i>
+                <span>Engineer Schedule</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('eng-schedule.create') }}" class="sidebar-nav-link {{ request()->routeIs('eng-schedule.create') ? 'active' : '' }}">
+                <i class="fa-solid fa-plus-circle text-success"></i>
+                <span>Assign Work Order</span>
+            </a>
+        </li>
+        @endif
+        {{-- Engineers / Foremen: Personal view only --}}
+        <li class="sidebar-nav-item">
+            <a href="{{ route('eng-schedule.my') }}" class="sidebar-nav-link {{ request()->routeIs('eng-schedule.my') ? 'active' : '' }}">
+                <i class="fa-solid fa-calendar-check text-warning"></i>
+                <span>My Work Schedule</span>
+            </a>
+        </li>
+        @endif
+
+        {{-- Operational --}}
+
+        @canany(['material_usage.view', 'material_usage.*', 'cut_optimization.view_results', 'cut_optimization.*', 'issues.view', 'issues.create', 'issues.resolve', 'issues.*', 'waste.view', 'waste.create', 'waste.*', 'reports.daily.view', 'reports.daily.create', 'reports.weekly.view', 'reports.view', 'reports.*.view'])
+
+        @canany(['material_usage.view', 'material_usage.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('material-usages.index') }}" class="sidebar-nav-link {{ request()->routeIs('material-usages.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-screwdriver-wrench"></i>
+                <span>Material Usages</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['cut_optimization.view_results', 'cut_optimization.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('cut-optimizations.index') }}" class="sidebar-nav-link {{ request()->routeIs('cut-optimizations.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-scissors"></i>
+                <span>Cut Optimization</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['issues.view', 'issues.create', 'issues.resolve', 'issues.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('issues.index') }}" class="sidebar-nav-link {{ request()->routeIs('issues.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>Issues</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['waste.view', 'waste.create', 'waste.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('waste.index') }}" class="sidebar-nav-link {{ request()->routeIs('waste.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-trash-can"></i>
+                <span>Waste</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['reports.daily.view', 'reports.daily.create'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('daily-reports.index') }}" class="sidebar-nav-link {{ request()->routeIs('daily-reports.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-calendar-day"></i>
+                <span>Daily Reports</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['reports.view', 'reports.weekly.view', 'reports.*.view'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('weekly-reports.index') }}" class="sidebar-nav-link {{ request()->routeIs('weekly-reports.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-calendar-week"></i>
+                <span>Weekly Reports</span>
+            </a>
+        </li>
+        @endcanany
+        @endcanany
+
+        {{-- Contract Admin Tools --}}
+        @if(auth()->check() && (auth()->user()->hasAnyRole(['Contract admin', 'contract_admin', 'admin', 'global_admin'])))
+
+        <li class="sidebar-nav-item">
+            <a href="{{ route('dashboard.contract-admin') }}" class="sidebar-nav-link {{ request()->routeIs('dashboard.contract-admin') ? 'active' : '' }}">
+                <i class="fa-solid fa-gauge-high text-primary"></i>
+                <span>Contract Dashboard</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('boqs.index') }}" class="sidebar-nav-link {{ request()->routeIs('boqs.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-invoice-dollar text-danger"></i>
+                <span>Project BOQs</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('ipcs.index') }}" class="sidebar-nav-link {{ request()->routeIs('ipcs.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-money-check-dollar text-success"></i>
+                <span>IPCs & Payments</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('contracts.index') }}" class="sidebar-nav-link {{ request()->routeIs('contracts.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-contract text-warning"></i>
+                <span>Employee Contracts</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('subcontractors.index') }}" class="sidebar-nav-link {{ request()->routeIs('subcontractors.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-handshake text-info"></i>
+                <span>Subcontractors</span>
+            </a>
+        </li>
+        @endif
+
+        {{-- Finance --}}
+        @if(auth()->check() && (auth()->user()->hasAnyRole(['Finance head', 'finance_head', 'finance', 'admin', 'global_admin']) || auth()->user()->canAny(['finance.chart_of_accounts.view', 'finance.bank.manage', 'finance.income.view', 'finance.income.*', 'finance.expenses.view', 'finance.expenses.approve', 'finance.expenses.create', 'payments.view', 'payments.create', 'payments.approve', 'payments.*', 'subcon.view', 'subcon.create', 'subcon.edit', 'subcon.approve', 'subcon.*', 'finance.ipcs.manage', 'finance.*'])))
+
+        <li class="sidebar-nav-item">
+            <a href="{{ route('dashboard.finance') }}" class="sidebar-nav-link {{ request()->routeIs('dashboard.finance') ? 'active' : '' }}">
+                <i class="fa-solid fa-chart-line text-info"></i>
+                <span>Finance Dashboard</span>
+            </a>
+        </li>
+        @if(auth()->check() && auth()->user()->hasAnyRole(['Finance head', 'finance_head', 'admin', 'global_admin']))
+        <li class="sidebar-nav-item">
+            <a href="{{ route('coa.index') }}" class="sidebar-nav-link {{ request()->routeIs('coa.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-sitemap"></i>
+                <span>Chart of Accounts</span>
+            </a>
+        </li>
+        @endif
+        <li class="sidebar-nav-item">
+            <a href="{{ route('assigned-accounts.index') }}" class="sidebar-nav-link {{ request()->routeIs('assigned-accounts.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-briefcase text-primary"></i>
+                <span>My Assigned Accounts</span>
+            </a>
+        </li>
+        @if(auth()->check() && auth()->user()->hasAnyRole(['Finance head', 'finance_head', 'admin', 'global_admin']))
+        <li class="sidebar-nav-item">
+            <a href="{{ route('income.index') }}" class="sidebar-nav-link {{ request()->routeIs('income.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-receipt text-success"></i>
+                <span>View Receipts</span>
+            </a>
+        </li>
+        @endif
+        <li class="sidebar-nav-item">
+            <a href="{{ route('budgets.index') }}" class="sidebar-nav-link {{ request()->routeIs('budgets.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-sack-dollar text-warning"></i>
+                <span>Project Budget</span>
+            </a>
+        </li>
+        <!-- Company Income -->
+        @if(auth()->check() && auth()->user()->hasAnyRole(['Finance head', 'finance_head', 'admin', 'global_admin']))
+        <li class="sidebar-nav-item">
+            <a href="{{ route('income.index') }}" class="sidebar-nav-link {{ request()->routeIs('income.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-arrow-trend-up"></i>
+                <span>Company Income</span>
+            </a>
+        </li>
+        @endif
+        <!-- Expenses -->
+        <li class="sidebar-nav-item">
+            <a href="{{ route('expenses.index') }}" class="sidebar-nav-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-arrow-trend-down text-danger"></i>
+                <span>Expenses</span>
+            </a>
+        </li>
+        <!-- Payroll (Finance Head) -->
+        @if(auth()->check() && auth()->user()->hasAnyRole(['Finance head', 'finance_head', 'admin', 'global_admin']))
+        <li class="sidebar-nav-item">
+            <a href="{{ route('payroll.dashboard') }}" class="sidebar-nav-link {{ request()->routeIs('payroll.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-money-bill-wave text-success"></i>
+                <span>Payroll</span>
+            </a>
+        </li>
+        @endif
+        <!-- Reports -->
+        @if(auth()->check() && auth()->user()->hasAnyRole(['Finance head', 'finance_head', 'admin', 'global_admin']))
+        <li class="sidebar-nav-item">
+            <a href="{{ route('reports.index') }}" class="sidebar-nav-link {{ request()->is('finance/reports') || request()->is('finance/reports*') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-lines text-primary"></i>
+                <span>Reports</span>
+            </a>
+        </li>
+        @endif
+
+        @canany(['finance.bank.manage', 'finance.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('bank-accounts.index') }}" class="sidebar-nav-link {{ request()->routeIs('bank-accounts.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-building-columns"></i>
+                <span>Bank Accounts</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['payments.view', 'payments.create', 'payments.approve', 'payments.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('payments.index') }}" class="sidebar-nav-link {{ request()->routeIs('payments.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Payments</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['subcon.view', 'subcon.create', 'subcon.edit', 'subcon.approve', 'subcon.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('subcon-agreements.index') }}" class="sidebar-nav-link {{ request()->routeIs('subcon-agreements.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-handshake"></i>
+                <span>Subcontractors</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['finance.ipcs.manage', 'subcon.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('ipcs.index') }}" class="sidebar-nav-link {{ request()->routeIs('ipcs.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-invoice-dollar"></i>
+                <span>IPCs</span>
+            </a>
+        </li>
+        @endcanany
+        @endcanany
+
+        {{-- HR --}}
+        @canany(['hr.departments.view', 'hr.employees.view', 'hr.employees.create', 'hr.employees.edit', 'hr.attendance.view', 'hr.attendance.manage', 'finance.payroll.process', 'hr.payroll.view', 'hr.*'])
+
+        @canany(['hr.departments.view', 'hr.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('departments.index') }}" class="sidebar-nav-link {{ request()->routeIs('departments.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-building"></i>
+                <span>Departments</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['hr.employees.view', 'hr.employees.create', 'hr.employees.edit', 'hr.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('employees.index') }}" class="sidebar-nav-link {{ request()->routeIs('employees.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-users"></i>
+                <span>Employees</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['hr.attendance.view', 'hr.attendance.manage', 'hr.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('attendance.index') }}" class="sidebar-nav-link {{ request()->routeIs('attendance.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-calendar-check"></i>
+                <span>Attendance</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['finance.payroll.process', 'hr.payroll.view', 'hr.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('payrolls.index') }}" class="sidebar-nav-link {{ request()->routeIs('payrolls.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-money-bill-wave"></i>
+                <span>Payroll</span>
+            </a>
+        </li>
+        @endcanany
+        @endcanany
+
+        {{-- HR Manager Dashboard --}}
+        @if(auth()->check() && (auth()->user()->hasAnyRole(['hr_officer', 'hr_manager', 'admin', 'global_admin'])))
+
+        <li class="sidebar-nav-item">
+            <a href="{{ route('hr-manager.dashboard') }}" class="sidebar-nav-link {{ request()->routeIs('hr-manager.dashboard') ? 'active' : '' }}">
+                <i class="fa-solid fa-gauge-high text-primary"></i>
+                <span>Manager Dashboard</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('employees.create') }}" class="sidebar-nav-link {{ request()->routeIs('employees.create') ? 'active' : '' }}">
+                <i class="fa-solid fa-user-plus text-success"></i>
+                <span>Create Employee</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('daily-reports.approval') }}" class="sidebar-nav-link {{ request()->routeIs('daily-reports.approval') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-check text-success"></i>
+                <span>Approve Daily Reports</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('weekly-manpower.index') }}" class="sidebar-nav-link {{ request()->routeIs('weekly-manpower.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-chart-bar text-info"></i>
+                <span>Weekly Manpower</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('subcon-agreements.index') }}" class="sidebar-nav-link {{ request()->routeIs('subcon-agreements.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-handshake text-warning"></i>
+                <span>Subcon Agreements</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('leave-requests.index') }}" class="sidebar-nav-link {{ request()->routeIs('leave-requests.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-calendar-times text-danger"></i>
+                <span>Leave Requests</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('manpower-forecast.index') }}" class="sidebar-nav-link {{ request()->routeIs('manpower-forecast.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-chart-line text-primary"></i>
+                <span>Manpower Forecast</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('assets.dashboard') }}" class="sidebar-nav-link {{ request()->routeIs('assets.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-computer text-info"></i>
+                <span>Asset Management</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('performance-dashboard.index') }}" class="sidebar-nav-link {{ request()->routeIs('performance-dashboard.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-chart-bar text-info"></i>
+                <span>Performance Dashboard</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('contracts.index') }}" class="sidebar-nav-link {{ request()->routeIs('contracts.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-contract text-secondary"></i>
+                <span>Contract Management</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('payroll.dashboard') }}" class="sidebar-nav-link {{ request()->routeIs('payroll.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-money-bill-wave text-success"></i>
+                <span>Payroll Integration</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('reports.attendance') }}" class="sidebar-nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-chart-line text-danger"></i>
+                <span>HR Reports</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('employee.dashboard') }}" class="sidebar-nav-link {{ request()->routeIs('employee.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-user-tie text-info"></i>
+                <span>Self-Service Portal</span>
+            </a>
+        </li>
+        @endif
+
+        {{-- Communication --}}
+
+        <li class="sidebar-nav-item">
+            <a href="{{ route('messages.index') }}" class="sidebar-nav-link {{ request()->routeIs('messages.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-envelope"></i>
+                <span>Messages</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('tickets.index') }}" class="sidebar-nav-link {{ request()->routeIs('tickets.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-headset text-warning"></i>
+                <span>My Support Tickets</span>
+                @php
+                    $openTickets = 0;
+                    try {
+                        $openTickets = \App\Models\SupportTicket::where('user_id', auth()->id())->whereIn('status', ['open', 'in_progress'])->count();
+                    } catch (\Exception $e) {
+                        // Suppress exception if table does not exist
+                    }
+                @endphp
+                @if($openTickets > 0)
+                    <span class="badge bg-danger ms-auto">{{ $openTickets }}</span>
+                @endif
+            </a>
+        </li>
+
+        {{-- Equipment --}}
+        @canany(['resources.equipment.manage', 'equipment.view', 'equipment.*'])
+
+        <li class="sidebar-nav-item">
+            <a href="{{ route('equipment.index') }}" class="sidebar-nav-link {{ request()->routeIs('equipment.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-tractor"></i>
+                <span>Equipment Log</span>
+            </a>
+        </li>
+        @endcanany
+
+        {{-- Admin --}}
+        @canany(['users.view', 'users.*', 'settings.view', 'settings.*', 'admin.audit.view', 'finance.audit.view'])
+
+        @canany(['users.view', 'users.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('users.index') }}" class="sidebar-nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-user-shield"></i>
+                <span>User Management</span>
+            </a>
+        </li>
+        
+        @role('global_admin|admin')
+        <li class="sidebar-nav-item">
+            <a href="{{ route('admin.role-assignment.index') }}" class="sidebar-nav-link {{ request()->routeIs('admin.role-assignment.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-user-tag text-info"></i>
+                <span>Role Assignment</span>
+                @php
+                    $noRoleCount = 0;
+                    try {
+                        $noRoleCount = \App\Models\User::whereDoesntHave('roles')->count();
+                    } catch (\Exception $e) {}
+                @endphp
+                @if($noRoleCount > 0)
+                    <span class="badge bg-warning text-dark ms-auto">{{ $noRoleCount }}</span>
+                @endif
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('admin.employee-ratings.index') }}" class="sidebar-nav-link {{ request()->routeIs('admin.employee-ratings.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-star text-warning"></i>
+                <span>Employee Ratings</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('admin.activity-logs') }}" class="sidebar-nav-link {{ request()->routeIs('admin.activity-logs') ? 'active' : '' }}">
+                <i class="fa-solid fa-list-ol text-primary"></i>
+                <span>Activity Logs</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('admin.tickets.index') }}" class="sidebar-nav-link {{ request()->routeIs('admin.tickets.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-ticket text-danger"></i>
+                <span>Support Tickets</span>
+            </a>
+        </li>
+        @endrole
+        @endcanany
+        @canany(['settings.view', 'settings.*'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('settings.index') }}" class="sidebar-nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-cogs"></i>
+                <span>System Settings</span>
+            </a>
+        </li>
+        @endcanany
+        @canany(['admin.audit.view', 'finance.audit.view'])
+        <li class="sidebar-nav-item">
+            <a href="{{ route('audit.index') }}" class="sidebar-nav-link {{ request()->routeIs('audit.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-clipboard-list"></i>
+                <span>Audit Logs</span>
+            </a>
+        </li>
+        @endcanany
+        @endcanany
+
+        @role('global_admin')
+        <li class="sidebar-nav-item mt-4">
+            <a href="{{ route('dev.roles') }}" class="sidebar-nav-link text-warning">
+                <i class="fa-solid fa-vial"></i>
+                <span>Role Tester</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item mt-1">
+            <a href="{{ route('system.run-migrations') }}" class="sidebar-nav-link" style="color: #20c997;" onclick="return confirm('Run database migrations now? This will apply all pending changes.')">
+                <i class="fa-solid fa-database"></i>
+                <span>Auto Migrate DB</span>
+            </a>
+        </li>
+        @endrole
+    </ul>
+</div>
+
+<div class="sidebar-footer">
+    <div class="sidebar-footer-avatar">
+        {{ substr(auth()->user()->name ?? 'U', 0, 1) }}
+    </div>
+    <div class="sidebar-footer-info">
+        <div class="user-name">{{ auth()->user()->name ?? 'User' }}</div>
+        <div class="user-role">{{ ucfirst(str_replace('_', ' ', auth()->user()->roles->first()->name ?? 'Guest')) }}</div>
+    </div>
+</div>

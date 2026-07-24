@@ -1,0 +1,55 @@
+<?php
+
+namespace App\Policies;
+
+use App\Models\User;
+use App\Models\LeaveRequest;
+
+class LeaveRequestPolicy
+{
+    /**
+     * Determine whether the user can view any leave requests.
+     */
+    public function viewAny(User $user): bool
+    {
+        return $user->hasRole(['hr_manager', 'hr_officer', 'admin']);
+    }
+
+    /**
+     * Determine whether the user can view the leave request.
+     */
+    public function view(User $user, LeaveRequest $leaveRequest): bool
+    {
+        // HR staff can view all, employees can view their own
+        if ($user->hasRole(['hr_manager', 'hr_officer', 'admin'])) {
+            return true;
+        }
+
+        // Check if user is the employee who requested the leave
+        return $leaveRequest->employee?->user_id === $user->id;
+    }
+
+    /**
+     * Determine whether the user can create a leave request.
+     */
+    public function create(User $user): bool
+    {
+        return true; // All employees can request leave
+    }
+
+    /**
+     * Determine whether the user can approve the leave request.
+     */
+    public function approve(User $user): bool
+    {
+        return $user->hasRole(['hr_manager', 'admin']);
+    }
+
+    /**
+     * Determine whether the user can reject the leave request.
+     */
+    public function reject(User $user): bool
+    {
+        return $user->hasRole(['hr_manager', 'admin']);
+    }
+}
