@@ -7,6 +7,9 @@ echo  Server: wechechaconstruction.et (Plesk)
 echo  Press Ctrl+C to stop
 echo ============================================
 echo.
+echo NOTE: Server deploys automatically via GitHub webhook.
+echo       Make sure webhook is added in GitHub repo settings.
+echo.
 
 cd /d C:\ERP\Constraction\construct-pro-erp
 
@@ -32,13 +35,7 @@ if errorlevel 1 (
         goto loop
     )
     echo [OK] Pushed to GitHub at %time%
-
-    echo [%date% %time%] Triggering Plesk deploy on wechechaconstruction.et...
-    curl -s -o nul -w "  Server response: %%{http_code}" ^
-         -X POST "https://lin6.ethiotelecom.com:8443/modules/git/public/web-hook.php?uuid=f3e098b5-762b-0945-b20c-8433977cd2ba" ^
-         --insecure
-    echo.
-    echo [DONE] Live server updated at %time%
+    echo [OK] Plesk will auto-pull via GitHub webhook
     echo.
 )
 
