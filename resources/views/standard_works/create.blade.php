@@ -396,6 +396,54 @@
         </button>
     </div>
 </form>
+
+{{-- Modal for Managing Manpower Roles --}}
+<div class="modal fade" id="manageRolesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light py-3">
+                <h5 class="modal-title fw-bold text-dark">
+                    <i class="fa-solid fa-users-gear text-primary me-2"></i>Manage Manpower Roles
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                {{-- Add New Role Form --}}
+                <div class="card bg-light border-0 mb-3">
+                    <div class="card-body p-3">
+                        <h6 class="fw-semibold mb-2" style="font-size:13px;">Add Predefined Role</h6>
+                        <div class="row g-2">
+                            <div class="col-7">
+                                <input type="text" id="newRoleName" class="form-control form-control-sm" placeholder="Role Name (e.g. Mason, Welder)">
+                            </div>
+                            <div class="col-3">
+                                <select id="newRoleUnit" class="form-select form-select-sm">
+                                    <option value="day">day</option>
+                                    <option value="hr">hr</option>
+                                </select>
+                            </div>
+                            <div class="col-2">
+                                <button type="button" class="btn btn-sm btn-primary w-100" onclick="saveNewRole()">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="roleAddError" class="text-danger small mt-1 d-none"></div>
+                    </div>
+                </div>
+
+                {{-- Roles List --}}
+                <h6 class="fw-semibold text-muted mb-2" style="font-size:12px; letter-spacing:0.5px; text-transform:uppercase;">Existing Predefined Roles</h6>
+                <div class="list-group list-group-flush border rounded-3 overflow-hidden" id="rolesListGroup" style="max-height: 220px; overflow-y: auto;">
+                    {{-- Dynamically populated --}}
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
