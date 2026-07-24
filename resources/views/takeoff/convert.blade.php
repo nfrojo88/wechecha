@@ -278,8 +278,7 @@
                     <th style="min-width:150px;">Standard Work Template</th>
                     <th style="width:110px;">Ratio / Unit</th>
                     <th style="width:110px;">Rate (ETB)</th>
-                    <th style="width:120px;">Resulting Qty</th>
-                    <th style="width:130px; background:#eff6ff; color:#1e40af;">Per-Day Req.</th>
+                    <th style="width:150px; background:#eff6ff; color:#1e40af;">Schedule Duration</th>
                     <th style="width:120px;">Total Cost</th>
                     <th style="width:36px;"></th>
                 </tr>
@@ -598,14 +597,10 @@ function addManualFreeRow(sIdx) {
             <input type="number" step="0.01" min="0" class="form-control form-control-sm r-rate"
                    value="0" placeholder="0.00" oninput="calcRow('${sIdx}','${rowId}')">
         </td>
-        <td>
-            <span class="result-qty" id="rq-${rowId}">${total.toFixed(3)}</span>
-            <span class="text-muted small ms-1">${unit}</span>
+        <td style="background:#eff6ff;">
+            <div id="pdr-${rowId}" class="fw-bold text-primary" style="font-size:13px;">—</div>
             <input type="hidden" class="r-qty"  value="${total.toFixed(3)}">
             <input type="hidden" class="r-unit" value="${unit}">
-        </td>
-        <td style="background:#f8fafc;">
-            <div id="pdr-${rowId}" class="fw-bold text-primary" style="font-size:12px;">—</div>
         </td>
         <td>
             <span class="fw-semibold text-dark" id="rc-${rowId}">0.00</span>
@@ -668,14 +663,10 @@ function addPrefilledRow(sIdx, type, source, item, overrideRate) {
             <input type="number" step="0.01" min="0" class="form-control form-control-sm r-rate"
                    value="${rate}" placeholder="0.00" oninput="calcRow('${sIdx}','${rowId}')">
         </td>
-        <td>
-            <span class="result-qty" id="rq-${rowId}">${qty.toFixed(3)}</span>
-            <span class="text-muted small ms-1">${item.unit || secUnt}</span>
+        <td style="background:#eff6ff;">
+            <div id="pdr-${rowId}" class="fw-bold text-primary" style="font-size:13px;">—</div>
             <input type="hidden" class="r-qty"  value="${qty.toFixed(3)}">
             <input type="hidden" class="r-unit" value="${item.unit || secUnt}">
-        </td>
-        <td style="background:#f8fafc;">
-            <div id="pdr-${rowId}" class="fw-bold text-primary" style="font-size:12px;">—</div>
         </td>
         <td>
             <span class="fw-semibold text-dark" id="rc-${rowId}">${cost.toLocaleString('en-US',{minimumFractionDigits:2})}</span>
@@ -712,20 +703,25 @@ function calcRow(sIdx, rowId) {
     }
     const cost  = parseFloat((qty * rate).toFixed(2));
 
-    row.querySelector(`#rq-${rowId}`).textContent = qty;
     row.querySelector('.r-qty').value  = qty;
     row.querySelector(`#rc-${rowId}`).textContent = cost.toLocaleString('en-US',{minimumFractionDigits:2});
     row.querySelector('.r-cost').value = cost;
 
-    // Daily Requirement calculation for Manpower & Equipment
+    // Schedule Duration column: show per-day requirement for Manpower & Equipment
     const pdrEl = row.querySelector(`#pdr-${rowId}`);
     if (pdrEl) {
         if (type === 'manpower' || type === 'equipment') {
             const perDay = (qty / dur).toFixed(2);
-            const unitLabel = type === 'manpower' ? 'per day' : '/ day';
-            pdrEl.innerHTML = `<span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1"><i class="fa-solid fa-bolt me-1"></i>${perDay} ${unitLabel}</span>`;
+            const unitLabel = type === 'manpower' ? '/day' : '/day';
+            pdrEl.innerHTML = `
+                <div style="line-height:1.3;">
+                    <span class="badge bg-primary bg-opacity-15 text-primary px-2 py-1" style="font-size:12px;">
+                        <i class="fa-solid fa-bolt me-1"></i>${perDay} ${unitLabel}
+                    </span>
+                    <div class="text-muted" style="font-size:10px; margin-top:2px;">${dur} day schedule &bull; ${qty} total</div>
+                </div>`;
         } else {
-            pdrEl.innerHTML = `<span class="text-muted" style="font-size:11px;">N/A</span>`;
+            pdrEl.innerHTML = `<span class="text-muted" style="font-size:11px;">—</span>`;
         }
     }
 
