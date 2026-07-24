@@ -317,14 +317,9 @@
                     <p class="text-muted small mb-0">Leave quantity as <strong>0</strong> if not used</p>
                 </div>
             </div>
-            <div class="d-flex gap-2">
-                <a href="{{ route('equipment.index') }}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                    <i class="fa-solid fa-gears me-1"></i>Manage Equipment / Assets
-                </a>
-                <button type="button" class="btn btn-sm btn-outline-warning" onclick="addRow('equipment')">
-                    <i class="fa-solid fa-plus me-1"></i>Add Equipment
-                </button>
-            </div>
+            <button type="button" class="btn btn-sm btn-outline-warning" onclick="addRow('equipment')">
+                <i class="fa-solid fa-plus me-1"></i>Add Equipment
+            </button>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
