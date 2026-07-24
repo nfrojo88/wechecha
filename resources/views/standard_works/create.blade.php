@@ -574,8 +574,6 @@
     </div>
 </div>
 @endsection
-
-@push('scripts')
 <script>
     const productsData      = @json($productsJson);
     const equipmentData     = @json($equipmentJson);
