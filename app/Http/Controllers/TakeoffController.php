@@ -333,8 +333,19 @@ class TakeoffController extends Controller
         foreach ($takeoff->sections as $section) {
             $section->total_quantity = $section->items->sum('result_quantity');
             $section->primary_unit   = $section->items->first()?->result_unit ?? '';
-            // Default schedule duration comes from linked schedule task if present
-            $section->schedule_duration_days = $section->task?->duration_days ?: 3;
+            // Duration from linked schedule task: prefer duration_days, fallback to date diff
+            $task = $section->task;
+            if ($task) {
+                if ($task->duration_days) {
+                    $section->schedule_duration_days = $task->duration_days;
+                } elseif ($task->start_date && $task->end_date) {
+                    $section->schedule_duration_days = $task->start_date->diffInDays($task->end_date) + 1;
+                } else {
+                    $section->schedule_duration_days = null; // no duration info at all
+                }
+            } else {
+                $section->schedule_duration_days = null;
+            }
         }
 
         // Load all standard works with their sub-resources for the dropdowns
