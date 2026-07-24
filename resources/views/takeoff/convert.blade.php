@@ -703,7 +703,13 @@ function calcRow(sIdx, rowId) {
     const type  = row.querySelector('.r-type')?.value || 'material';
     const dur   = Math.max(1, parseFloat(document.getElementById(`sec-dur-${sIdx}`)?.value) || 1);
 
-    const qty   = parseFloat((total * ratio).toFixed(3));
+    // For Manpower and Equipment, total effort (man-days / machine-hours) scales with Schedule Duration (days)
+    let qty = 0;
+    if (type === 'manpower' || type === 'equipment') {
+        qty = parseFloat((total * ratio * dur).toFixed(3));
+    } else {
+        qty = parseFloat((total * ratio).toFixed(3));
+    }
     const cost  = parseFloat((qty * rate).toFixed(2));
 
     row.querySelector(`#rq-${rowId}`).textContent = qty;
