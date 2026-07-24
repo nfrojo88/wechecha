@@ -453,9 +453,10 @@
 
 @push('scripts')
 <script>
-    /* ─── Product & Equipment data from PHP ─── */
-    const PRODUCTS  = @json($productsJson);
-    const EQUIPMENT = @json($equipmentJson);
+    /* ─── Product, Equipment & Manpower Roles data from PHP ─── */
+    const PRODUCTS      = @json($productsJson);
+    const EQUIPMENT     = @json($equipmentJson);
+    let MANPOWER_ROLES  = @json($manpowerRoles);
 
     /* ─── Row counters ─── */
     const counts = { materials: 1, manpower: 1, equipment: 1 };
@@ -493,6 +494,15 @@
         ).join('');
     }
 
+    function buildManpowerOptions() {
+        let opts = '<option value="">— Select Role —</option>';
+        MANPOWER_ROLES.forEach(r => {
+            opts += `<option value="${r.name}" data-unit="${r.default_unit}">${r.name}</option>`;
+        });
+        opts += '<option value="__custom__">+ Type custom role...</option>';
+        return opts;
+    }
+
     /* ─── Add row ─── */
     function addRow(section) {
         const idx   = counts[section]++;
@@ -522,10 +532,11 @@
                                 class="form-control form-control-sm" placeholder="auto-filled" readonly>`;
         } else {
             // manpower
-            firstCell = `<input type="text" name="manpower[${idx}][role]"
-                                class="form-control form-control-sm"
-                                placeholder="e.g. Mason, Helper, Carpenter">`;
-            thirdCell = `<select name="manpower[${idx}][unit]" class="form-select form-select-sm">
+            firstCell = `<select name="manpower[${idx}][role]" class="form-select form-select-sm mp-role-select">
+                             ${buildManpowerOptions()}
+                         </select>
+                         <input type="text" name="manpower[${idx}][role]" class="form-control form-control-sm mt-1 mp-custom-input d-none" placeholder="Enter role name">`;
+            thirdCell = `<select name="manpower[${idx}][unit]" class="form-select form-select-sm mp-unit-select">
                              <option value="">— Unit —</option>
                              <option value="day">day</option>
                              <option value="hr">hr</option>
@@ -579,5 +590,132 @@
             if (tbody) updateCount(configs[s].countId, tbody);
         });
     });
+
+    /* ─── Role select change handler ─── */
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('mp-role-select')) {
+            const tr = e.target.closest('tr');
+            const customInput = tr.querySelector('.mp-custom-input');
+            const unitSelect = tr.querySelector('.mp-unit-select');
+
+            if (e.target.value === '__custom__') {
+                customInput.classList.remove('d-none');
+                customInput.required = true;
+                customInput.focus();
+            } else {
+                customInput.classList.add('d-none');
+                customInput.required = false;
+                customInput.value = e.target.value;
+
+                // Auto select default unit if set on option
+                const selectedOpt = e.target.options[e.target.selectedIndex];
+                const defUnit = selectedOpt ? selectedOpt.dataset.unit : '';
+                if (defUnit && unitSelect) {
+                    unitSelect.value = defUnit;
+                }
+            }
+        }
+    });
+
+    /* ─── Manage Roles Modal logic ─── */
+    let manageModal = null;
+
+    function openManageRoles() {
+        if (!manageModal) {
+            manageModal = new bootstrap.Modal(document.getElementById('manageRolesModal'));
+        }
+        renderModalRolesList();
+        manageModal.show();
+    }
+
+    function renderModalRolesList() {
+        const container = document.getElementById('rolesListGroup');
+        if (!container) return;
+        if (MANPOWER_ROLES.length === 0) {
+            container.innerHTML = `<div class="p-3 text-muted text-center small">No roles added yet.</div>`;
+            return;
+        }
+
+        let html = '';
+        MANPOWER_ROLES.forEach(role => {
+            html += `
+                <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                    <div>
+                        <span class="fw-semibold text-dark" style="font-size:13px;">${role.name}</span>
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary ms-1 small" style="font-size:10px;">${role.default_unit}</span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="deleteRole(${role.id})">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>`;
+        });
+        container.innerHTML = html;
+    }
+
+    function saveNewRole() {
+        const name = document.getElementById('newRoleName').value.trim();
+        const unit = document.getElementById('newRoleUnit').value;
+        const errEl = document.getElementById('roleAddError');
+        errEl.classList.add('d-none');
+
+        if (!name) {
+            errEl.textContent = 'Please enter a role name.';
+            errEl.classList.remove('d-none');
+            return;
+        }
+
+        fetch("{{ route('manpower-roles.store') }}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": "{{ csrf_token() }}"
+            },
+            body: JSON.stringify({ name: name, default_unit: unit })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                MANPOWER_ROLES.push(data.role);
+                MANPOWER_ROLES.sort((a,b) => a.name.localeCompare(b.name));
+                document.getElementById('newRoleName').value = '';
+                renderModalRolesList();
+                syncRoleSelectDropdowns();
+            } else {
+                errEl.textContent = data.message || 'Error saving role.';
+                errEl.classList.remove('d-none');
+            }
+        })
+        .catch(err => {
+            errEl.textContent = 'Server error occurred.';
+            errEl.classList.remove('d-none');
+        });
+    }
+
+    function deleteRole(roleId) {
+        if (!confirm('Are you sure you want to delete this role?')) return;
+
+        fetch(`/manpower-roles/${roleId}`, {
+            method: "DELETE",
+            headers: {
+                "X-CSRF-TOKEN": "{{ csrf_token() }}"
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                MANPOWER_ROLES = MANPOWER_ROLES.filter(r => r.id !== roleId);
+                renderModalRolesList();
+                syncRoleSelectDropdowns();
+            }
+        });
+    }
+
+    function syncRoleSelectDropdowns() {
+        document.querySelectorAll('.mp-role-select').forEach(select => {
+            const currentVal = select.value;
+            select.innerHTML = buildManpowerOptions();
+            select.value = currentVal;
+        });
+    }
 </script>
 @endpush
