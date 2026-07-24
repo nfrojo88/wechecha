@@ -1,42 +1,62 @@
 @echo off
 chcp 65001 > nul
+setlocal
+
+set REPO_PATH=C:\ERP\Constraction\construct-pro-erp
+set LOG_FILE=%REPO_PATH%\deploy-log.txt
+set BRANCH=main
+
 echo ============================================
-echo  Auto-Deploy Started - Watching for changes
+echo  Auto-Deploy Started
 echo  Repo  : https://github.com/nfrojo88/wechecha
-echo  Server: wechechaconstruction.et (Plesk)
+echo  Branch: %BRANCH%
+echo  Log   : %LOG_FILE%
 echo  Press Ctrl+C to stop
 echo ============================================
 echo.
-echo NOTE: Server deploys automatically via GitHub webhook.
-echo       Make sure webhook is added in GitHub repo settings.
-echo.
 
-cd /d C:\ERP\Constraction\construct-pro-erp
+cd /d %REPO_PATH%
+if errorlevel 1 (
+    echo [ERROR] Cannot find project folder: %REPO_PATH%
+    pause
+    exit /b 1
+)
+
+echo [%date% %time%] Auto-deploy started >> "%LOG_FILE%"
 
 :loop
 timeout /t 10 /nobreak > nul
 
+:: Stage all changes
 git add .
 
 :: Check if there are staged changes
 git diff --cached --quiet
 if errorlevel 1 (
-    echo [%date% %time%] Changes detected - committing...
-    git commit -m "Auto deploy: %date% %time%"
+    echo [%date% %time%] ===== Changes detected =====
+    echo [%date% %time%] Changes detected >> "%LOG_FILE%"
+
+    git commit -m "Auto deploy: %date% %time%" >> "%LOG_FILE%" 2>&1
     if errorlevel 1 (
-        echo [ERROR] Commit failed!
+        echo [ERROR] Commit failed - check %LOG_FILE%
+        echo [%date% %time%] ERROR: Commit failed >> "%LOG_FILE%"
+        goto loop
+    )
+    echo [%date% %time%] Committed OK
+
+    echo [%date% %time%] Pushing to GitHub...
+    git push origin %BRANCH% >> "%LOG_FILE%" 2>&1
+    if errorlevel 1 (
+        echo [ERROR] Push FAILED - check %LOG_FILE%
+        echo [%date% %time%] ERROR: Push failed >> "%LOG_FILE%"
         goto loop
     )
 
-    echo [%date% %time%] Pushing to GitHub...
-    git push origin main
-    if errorlevel 1 (
-        echo [ERROR] Push failed! Check credentials or internet connection.
-        goto loop
-    )
     echo [OK] Pushed to GitHub at %time%
-    echo [OK] Plesk will auto-pull via GitHub webhook
+    echo [%date% %time%] Pushed OK to GitHub >> "%LOG_FILE%"
     echo.
+) else (
+    echo [%time%] Watching... (no changes)
 )
 
 goto loop
