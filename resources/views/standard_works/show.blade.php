@@ -18,6 +18,8 @@
             &nbsp;·&nbsp;
             <span class="text-primary"><i class="fa-solid fa-person-digging me-1"></i>{{ $standardWork->manpower->count() }} manpower</span>
             &nbsp;·&nbsp;
+            <span style="color:#6d28d9;"><i class="fa-solid fa-flask-vial me-1"></i>{{ $standardWork->scientificManpower->count() }} scientific</span>
+            &nbsp;·&nbsp;
             <span class="text-warning"><i class="fa-solid fa-tractor me-1"></i>{{ $standardWork->equipment->count() }} equipment</span>
         </p>
     </div>
@@ -107,6 +109,45 @@
         @else
         <div class="text-center text-muted py-4">
             <i class="fa-solid fa-person-digging fa-2x mb-2 d-block opacity-25"></i>No manpower roles defined.
+        </div>
+        @endif
+    </div>
+</div>
+
+{{-- ── Scientific Manpower ── --}}
+<div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #8b5cf6 !important;">
+    <div class="card-header bg-transparent py-3">
+        <h5 class="mb-0" style="color:#6d28d9;">
+            <i class="fa-solid fa-flask-vial me-2" style="color:#8b5cf6;"></i>Scientific Manpower per 1 {{ $standardWork->unit }}
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        @if($standardWork->scientificManpower->count())
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Role / Specialisation</th>
+                        <th class="text-end">Quantity</th>
+                        <th>Unit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($standardWork->scientificManpower as $i => $smp)
+                    <tr>
+                        <td class="text-muted small">{{ $i + 1 }}</td>
+                        <td class="fw-semibold">{{ $smp->role }}</td>
+                        <td class="text-end">{{ number_format($smp->quantity, 3) }}</td>
+                        <td><code>{{ $smp->unit }}</code></td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @else
+        <div class="text-center text-muted py-4">
+            <i class="fa-solid fa-flask-vial fa-2x mb-2 d-block opacity-25" style="color:#8b5cf6;"></i>No scientific manpower defined.
         </div>
         @endif
     </div>
