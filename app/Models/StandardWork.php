@@ -23,7 +23,12 @@ class StandardWork extends Model
 
     public function manpower()
     {
-        return $this->hasMany(StandardWorkManpower::class);
+        return $this->hasMany(StandardWorkManpower::class)->where('type', 'regular');
+    }
+
+    public function scientificManpower()
+    {
+        return $this->hasMany(StandardWorkManpower::class)->where('type', 'scientific');
     }
 
     public function equipment()

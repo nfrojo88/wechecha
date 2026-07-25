@@ -72,6 +72,12 @@ class StandardWorkController extends Controller
             'equipment.*.equipment_name'  => 'nullable|string|max:255',
             'equipment.*.quantity'        => 'nullable|numeric|min:0',
             'equipment.*.unit'            => 'nullable|string|max:50',
+
+            // Scientific Manpower — optional, zero qty OK
+            'scientific_manpower'                => 'nullable|array',
+            'scientific_manpower.*.role'         => 'nullable|string|max:255',
+            'scientific_manpower.*.quantity'     => 'nullable|numeric|min:0',
+            'scientific_manpower.*.unit'         => 'nullable|string|max:50',
         ]);
 
         $work = StandardWork::create([
@@ -115,13 +121,25 @@ class StandardWorkController extends Controller
             }
         }
 
+        // Save scientific manpower — stored in the same table with type='scientific'
+        foreach ($request->input('scientific_manpower', []) as $row) {
+            if (!empty($row['role'])) {
+                $work->scientificManpower()->create([
+                    'role'     => $row['role'],
+                    'quantity' => (float)($row['quantity'] ?? 0),
+                    'unit'     => $row['unit'] ?? '',
+                    'type'     => 'scientific',
+                ]);
+            }
+        }
+
         return redirect()->route('standard-works.show', $work)
             ->with('success', 'Standard Work created successfully.');
     }
 
     public function show(StandardWork $standardWork)
     {
-        $standardWork->load('materials', 'manpower', 'equipment', 'creator');
+        $standardWork->load('materials', 'manpower', 'scientificManpower', 'equipment', 'creator');
         return view('standard_works.show', compact('standardWork'));
     }
 
