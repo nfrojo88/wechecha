@@ -35,6 +35,21 @@
 @endpush
 
 @section('content')
+@php
+if (!function_exists('evalTakeoffExpr')) {
+    function evalTakeoffExpr($expr) {
+        if ($expr === null || $expr === '') return null;
+        $sanitized = preg_replace('/[^0-9+\-*\/.\(\) ]/', '', (string)$expr);
+        if ($sanitized === '') return null;
+        try {
+            $val = @eval("return ({$sanitized});");
+            return is_numeric($val) ? (float)$val : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+}
+@endphp
 <div class="container-fluid">
 
     {{-- ── Page Header ──────────────────────────────────────────── --}}
