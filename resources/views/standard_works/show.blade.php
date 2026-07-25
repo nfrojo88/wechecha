@@ -23,13 +23,18 @@
             <span class="text-warning"><i class="fa-solid fa-tractor me-1"></i>{{ $standardWork->equipment->count() }} equipment</span>
         </p>
     </div>
-    <form action="{{ route('standard-works.destroy', $standardWork) }}" method="POST"
-          onsubmit="return confirm('Delete this standard work permanently?')">
-        @csrf @method('DELETE')
-        <button class="btn btn-outline-danger btn-sm">
-            <i class="fa-solid fa-trash me-1"></i>Delete
-        </button>
-    </form>
+    <div class="d-flex gap-2">
+        <a href="{{ route('standard-works.edit', $standardWork) }}" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-pen-to-square me-1"></i>Edit Standard Work
+        </a>
+        <form action="{{ route('standard-works.destroy', $standardWork) }}" method="POST"
+              onsubmit="return confirm('Delete this standard work permanently?')">
+            @csrf @method('DELETE')
+            <button class="btn btn-outline-danger btn-sm">
+                <i class="fa-solid fa-trash me-1"></i>Delete
+            </button>
+        </form>
+    </div>
 </div>
 
 
