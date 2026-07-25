@@ -51,28 +51,44 @@
             {{-- ── Section header row ───────────────────────────────── --}}
             @if($section->name)
             <tr style="background:linear-gradient(90deg,#7c1d0c 0%,#9a3412 100%); color:#fff;">
-                <td colspan="{{ 6 + count($diameters) }}" style="padding:8px 14px; border-color:#b45309;">
-                    <div style="display:flex; align-items:center; gap:10px; font-size:12px; font-weight:700; letter-spacing:.5px; text-transform:uppercase;">
+                <td colspan="{{ 6 + count($diameters) + ($canEdit ? 1 : 0) }}"
+                    style="padding:8px 14px; border-color:#b45309;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        {{-- Name + task badge --}}
                         <i class="fa-solid fa-layer-group" style="opacity:.7; font-size:11px;"></i>
-                        {{ $section->name }}
+                        <span style="font-size:12px; font-weight:700; letter-spacing:.5px; text-transform:uppercase;">
+                            {{ $section->name }}
+                        </span>
                         @if($section->task)
-                            <span style="font-size:10px; font-weight:600; background:rgba(255,255,255,.15); color:#fed7aa; border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:2px 9px; letter-spacing:.3px;">
+                            <span style="font-size:10px; font-weight:600; background:rgba(255,255,255,.15);
+                                         color:#fed7aa; border:1px solid rgba(255,255,255,.2);
+                                         border-radius:999px; padding:2px 9px; letter-spacing:.3px;">
                                 <i class="fa-solid fa-list-check me-1" style="font-size:9px;"></i>{{ $section->task->name }}
                             </span>
                         @endif
+
+                        {{-- Delete button — always on the right --}}
+                        @if($canEdit)
+                        <form method="POST"
+                              action="{{ route('takeoff.sections.destroy', [$takeoff, $section]) }}"
+                              onsubmit="return confirm('Delete section \'{{ addslashes($section->name) }}\' and all its items?')"
+                              style="margin-left:auto;">
+                            @csrf @method('DELETE')
+                            <button type="submit"
+                                    style="display:inline-flex; align-items:center; gap:5px;
+                                           background:rgba(239,68,68,.18); color:#fca5a5;
+                                           border:1px solid rgba(239,68,68,.35); border-radius:5px;
+                                           padding:3px 10px; font-size:11px; font-weight:600;
+                                           cursor:pointer; transition:all .15s; white-space:nowrap;"
+                                    onmouseover="this.style.background='rgba(239,68,68,.35)'"
+                                    onmouseout="this.style.background='rgba(239,68,68,.18)'"
+                                    title="Delete this section">
+                                <i class="fa-solid fa-trash-can"></i> Delete Section
+                            </button>
+                        </form>
+                        @endif
                     </div>
                 </td>
-                @if($canEdit)
-                <td style="text-align:center; padding:6px 10px; border-color:#b45309;">
-                    <form method="POST" action="{{ route('takeoff.sections.destroy', [$takeoff, $section]) }}"
-                          onsubmit="return confirm('Delete section and all its items?')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="action-btn del-section" title="Delete Section" style="color:#fca5a5; border-color:transparent;">
-                            <i class="fa-solid fa-trash-can"></i> Delete
-                        </button>
-                    </form>
-                </td>
-                @endif
             </tr>
             @endif
 
