@@ -839,7 +839,14 @@
     }
 
     function syncRoleSelectDropdowns() {
+        // Sync regular manpower dropdowns
         document.querySelectorAll('.mp-role-select').forEach(select => {
+            const currentVal = select.value;
+            select.innerHTML = buildManpowerOptions();
+            select.value = currentVal;
+        });
+        // Sync scientific manpower dropdowns
+        document.querySelectorAll('.smp-role-select').forEach(select => {
             const currentVal = select.value;
             select.innerHTML = buildManpowerOptions();
             select.value = currentVal;
