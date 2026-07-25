@@ -198,210 +198,274 @@
         </div>
     </div>
 
+
     {{-- ══════════════════════════════════════════
-         MANPOWER SECTION
+         MANPOWER + SCIENTIFIC MANPOWER (MERGED)
     ══════════════════════════════════════════ --}}
-    <div class="card border-0 shadow-sm mb-4 resource-card manpower">
+    <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #3b82f6;">
+
+        {{-- ── Card Header ── --}}
         <div class="card-header bg-transparent py-3 d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-2">
                 <span class="section-header-icon bg-primary bg-opacity-10 text-primary">
-                    <i class="fa-solid fa-person-digging"></i>
+                    <i class="fa-solid fa-users-gear"></i>
                 </span>
                 <div>
-                    <h5 class="mb-0">Manpower Roles
-                        <span class="badge bg-primary bg-opacity-10 text-primary ms-2 small" id="mp-count">1 row</span>
-                    </h5>
-                    <p class="text-muted small mb-0">Leave quantity as <strong>0</strong> if not used</p>
+                    <h5 class="mb-0 text-primary">Manpower &amp; Productivity</h5>
+                    <p class="text-muted small mb-0">Define crew breakdown, scientific staff, and crew output rates</p>
                 </div>
             </div>
-            <div class="d-flex gap-2">
-                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openManageRoles()">
-                    <i class="fa-solid fa-gears me-1"></i>Manage Roles
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addRow('manpower')">
-                    <i class="fa-solid fa-plus me-1"></i>Add Role
-                </button>
-            </div>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table align-middle mb-0 resource-table">
-                    <thead>
-                        <tr>
-                            <th>Role / Trade</th>
-                            <th style="width:180px">Quantity <span class="unit-per-label text-muted fw-normal" style="font-size:11px"></span></th>
-                            <th style="width:130px">Unit</th>
-                            <th style="width:50px"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="manpower-body">
-                        @forelse(old('manpower', []) as $i => $mp)
-                        <tr>
-                            <td>
-                                <select name="manpower[{{ $i }}][role]" class="form-select form-select-sm mp-role-select">
-                                    <option value="">— Select Role —</option>
-                                    @foreach($manpowerRoles as $mpRole)
-                                        <option value="{{ $mpRole->name }}" data-unit="{{ $mpRole->default_unit }}"
-                                            {{ ($mp['role'] ?? '') == $mpRole->name ? 'selected' : '' }}>
-                                            {{ $mpRole->name }}
-                                        </option>
-                                    @endforeach
-                                    <option value="__custom__">+ Type custom role...</option>
-                                </select>
-                                <input type="text" name="manpower[{{ $i }}][role]" class="form-control form-control-sm mt-1 mp-custom-input d-none"
-                                       value="{{ $mp['role'] ?? '' }}" placeholder="Enter role name">
-                            </td>
-                            <td><input type="number" step="0.001" min="0" name="manpower[{{ $i }}][quantity]"
-                                       class="form-control form-control-sm qty-input"
-                                       value="{{ $mp['quantity'] ?? 0 }}" placeholder="0.000"></td>
-                            <td>
-                                <select name="manpower[{{ $i }}][unit]" class="form-select form-select-sm mp-unit-select">
-                                    <option value="">— Unit —</option>
-                                    <option value="day"  @selected(($mp['unit'] ?? '') == 'day')>day</option>
-                                    <option value="hr"   @selected(($mp['unit'] ?? '') == 'hr')>hr</option>
-                                    <option value="pcs"  @selected(($mp['unit'] ?? '') == 'pcs')>pcs</option>
-                                </select>
-                            </td>
-                            <td><button type="button" class="btn btn-sm btn-outline-danger row-remove-btn"
-                                        onclick="removeRow(this,'mp-count')">
-                                <i class="fa-solid fa-times"></i></button></td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td>
-                                <select name="manpower[0][role]" class="form-select form-select-sm mp-role-select">
-                                    <option value="">— Select Role —</option>
-                                    @foreach($manpowerRoles as $mpRole)
-                                        <option value="{{ $mpRole->name }}" data-unit="{{ $mpRole->default_unit }}">
-                                            {{ $mpRole->name }}
-                                        </option>
-                                    @endforeach
-                                    <option value="__custom__">+ Type custom role...</option>
-                                </select>
-                                <input type="text" name="manpower[0][role]" class="form-control form-control-sm mt-1 mp-custom-input d-none"
-                                       placeholder="Enter role name">
-                            </td>
-                            <td><input type="number" step="0.001" min="0" name="manpower[0][quantity]"
-                                       class="form-control form-control-sm qty-input" value="0" placeholder="0.000"></td>
-                            <td>
-                                <select name="manpower[0][unit]" class="form-select form-select-sm mp-unit-select">
-                                    <option value="">— Unit —</option>
-                                    <option value="day">day</option>
-                                    <option value="hr">hr</option>
-                                    <option value="pcs">pcs</option>
-                                </select>
-                            </td>
-                            <td><button type="button" class="btn btn-sm btn-outline-danger row-remove-btn"
-                                        onclick="removeRow(this,'mp-count')">
-                                <i class="fa-solid fa-times"></i></button></td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    {{-- ══════════════════════════════════════════
-         SCIENTIFIC MANPOWER SECTION
-    ══════════════════════════════════════════ --}}
-    <div class="card border-0 shadow-sm mb-4 resource-card sci-manpower">
-        <div class="card-header bg-transparent py-3 d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-2">
-                <span class="section-header-icon bg-opacity-10 text-purple" style="background-color:#8b5cf620;">
-                    <i class="fa-solid fa-flask-vial" style="color:#8b5cf6;"></i>
-                </span>
-                <div>
-                    <h5 class="mb-0" style="color:#6d28d9;">Scientific Manpower
-                        <span class="badge ms-2 small" id="smp-count"
-                              style="background:#8b5cf620;color:#6d28d9;">1 row</span>
-                    </h5>
-                    <p class="text-muted small mb-0">Leave quantity as <strong>0</strong> if not used</p>
-                </div>
-            </div>
-            <button type="button" class="btn btn-sm" onclick="addRow('scientific_manpower')"
-                    style="border:1px solid #8b5cf6;color:#6d28d9;">
-                <i class="fa-solid fa-plus me-1"></i>Add Scientific Role
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openManageRoles()">
+                <i class="fa-solid fa-gears me-1"></i>Manage Roles
             </button>
         </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table align-middle mb-0 resource-table">
-                    <thead>
-                        <tr>
-                            <th>Role / Specialisation</th>
-                            <th style="width:180px">Quantity <span class="unit-per-label text-muted fw-normal" style="font-size:11px"></span></th>
-                            <th style="width:130px">Unit</th>
-                            <th style="width:50px"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="scientific_manpower-body">
-                        @forelse(old('scientific_manpower', []) as $i => $smp)
-                        <tr>
-                            <td>
-                                <select name="scientific_manpower[{{ $i }}][role]" class="form-select form-select-sm smp-role-select">
-                                    <option value="">— Select Role —</option>
-                                    @foreach($manpowerRoles as $mpRole)
-                                        <option value="{{ $mpRole->name }}" data-unit="{{ $mpRole->default_unit }}"
-                                            {{ ($smp['role'] ?? '') == $mpRole->name ? 'selected' : '' }}>
-                                            {{ $mpRole->name }}
-                                        </option>
-                                    @endforeach
-                                    <option value="__custom__">+ Type custom role...</option>
-                                </select>
-                                <input type="text" name="scientific_manpower[{{ $i }}][role]"
-                                       class="form-control form-control-sm mt-1 smp-custom-input d-none"
-                                       value="{{ $smp['role'] ?? '' }}" placeholder="Enter role name">
-                            </td>
-                            <td><input type="number" step="0.001" min="0" name="scientific_manpower[{{ $i }}][quantity]"
-                                       class="form-control form-control-sm qty-input"
-                                       value="{{ $smp['quantity'] ?? 0 }}" placeholder="0.000"></td>
-                            <td>
-                                <select name="scientific_manpower[{{ $i }}][unit]" class="form-select form-select-sm smp-unit-select">
-                                    <option value="">— Unit —</option>
-                                    <option value="day"  @selected(($smp['unit'] ?? '') == 'day')>day</option>
-                                    <option value="hr"   @selected(($smp['unit'] ?? '') == 'hr')>hr</option>
-                                    <option value="pcs"  @selected(($smp['unit'] ?? '') == 'pcs')>pcs</option>
-                                </select>
-                            </td>
-                            <td><button type="button" class="btn btn-sm btn-outline-danger row-remove-btn"
-                                        onclick="removeRow(this,'smp-count')">
-                                <i class="fa-solid fa-times"></i></button></td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td>
-                                <select name="scientific_manpower[0][role]" class="form-select form-select-sm smp-role-select">
-                                    <option value="">— Select Role —</option>
-                                    @foreach($manpowerRoles as $mpRole)
-                                        <option value="{{ $mpRole->name }}" data-unit="{{ $mpRole->default_unit }}">
-                                            {{ $mpRole->name }}
-                                        </option>
-                                    @endforeach
-                                    <option value="__custom__">+ Type custom role...</option>
-                                </select>
-                                <input type="text" name="scientific_manpower[0][role]"
-                                       class="form-control form-control-sm mt-1 smp-custom-input d-none"
-                                       placeholder="Enter role name">
-                            </td>
-                            <td><input type="number" step="0.001" min="0" name="scientific_manpower[0][quantity]"
-                                       class="form-control form-control-sm qty-input" value="0" placeholder="0.000"></td>
-                            <td>
-                                <select name="scientific_manpower[0][unit]" class="form-select form-select-sm smp-unit-select">
-                                    <option value="">— Unit —</option>
-                                    <option value="day">day</option>
-                                    <option value="hr">hr</option>
-                                    <option value="pcs">pcs</option>
-                                </select>
-                            </td>
-                            <td><button type="button" class="btn btn-sm btn-outline-danger row-remove-btn"
-                                        onclick="removeRow(this,'smp-count')">
-                                <i class="fa-solid fa-times"></i></button></td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+
+        {{-- ── Productivity Row ── --}}
+        <div class="card-body border-bottom pb-3">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-sm-auto">
+                    <p class="fw-semibold mb-2 text-muted small" style="letter-spacing:.4px;text-transform:uppercase;">
+                        <i class="fa-solid fa-gauge-high me-1 text-primary"></i>Crew Productivity
+                        <span class="text-danger">*</span>
+                    </p>
+                </div>
+                {{-- Min Rate --}}
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">
+                        Min Rate
+                        <span class="text-muted prod-unit-label">({{ old('unit','unit') }}/day)</span>
+                    </label>
+                    <input type="number" step="0.001" min="0" name="min_productivity"
+                           id="minProductivity"
+                           class="form-control @error('min_productivity') is-invalid @enderror"
+                           value="{{ old('min_productivity') }}"
+                           placeholder="e.g. 1.5">
+                    @error('min_productivity')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                {{-- Max Rate --}}
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">
+                        Max Rate
+                        <span class="text-muted prod-unit-label">({{ old('unit','unit') }}/day)</span>
+                    </label>
+                    <input type="number" step="0.001" min="0" name="max_productivity"
+                           id="maxProductivity"
+                           class="form-control @error('max_productivity') is-invalid @enderror"
+                           value="{{ old('max_productivity') }}"
+                           placeholder="e.g. 3.0">
+                    @error('max_productivity')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                {{-- Default Output per Day --}}
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1 text-primary">
+                        Default Output per Day <span class="text-danger">*</span>
+                        <span class="text-muted prod-unit-label">({{ old('unit','unit') }}/day)</span>
+                    </label>
+                    <input type="number" step="0.001" min="0" name="default_productivity"
+                           id="defaultProductivity"
+                           class="form-control border-primary @error('default_productivity') is-invalid @enderror"
+                           value="{{ old('default_productivity') }}"
+                           placeholder="e.g. 2.0">
+                    @error('default_productivity')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
             </div>
+        </div>
+
+        {{-- ── Tabs: Labour / Scientific ── --}}
+        <div class="card-body p-0">
+            <ul class="nav nav-tabs border-bottom px-3 pt-2" id="manpowerTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active fw-semibold" id="labour-tab"
+                            data-bs-toggle="tab" data-bs-target="#labour-panel"
+                            type="button" role="tab">
+                        <i class="fa-solid fa-person-digging me-1 text-primary"></i>
+                        Labour
+                        <span class="badge bg-primary bg-opacity-10 text-primary ms-1 small" id="mp-count">1 row</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold" id="scientific-tab"
+                            data-bs-toggle="tab" data-bs-target="#scientific-panel"
+                            type="button" role="tab">
+                        <i class="fa-solid fa-flask-vial me-1" style="color:#8b5cf6;"></i>
+                        <span style="color:#6d28d9;">Scientific</span>
+                        <span class="badge ms-1 small" id="smp-count"
+                              style="background:#8b5cf620;color:#6d28d9;">1 row</span>
+                    </button>
+                </li>
+                {{-- Add buttons inside tab bar (right side) --}}
+                <li class="ms-auto d-flex align-items-center gap-2 pb-1">
+                    <button type="button" class="btn btn-sm btn-outline-primary"
+                            onclick="addRowToActiveTab()"
+                            id="addManpowerRowBtn">
+                        <i class="fa-solid fa-plus me-1"></i>Add Role
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                {{-- ── Labour Tab ── --}}
+                <div class="tab-pane fade show active" id="labour-panel" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0 resource-table">
+                            <thead>
+                                <tr>
+                                    <th>Role / Trade</th>
+                                    <th style="width:160px">Qty <span class="unit-per-label text-muted fw-normal" style="font-size:11px"></span></th>
+                                    <th style="width:110px">Unit</th>
+                                    <th style="width:44px"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="manpower-body">
+                                @forelse(old('manpower', []) as $i => $mp)
+                                <tr>
+                                    <td>
+                                        <select name="manpower[{{ $i }}][role]" class="form-select form-select-sm mp-role-select">
+                                            <option value="">— Select Role —</option>
+                                            @foreach($manpowerRoles as $mpRole)
+                                                <option value="{{ $mpRole->name }}" data-unit="{{ $mpRole->default_unit }}"
+                                                    {{ ($mp['role'] ?? '') == $mpRole->name ? 'selected' : '' }}>
+                                                    {{ $mpRole->name }}
+                                                </option>
+                                            @endforeach
+                                            <option value="__custom__">+ Type custom role...</option>
+                                        </select>
+                                        <input type="text" name="manpower[{{ $i }}][role]"
+                                               class="form-control form-control-sm mt-1 mp-custom-input d-none"
+                                               value="{{ $mp['role'] ?? '' }}" placeholder="Enter role name">
+                                    </td>
+                                    <td><input type="number" step="0.001" min="0" name="manpower[{{ $i }}][quantity]"
+                                               class="form-control form-control-sm qty-input"
+                                               value="{{ $mp['quantity'] ?? 0 }}" placeholder="0.000"></td>
+                                    <td>
+                                        <select name="manpower[{{ $i }}][unit]" class="form-select form-select-sm mp-unit-select">
+                                            <option value="">— Unit —</option>
+                                            <option value="day"  @selected(($mp['unit'] ?? '') == 'day')>day</option>
+                                            <option value="hr"   @selected(($mp['unit'] ?? '') == 'hr')>hr</option>
+                                            <option value="pcs"  @selected(($mp['unit'] ?? '') == 'pcs')>pcs</option>
+                                        </select>
+                                    </td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger row-remove-btn"
+                                                onclick="removeRow(this,'mp-count')">
+                                        <i class="fa-solid fa-times"></i></button></td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td>
+                                        <select name="manpower[0][role]" class="form-select form-select-sm mp-role-select">
+                                            <option value="">— Select Role —</option>
+                                            @foreach($manpowerRoles as $mpRole)
+                                                <option value="{{ $mpRole->name }}" data-unit="{{ $mpRole->default_unit }}">
+                                                    {{ $mpRole->name }}
+                                                </option>
+                                            @endforeach
+                                            <option value="__custom__">+ Type custom role...</option>
+                                        </select>
+                                        <input type="text" name="manpower[0][role]"
+                                               class="form-control form-control-sm mt-1 mp-custom-input d-none"
+                                               placeholder="Enter role name">
+                                    </td>
+                                    <td><input type="number" step="0.001" min="0" name="manpower[0][quantity]"
+                                               class="form-control form-control-sm qty-input" value="0" placeholder="0.000"></td>
+                                    <td>
+                                        <select name="manpower[0][unit]" class="form-select form-select-sm mp-unit-select">
+                                            <option value="">— Unit —</option>
+                                            <option value="day">day</option>
+                                            <option value="hr">hr</option>
+                                            <option value="pcs">pcs</option>
+                                        </select>
+                                    </td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger row-remove-btn"
+                                                onclick="removeRow(this,'mp-count')">
+                                        <i class="fa-solid fa-times"></i></button></td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- ── Scientific Manpower Tab ── --}}
+                <div class="tab-pane fade" id="scientific-panel" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0 resource-table">
+                            <thead>
+                                <tr>
+                                    <th>Role / Specialisation</th>
+                                    <th style="width:160px">Qty <span class="unit-per-label text-muted fw-normal" style="font-size:11px"></span></th>
+                                    <th style="width:110px">Unit</th>
+                                    <th style="width:44px"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="scientific_manpower-body">
+                                @forelse(old('scientific_manpower', []) as $i => $smp)
+                                <tr>
+                                    <td>
+                                        <select name="scientific_manpower[{{ $i }}][role]" class="form-select form-select-sm smp-role-select">
+                                            <option value="">— Select Role —</option>
+                                            @foreach($manpowerRoles as $mpRole)
+                                                <option value="{{ $mpRole->name }}" data-unit="{{ $mpRole->default_unit }}"
+                                                    {{ ($smp['role'] ?? '') == $mpRole->name ? 'selected' : '' }}>
+                                                    {{ $mpRole->name }}
+                                                </option>
+                                            @endforeach
+                                            <option value="__custom__">+ Type custom role...</option>
+                                        </select>
+                                        <input type="text" name="scientific_manpower[{{ $i }}][role]"
+                                               class="form-control form-control-sm mt-1 smp-custom-input d-none"
+                                               value="{{ $smp['role'] ?? '' }}" placeholder="Enter role name">
+                                    </td>
+                                    <td><input type="number" step="0.001" min="0" name="scientific_manpower[{{ $i }}][quantity]"
+                                               class="form-control form-control-sm qty-input"
+                                               value="{{ $smp['quantity'] ?? 0 }}" placeholder="0.000"></td>
+                                    <td>
+                                        <select name="scientific_manpower[{{ $i }}][unit]" class="form-select form-select-sm smp-unit-select">
+                                            <option value="">— Unit —</option>
+                                            <option value="day"  @selected(($smp['unit'] ?? '') == 'day')>day</option>
+                                            <option value="hr"   @selected(($smp['unit'] ?? '') == 'hr')>hr</option>
+                                            <option value="pcs"  @selected(($smp['unit'] ?? '') == 'pcs')>pcs</option>
+                                        </select>
+                                    </td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger row-remove-btn"
+                                                onclick="removeRow(this,'smp-count')">
+                                        <i class="fa-solid fa-times"></i></button></td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td>
+                                        <select name="scientific_manpower[0][role]" class="form-select form-select-sm smp-role-select">
+                                            <option value="">— Select Role —</option>
+                                            @foreach($manpowerRoles as $mpRole)
+                                                <option value="{{ $mpRole->name }}" data-unit="{{ $mpRole->default_unit }}">
+                                                    {{ $mpRole->name }}
+                                                </option>
+                                            @endforeach
+                                            <option value="__custom__">+ Type custom role...</option>
+                                        </select>
+                                        <input type="text" name="scientific_manpower[0][role]"
+                                               class="form-control form-control-sm mt-1 smp-custom-input d-none"
+                                               placeholder="Enter role name">
+                                    </td>
+                                    <td><input type="number" step="0.001" min="0" name="scientific_manpower[0][quantity]"
+                                               class="form-control form-control-sm qty-input" value="0" placeholder="0.000"></td>
+                                    <td>
+                                        <select name="scientific_manpower[0][unit]" class="form-select form-select-sm smp-unit-select">
+                                            <option value="">— Unit —</option>
+                                            <option value="day">day</option>
+                                            <option value="hr">hr</option>
+                                            <option value="pcs">pcs</option>
+                                        </select>
+                                    </td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger row-remove-btn"
+                                                onclick="removeRow(this,'smp-count')">
+                                        <i class="fa-solid fa-times"></i></button></td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>{{-- end tab-content --}}
         </div>
     </div>
 
