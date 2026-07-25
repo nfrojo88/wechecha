@@ -748,14 +748,26 @@
         updateCount(countId, tbody);
     }
 
-    /* ─── Update Quantity header based on Work Unit ─── */
+    /* ─── Update Quantity header + productivity labels based on Work Unit ─── */
     const workUnitInput = document.getElementById('workUnitInput');
     function updateUnitLabels() {
         const unit = workUnitInput.value.trim();
-        const text = unit ? `(per 1 ${unit})` : '';
-        document.querySelectorAll('.unit-per-label').forEach(el => el.textContent = text);
+        const perText  = unit ? `(per 1 ${unit})` : '';
+        const prodText = unit ? `(${unit}/day)` : '(unit/day)';
+        document.querySelectorAll('.unit-per-label').forEach(el => el.textContent = perText);
+        document.querySelectorAll('.prod-unit-label').forEach(el => el.textContent = prodText);
     }
     workUnitInput.addEventListener('change', updateUnitLabels);
+
+    /* ─── Smart "Add Role" routes to whichever tab is active ─── */
+    function addRowToActiveTab() {
+        const sciTab = document.getElementById('scientific-tab');
+        if (sciTab && sciTab.classList.contains('active')) {
+            addRow('scientific_manpower');
+        } else {
+            addRow('manpower');
+        }
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
         updateUnitLabels();
