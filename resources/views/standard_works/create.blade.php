@@ -748,16 +748,29 @@
         updateCount(countId, tbody);
     }
 
-    /* ─── Update Quantity header + productivity labels based on Work Unit ─── */
-    const workUnitInput = document.getElementById('workUnitInput');
-    function updateUnitLabels() {
-        const unit = workUnitInput.value.trim();
-        const perText  = unit ? `(per 1 ${unit})` : '';
-        const prodText = unit ? `(${unit}/day)` : '(unit/day)';
-        document.querySelectorAll('.unit-per-label').forEach(el => el.textContent = perText);
-        document.querySelectorAll('.prod-unit-label').forEach(el => el.textContent = prodText);
+    /* ─── Auto-calculate Default Output as average of Min Rate and Max Rate ─── */
+    const minProdInput     = document.getElementById('minProductivity');
+    const maxProdInput     = document.getElementById('maxProductivity');
+    const defaultProdInput = document.getElementById('defaultProductivity');
+
+    function calcAverageProductivity() {
+        const minVal = parseFloat(minProdInput.value);
+        const maxVal = parseFloat(maxProdInput.value);
+
+        if (!isNaN(minVal) && !isNaN(maxVal)) {
+            const avg = (minVal + maxVal) / 2;
+            defaultProdInput.value = Math.round(avg * 1000) / 1000;
+        } else if (!isNaN(minVal)) {
+            defaultProdInput.value = minVal;
+        } else if (!isNaN(maxVal)) {
+            defaultProdInput.value = maxVal;
+        }
     }
-    workUnitInput.addEventListener('change', updateUnitLabels);
+
+    if (minProdInput && maxProdInput) {
+        minProdInput.addEventListener('input', calcAverageProductivity);
+        maxProdInput.addEventListener('input', calcAverageProductivity);
+    }
 
     /* ─── Smart "Add Role" routes to whichever tab is active ─── */
     function addRowToActiveTab() {
