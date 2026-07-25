@@ -20,15 +20,57 @@
         color: #64748b; font-size: 12px; padding: 3px 12px; cursor: pointer; transition: all .15s;
     }
     .btn-add-inline:hover { border-color: #22c55e; color: #16a34a; background: #f0fdf4; }
+
     /* ── Section header row ──────────────────────────────────── */
-    .section-hdr { background: #1e293b !important; color: #fff !important; }
-    .section-hdr td { color: #fff !important; padding: 9px 12px !important; }
+    .section-hdr { background: linear-gradient(90deg,#1e293b 0%,#1e3a5f 100%) !important; color: #fff !important; }
+    .section-hdr td { color: #fff !important; padding: 8px 12px !important; border-color: #334155 !important; }
+    .section-hdr .section-name {
+        font-size: 12px; font-weight: 700; letter-spacing: .5px;
+        text-transform: uppercase; display: flex; align-items: center; gap: 8px;
+    }
+    .section-hdr .task-badge {
+        font-size: 10px; font-weight: 600; background: rgba(255,255,255,.15);
+        color: #bfdbfe; border: 1px solid rgba(255,255,255,.2);
+        border-radius: 999px; padding: 2px 8px; letter-spacing: .3px;
+    }
+    .section-qty { font-size: 13px; font-weight: 700; color: #7dd3fc !important; }
+    .section-unit { font-size: 11px; color: #94a3b8 !important; }
+
     /* ── Rebar section header ────────────────────────────────── */
     .rebar-section-hdr { background: #9a3412 !important; color: #fff !important; }
     .rebar-section-hdr td { color: #fff !important; padding: 9px 12px !important; }
+
     /* ── Subtotal / grand-total rows ─────────────────────────── */
     .subtotal-row td { background: #eff6ff; font-weight: 600; font-size: 12px; color: #1e40af; }
     .grand-total-row td { background: #1e293b; color: #fff; font-weight: 700; }
+
+    /* ── Item action buttons ─────────────────────────────────── */
+    .action-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 24px; height: 24px; border-radius: 5px; font-size: 11px;
+        border: 1px solid; cursor: pointer; transition: all .15s; background: transparent;
+        text-decoration: none; padding: 0;
+    }
+    .action-btn.edit   { color: #3b82f6; border-color: #bfdbfe; }
+    .action-btn.edit:hover   { background: #eff6ff; border-color: #3b82f6; }
+    .action-btn.header { color: #6366f1; border-color: #c7d2fe; font-weight: 700; font-size: 10px; }
+    .action-btn.header:hover { background: #eef2ff; border-color: #6366f1; }
+    .action-btn.add    { color: #22c55e; border-color: #bbf7d0; }
+    .action-btn.add:hover    { background: #f0fdf4; border-color: #22c55e; }
+    .action-btn.del    { color: #ef4444; border-color: #fecaca; }
+    .action-btn.del:hover    { background: #fef2f2; border-color: #ef4444; }
+    .action-btn.del-section { color: #ef4444; border-color: transparent; width: auto; padding: 2px 6px; }
+    .action-btn.del-section:hover { background: rgba(239,68,68,.15); border-color: rgba(239,68,68,.3); }
+    .actions-cell { display: flex; align-items: center; gap: 3px; justify-content: center; }
+
+    /* ── Inline edit row ──────────────────────────────────────── */
+    .inline-edit-row td { background: #eff6ff; border-bottom: 2px solid #93c5fd; padding: 5px 6px; vertical-align: middle; }
+    .inline-edit-row .edit-label {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 28px; height: 28px; background: #3b82f6; color: #fff;
+        border-radius: 6px; font-size: 10px; font-weight: 700;
+    }
+
     /* ── Manage-access panel ──────────────────────────────────── */
     .access-badge { display:inline-flex; align-items:center; gap:6px; }
 </style>
@@ -217,20 +259,22 @@ if (!function_exists('evalTakeoffExpr')) {
 
                                 {{-- Section Header --}}
                                 <tr class="section-hdr">
-                                    <td colspan="{{ $canEdit ? 6 : 6 }}">
-                                        <i class="fa-solid fa-layer-group me-2" style="opacity:.7;"></i>
-                                        <strong>{{ $section->name }}</strong>
-                                        @if($section->task)
-                                            <span class="badge bg-light text-dark ms-2" style="font-size:10px;">
-                                                Task: {{ $section->task->name }}
-                                            </span>
-                                        @endif
+                                    <td colspan="{{ $canEdit ? 7 : 7 }}">
+                                        <div class="section-name">
+                                            <i class="fa-solid fa-layer-group" style="opacity:.6;font-size:11px;"></i>
+                                            {{ $section->name }}
+                                            @if($section->task)
+                                                <span class="task-badge">
+                                                    <i class="fa-solid fa-list-check me-1" style="font-size:9px;"></i>{{ $section->task->name }}
+                                                </span>
+                                            @endif
+                                        </div>
                                     </td>
-                                    <td class="text-end fw-bold" style="color:#7dd3fc;">
+                                    <td class="text-end section-qty">
                                         {{ number_format($sectionTotalQty, 3) }}
                                     </td>
-                                    <td style="font-size:11px;color:#94a3b8;">{{ $sectionUnit }}</td>
-                                    <td colspan="2" class="text-end" style="font-size:12px;color:#94a3b8;">
+                                    <td class="section-unit">{{ $sectionUnit }}</td>
+                                    <td class="text-end section-unit" style="font-size:12px;">
                                         @if($sectionTotalCost > 0)
                                             {{ number_format($sectionTotalCost, 2) }}
                                         @endif
@@ -240,8 +284,8 @@ if (!function_exists('evalTakeoffExpr')) {
                                             <form method="POST" action="{{ route('takeoff.sections.destroy', [$takeoff, $section]) }}"
                                                   onsubmit="return confirm('Delete section and all its items?')">
                                                 @csrf @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-outline-danger border-0 py-0 px-2" title="Delete Section">
-                                                    <i class="fa-solid fa-trash-can"></i>
+                                                <button type="submit" class="action-btn del-section" title="Delete Section">
+                                                    <i class="fa-solid fa-trash-can"></i> Delete
                                                 </button>
                                             </form>
                                         </td>
@@ -257,16 +301,20 @@ if (!function_exists('evalTakeoffExpr')) {
                                                 {{ $item->element }}
                                             </td>
                                             @if($canEdit)
-                                                <td class="text-center" style="white-space:nowrap;">
-                                                    <form method="POST" action="{{ route('takeoff.items.toggle-header', [$takeoff, $item]) }}" class="d-inline">
-                                                        @csrf @method('PATCH')
-                                                        <button class="btn btn-sm btn-outline-primary border-0 py-0 px-1" title="Toggle Header">H</button>
-                                                    </form>
-                                                    <button type="button" onclick="showInlineForm({{ $section->id }})" class="btn btn-sm btn-outline-success border-0 py-0 px-1" title="Add Item">+</button>
-                                                    <form method="POST" action="{{ route('takeoff.items.destroy', [$takeoff, $item]) }}" class="d-inline" onsubmit="return confirm('Delete this item?')">
-                                                        @csrf @method('DELETE')
-                                                        <button class="btn btn-sm btn-outline-danger border-0 py-0 px-1" title="Delete">✕</button>
-                                                    </form>
+                                                <td>
+                                                    <div class="actions-cell">
+                                                        <form method="POST" action="{{ route('takeoff.items.toggle-header', [$takeoff, $item]) }}" class="d-inline">
+                                                            @csrf @method('PATCH')
+                                                            <button class="action-btn header" title="Toggle Header">H</button>
+                                                        </form>
+                                                        <button type="button" onclick="showInlineForm({{ $section->id }})" class="action-btn add" title="Add Item">
+                                                            <i class="fa-solid fa-plus"></i>
+                                                        </button>
+                                                        <form method="POST" action="{{ route('takeoff.items.destroy', [$takeoff, $item]) }}" class="d-inline" onsubmit="return confirm('Delete this item?')">
+                                                            @csrf @method('DELETE')
+                                                            <button class="action-btn del" title="Delete"><i class="fa-solid fa-xmark"></i></button>
+                                                        </form>
+                                                    </div>
                                                 </td>
                                             @endif
                                         </tr>
@@ -301,27 +349,33 @@ if (!function_exists('evalTakeoffExpr')) {
                                              <td class="text-end">{{ $item->unit_rate ? number_format($item->unit_rate, 3) : '—' }}</td>
                                              <td class="text-end fw-semibold">{{ $item->total_cost ? number_format($item->total_cost, 2) : '—' }}</td>
                                              @if($canEdit)
-                                                 <td class="text-center" style="white-space:nowrap;">
-                                                     <button type="button" onclick="showEditRow({{ $item->id }})" class="btn btn-sm btn-outline-primary border-0 py-0 px-1 me-1" title="Edit Item">
-                                                         <i class="fa-solid fa-pen-to-square"></i>
-                                                     </button>
-                                                     <form method="POST" action="{{ route('takeoff.items.toggle-header', [$takeoff, $item]) }}" class="d-inline">
-                                                         @csrf @method('PATCH')
-                                                         <button class="btn btn-sm btn-outline-primary border-0 py-0 px-1" title="Make Header">H</button>
-                                                     </form>
-                                                     <button type="button" onclick="showInlineForm({{ $section->id }})" class="btn btn-sm btn-outline-success border-0 py-0 px-1" title="Add Item">+</button>
-                                                     <form method="POST" action="{{ route('takeoff.items.destroy', [$takeoff, $item]) }}" class="d-inline" onsubmit="return confirm('Delete this item?')">
-                                                         @csrf @method('DELETE')
-                                                         <button class="btn btn-sm btn-outline-danger border-0 py-0 px-1" title="Delete">✕</button>
-                                                     </form>
+                                                 <td>
+                                                     <div class="actions-cell">
+                                                         <button type="button" onclick="showEditRow({{ $item->id }})" class="action-btn edit" title="Edit Item">
+                                                             <i class="fa-solid fa-pen-to-square"></i>
+                                                         </button>
+                                                         <form method="POST" action="{{ route('takeoff.items.toggle-header', [$takeoff, $item]) }}" class="d-inline">
+                                                             @csrf @method('PATCH')
+                                                             <button class="action-btn header" title="Make Header">H</button>
+                                                         </form>
+                                                         <button type="button" onclick="showInlineForm({{ $section->id }})" class="action-btn add" title="Add Item">
+                                                             <i class="fa-solid fa-plus"></i>
+                                                         </button>
+                                                         <form method="POST" action="{{ route('takeoff.items.destroy', [$takeoff, $item]) }}" class="d-inline" onsubmit="return confirm('Delete this item?')">
+                                                             @csrf @method('DELETE')
+                                                             <button class="action-btn del" title="Delete"><i class="fa-solid fa-xmark"></i></button>
+                                                         </form>
+                                                     </div>
                                                  </td>
                                              @endif
                                          </tr>
                                          @if($canEdit)
-                                             <tr class="inline-add-row d-none" id="edit-row-{{ $item->id }}">
+                                             <tr class="inline-add-row inline-edit-row d-none" id="edit-row-{{ $item->id }}">
                                                  <form action="{{ route('takeoff.items.update', [$takeoff, $item]) }}" method="POST">
                                                  @csrf @method('PATCH')
-                                                 <td class="text-muted small">Edit</td>
+                                                 <td class="text-center">
+                                                     <span class="edit-label"><i class="fa-solid fa-pen-to-square"></i></span>
+                                                 </td>
                                                  <td style="min-width:160px;">
                                                      <input type="text" name="element" value="{{ $item->element }}" required>
                                                  </td>
@@ -359,9 +413,10 @@ if (!function_exists('evalTakeoffExpr')) {
                                         <td colspan="{{ $canEdit ? 6 : 6 }}" class="text-end pe-3 small">Section Totals:</td>
                                         <td class="text-end">{{ number_format($sectionTotalQty, 3) }}</td>
                                         <td class="small">{{ $sectionUnit }}</td>
-                                        <td colspan="{{ $canEdit ? 3 : 2 }}" class="text-end small">
+                                        <td class="text-end small">
                                             @if($sectionTotalCost > 0) {{ number_format($sectionTotalCost, 2) }} @endif
                                         </td>
+                                        @if($canEdit)<td colspan="2"></td>@else<td></td>@endif
                                     </tr>
                                 @endif
 
