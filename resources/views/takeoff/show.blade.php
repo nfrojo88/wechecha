@@ -271,32 +271,86 @@ if (!function_exists('evalTakeoffExpr')) {
                                             @endif
                                         </tr>
                                     @else
-                                        <tr>
-                                            <td class="text-muted">{{ $globalItemCounter++ }}</td>
-                                            <td class="fw-semibold">{{ $item->element }}</td>
-                                            <td class="text-center">{{ $item->calculation_data['length'] ?? '—' }}</td>
-                                            <td class="text-center">{{ $item->calculation_data['width'] ?? '—' }}</td>
-                                            <td class="text-center">{{ $item->calculation_data['height'] ?? '—' }}</td>
-                                            <td class="text-center">{{ $item->count ?? 1 }}</td>
-                                            <td class="text-end fw-bold text-primary">{{ number_format($item->result_quantity, 2) }}</td>
-                                            <td>{{ $item->result_unit }}</td>
-                                            <td class="text-end">{{ $item->unit_rate ? number_format($item->unit_rate, 3) : '—' }}</td>
-                                            <td class="text-end fw-semibold">{{ $item->total_cost ? number_format($item->total_cost, 2) : '—' }}</td>
-                                            @if($canEdit)
-                                                <td class="text-center" style="white-space:nowrap;">
-                                                    <form method="POST" action="{{ route('takeoff.items.toggle-header', [$takeoff, $item]) }}" class="d-inline">
-                                                        @csrf @method('PATCH')
-                                                        <button class="btn btn-sm btn-outline-primary border-0 py-0 px-1" title="Make Header">H</button>
-                                                    </form>
-                                                    <button type="button" onclick="showInlineForm({{ $section->id }})" class="btn btn-sm btn-outline-success border-0 py-0 px-1" title="Add Item">+</button>
-                                                    <form method="POST" action="{{ route('takeoff.items.destroy', [$takeoff, $item]) }}" class="d-inline" onsubmit="return confirm('Delete this item?')">
-                                                        @csrf @method('DELETE')
-                                                        <button class="btn btn-sm btn-outline-danger border-0 py-0 px-1" title="Delete">✕</button>
-                                                    </form>
-                                                </td>
-                                            @endif
-                                        </tr>
-                                    @endif
+                                         @php
+                                             $lenRaw = $item->calculation_data['length'] ?? null;
+                                             $lenVal = evalTakeoffExpr($lenRaw);
+                                             $widRaw = $item->calculation_data['width'] ?? null;
+                                             $widVal = evalTakeoffExpr($widRaw);
+                                             $hgtRaw = $item->calculation_data['height'] ?? null;
+                                             $hgtVal = evalTakeoffExpr($hgtRaw);
+                                             $cntRaw = $item->count ?? null;
+                                             $cntVal = evalTakeoffExpr($cntRaw);
+                                         @endphp
+                                         <tr id="view-row-{{ $item->id }}">
+                                             <td class="text-muted">{{ $globalItemCounter++ }}</td>
+                                             <td class="fw-semibold">{{ $item->element }}</td>
+                                             <td class="text-center formula-cell" data-formula="{{ $lenRaw }}" title="{{ $lenRaw && $lenVal !== null && (string)$lenRaw !== (string)$lenVal ? 'Formula: ' . $lenRaw : '' }}">
+                                                 {{ $lenVal !== null ? (str_contains((string)$lenRaw, '+') || str_contains((string)$lenRaw, '-') || str_contains((string)$lenRaw, '*') || str_contains((string)$lenRaw, '/') ? (floor($lenVal) == $lenVal ? number_format($lenVal, 0) : number_format($lenVal, 3)) : $lenRaw) : ($lenRaw ?? '—') }}
+                                             </td>
+                                             <td class="text-center formula-cell" data-formula="{{ $widRaw }}" title="{{ $widRaw && $widVal !== null && (string)$widRaw !== (string)$widVal ? 'Formula: ' . $widRaw : '' }}">
+                                                 {{ $widVal !== null ? (str_contains((string)$widRaw, '+') || str_contains((string)$widRaw, '-') || str_contains((string)$widRaw, '*') || str_contains((string)$widRaw, '/') ? (floor($widVal) == $widVal ? number_format($widVal, 0) : number_format($widVal, 3)) : $widRaw) : ($widRaw ?? '—') }}
+                                             </td>
+                                             <td class="text-center formula-cell" data-formula="{{ $hgtRaw }}" title="{{ $hgtRaw && $hgtVal !== null && (string)$hgtRaw !== (string)$hgtVal ? 'Formula: ' . $hgtRaw : '' }}">
+                                                 {{ $hgtVal !== null ? (str_contains((string)$hgtRaw, '+') || str_contains((string)$hgtRaw, '-') || str_contains((string)$hgtRaw, '*') || str_contains((string)$hgtRaw, '/') ? (floor($hgtVal) == $hgtVal ? number_format($hgtVal, 0) : number_format($hgtVal, 3)) : $hgtRaw) : ($hgtRaw ?? '—') }}
+                                             </td>
+                                             <td class="text-center formula-cell" data-formula="{{ $cntRaw }}" title="{{ $cntRaw && $cntVal !== null && (string)$cntRaw !== (string)$cntVal ? 'Formula: ' . $cntRaw : '' }}">
+                                                 {{ $cntVal !== null ? (str_contains((string)$cntRaw, '+') || str_contains((string)$cntRaw, '-') || str_contains((string)$cntRaw, '*') || str_contains((string)$cntRaw, '/') ? (floor($cntVal) == $cntVal ? number_format($cntVal, 0) : number_format($cntVal, 3)) : $cntRaw) : ($cntRaw ?? 1) }}
+                                             </td>
+                                             <td class="text-end fw-bold text-primary">{{ number_format($item->result_quantity, 2) }}</td>
+                                             <td>{{ $item->result_unit }}</td>
+                                             <td class="text-end">{{ $item->unit_rate ? number_format($item->unit_rate, 3) : '—' }}</td>
+                                             <td class="text-end fw-semibold">{{ $item->total_cost ? number_format($item->total_cost, 2) : '—' }}</td>
+                                             @if($canEdit)
+                                                 <td class="text-center" style="white-space:nowrap;">
+                                                     <button type="button" onclick="showEditRow({{ $item->id }})" class="btn btn-sm btn-outline-primary border-0 py-0 px-1 me-1" title="Edit Item">
+                                                         <i class="fa-solid fa-pen-to-square"></i>
+                                                     </button>
+                                                     <form method="POST" action="{{ route('takeoff.items.toggle-header', [$takeoff, $item]) }}" class="d-inline">
+                                                         @csrf @method('PATCH')
+                                                         <button class="btn btn-sm btn-outline-primary border-0 py-0 px-1" title="Make Header">H</button>
+                                                     </form>
+                                                     <button type="button" onclick="showInlineForm({{ $section->id }})" class="btn btn-sm btn-outline-success border-0 py-0 px-1" title="Add Item">+</button>
+                                                     <form method="POST" action="{{ route('takeoff.items.destroy', [$takeoff, $item]) }}" class="d-inline" onsubmit="return confirm('Delete this item?')">
+                                                         @csrf @method('DELETE')
+                                                         <button class="btn btn-sm btn-outline-danger border-0 py-0 px-1" title="Delete">✕</button>
+                                                     </form>
+                                                 </td>
+                                             @endif
+                                         </tr>
+                                         @if($canEdit)
+                                             <tr class="inline-add-row d-none" id="edit-row-{{ $item->id }}">
+                                                 <form action="{{ route('takeoff.items.update', [$takeoff, $item]) }}" method="POST">
+                                                 @csrf @method('PATCH')
+                                                 <td class="text-muted small">Edit</td>
+                                                 <td style="min-width:160px;">
+                                                     <input type="text" name="element" value="{{ $item->element }}" required>
+                                                 </td>
+                                                 <td><input type="text" name="length" class="qty-calc-edit formula-field" data-itemid="{{ $item->id }}" value="{{ $lenRaw }}" placeholder="0"></td>
+                                                 <td><input type="text" name="width" class="qty-calc-edit formula-field" data-itemid="{{ $item->id }}" value="{{ $widRaw }}" placeholder="0"></td>
+                                                 <td><input type="text" name="height" class="qty-calc-edit formula-field" data-itemid="{{ $item->id }}" value="{{ $hgtRaw }}" placeholder="0"></td>
+                                                 <td><input type="text" name="count" class="qty-calc-edit formula-field" data-itemid="{{ $item->id }}" value="{{ $cntRaw ?? 1 }}"></td>
+                                                 <td><input type="number" step="0.001" name="result_quantity" id="net-qty-edit-{{ $item->id }}" readonly value="{{ number_format($item->result_quantity, 3, '.', '') }}" placeholder="0.000" required></td>
+                                                 <td>
+                                                     <select name="result_unit" id="unit-edit-{{ $item->id }}" required>
+                                                         <option value="m"   @selected($item->result_unit == 'm')>m</option>
+                                                         <option value="m2"  @selected($item->result_unit == 'm2')>m²</option>
+                                                         <option value="m3"  @selected($item->result_unit == 'm3')>m³</option>
+                                                         <option value="kg"  @selected($item->result_unit == 'kg')>kg</option>
+                                                         <option value="ton" @selected($item->result_unit == 'ton')>ton</option>
+                                                         <option value="pcs" @selected($item->result_unit == 'pcs')>pcs</option>
+                                                         <option value="ls"  @selected($item->result_unit == 'ls')>l.s.</option>
+                                                     </select>
+                                                 </td>
+                                                 <td><input type="number" step="0.01" name="unit_rate" value="{{ $item->unit_rate }}" placeholder="0.00"></td>
+                                                 <td></td>
+                                                 <td style="white-space:nowrap;">
+                                                     <button type="submit" class="btn btn-sm btn-primary py-0 px-2 fw-bold me-1" style="font-size:11px;">Update</button>
+                                                     <button type="button" onclick="hideEditRow({{ $item->id }})" class="btn btn-sm btn-outline-secondary border-0 py-0 px-1">✕</button>
+                                                 </td>
+                                                 </form>
+                                             </tr>
+                                         @endif
+                                     @endif
                                 @endforeach
 
                                 {{-- Section Subtotal --}}
