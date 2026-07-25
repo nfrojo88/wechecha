@@ -53,39 +53,21 @@ class StandardWorkController extends Controller
         $request->validate([
             'name'        => 'required|string|max:255',
             'unit'        => 'required|string|max:50',
-            'description' => 'nullable|string',
-
-            // Materials — optional, zero qty OK
-            'materials'                   => 'nullable|array',
-            'materials.*.material_name'   => 'nullable|string|max:255',
-            'materials.*.quantity'        => 'nullable|numeric|min:0',
-            'materials.*.unit'            => 'nullable|string|max:50',
-
-            // Manpower — optional, zero qty OK
-            'manpower'                    => 'nullable|array',
-            'manpower.*.role'             => 'nullable|string|max:255',
-            'manpower.*.quantity'         => 'nullable|numeric|min:0',
-            'manpower.*.unit'             => 'nullable|string|max:50',
-
-            // Equipment — optional, zero qty OK
-            'equipment'                   => 'nullable|array',
-            'equipment.*.equipment_name'  => 'nullable|string|max:255',
-            'equipment.*.quantity'        => 'nullable|numeric|min:0',
-            'equipment.*.unit'            => 'nullable|string|max:50',
-
-            // Scientific Manpower — optional, zero qty OK
-            'scientific_manpower'                => 'nullable|array',
-            'scientific_manpower.*.role'         => 'nullable|string|max:255',
-            'scientific_manpower.*.quantity'     => 'nullable|numeric|min:0',
-            'scientific_manpower.*.unit'         => 'nullable|string|max:50',
+            // Productivity rates
+            'min_productivity'     => 'nullable|numeric|min:0',
+            'max_productivity'     => 'nullable|numeric|min:0',
+            'default_productivity' => 'nullable|numeric|min:0',
         ]);
 
         $work = StandardWork::create([
-            'category'    => 'Mixed',
-            'name'        => $request->name,
-            'unit'        => $request->unit,
-            'description' => $request->description,
-            'created_by'  => auth()->id(),
+            'category'             => 'Mixed',
+            'name'                 => $request->name,
+            'unit'                 => $request->unit,
+            'description'          => $request->description,
+            'min_productivity'     => $request->min_productivity,
+            'max_productivity'     => $request->max_productivity,
+            'default_productivity' => $request->default_productivity,
+            'created_by'           => auth()->id(),
         ]);
 
         // Save materials — include zero-quantity rows if name is filled
