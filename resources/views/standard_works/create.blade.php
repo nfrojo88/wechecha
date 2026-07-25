@@ -748,6 +748,19 @@
         updateCount(countId, tbody);
     }
 
+    /* ─── Update Quantity header + productivity labels based on Work Unit ─── */
+    const workUnitInput = document.getElementById('workUnitInput');
+    function updateUnitLabels() {
+        const unit = workUnitInput.value.trim();
+        const perText  = unit ? `(per 1 ${unit})` : '';
+        const prodText = unit ? `(${unit}/day)` : '(unit/day)';
+        document.querySelectorAll('.unit-per-label').forEach(el => el.textContent = perText);
+        document.querySelectorAll('.prod-unit-label').forEach(el => el.textContent = prodText);
+    }
+    if (workUnitInput) {
+        workUnitInput.addEventListener('change', updateUnitLabels);
+    }
+
     /* ─── Auto-calculate Default Output as average of Min Rate and Max Rate ─── */
     const minProdInput     = document.getElementById('minProductivity');
     const maxProdInput     = document.getElementById('maxProductivity');
