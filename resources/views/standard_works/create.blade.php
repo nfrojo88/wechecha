@@ -558,7 +558,7 @@
     let MANPOWER_ROLES  = @json($manpowerRoles);
 
     /* ─── Row counters ─── */
-    const counts = { materials: 1, manpower: 1, equipment: 1 };
+    const counts = { materials: 1, manpower: 1, scientific_manpower: 1, equipment: 1 };
 
     /* ─── Auto-fill unit when a material/equipment select changes ─── */
     function fillUnit(selectEl, section) {
@@ -573,9 +573,10 @@
     }
 
     const configs = {
-        materials: { countId: 'mat-count' },
-        manpower:  { countId: 'mp-count'  },
-        equipment: { countId: 'eq-count'  },
+        materials:            { countId: 'mat-count' },
+        manpower:             { countId: 'mp-count'  },
+        scientific_manpower:  { countId: 'smp-count' },
+        equipment:            { countId: 'eq-count'  },
     };
 
     /* ─── Row count badge helper ─── */
@@ -629,6 +630,17 @@
                          </select>`;
             thirdCell = `<input type="text" name="equipment[${idx}][unit]"
                                 class="form-control form-control-sm" placeholder="auto-filled" readonly>`;
+        } else if (section === 'scientific_manpower') {
+            firstCell = `<select name="scientific_manpower[${idx}][role]" class="form-select form-select-sm smp-role-select">
+                             ${buildManpowerOptions()}
+                         </select>
+                         <input type="text" name="scientific_manpower[${idx}][role]" class="form-control form-control-sm mt-1 smp-custom-input d-none" placeholder="Enter role name">`;
+            thirdCell = `<select name="scientific_manpower[${idx}][unit]" class="form-select form-select-sm smp-unit-select">
+                             <option value="">— Unit —</option>
+                             <option value="day">day</option>
+                             <option value="hr">hr</option>
+                             <option value="pcs">pcs</option>
+                         </select>`;
         } else {
             // manpower
             firstCell = `<select name="manpower[${idx}][role]" class="form-select form-select-sm mp-role-select">
@@ -684,7 +696,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         updateUnitLabels();
         // Init all counts
-        ['materials','manpower','equipment'].forEach(s => {
+        ['materials','manpower','scientific_manpower','equipment'].forEach(s => {
             const tbody = document.getElementById(s + '-body');
             if (tbody) updateCount(configs[s].countId, tbody);
         });
