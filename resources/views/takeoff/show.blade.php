@@ -441,6 +441,14 @@ if (!function_exists('evalTakeoffExpr')) {
     function showEditRow(itemId) {
         document.getElementById('view-row-' + itemId).classList.add('d-none');
         document.getElementById('edit-row-' + itemId).classList.remove('d-none');
+        document.querySelectorAll('#edit-row-' + itemId + ' .formula-field').forEach(input => {
+            const raw = input.value.trim();
+            if (raw) {
+                input.dataset.formula = raw;
+                const val = safeEval(raw);
+                if (val !== null && document.activeElement !== input) input.value = val;
+            }
+        });
     }
 
     function hideEditRow(itemId) {
@@ -449,6 +457,61 @@ if (!function_exists('evalTakeoffExpr')) {
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+
+        // Init formula fields on page load
+        document.querySelectorAll('.qty-calc-inline, .qty-calc-edit, .formula-field').forEach(function(input) {
+            const raw = input.value.trim();
+            if (raw) {
+                input.dataset.formula = raw;
+                const val = safeEval(raw);
+                if (val !== null && document.activeElement !== input) {
+                    input.value = val;
+                }
+            }
+        });
+
+        // Focus: show raw equation (e.g. 2+3)
+        document.addEventListener('focusin', function(e) {
+            const input = e.target;
+            if (input.matches && (input.matches('.qty-calc-inline') || input.matches('.qty-calc-edit') || input.matches('.formula-field'))) {
+                if (input.dataset.formula) {
+                    input.value = input.dataset.formula;
+                }
+            }
+        });
+
+        // Input: update formula storage
+        document.addEventListener('input', function(e) {
+            const input = e.target;
+            if (input.matches && (input.matches('.qty-calc-inline') || input.matches('.qty-calc-edit') || input.matches('.formula-field'))) {
+                input.dataset.formula = input.value;
+            }
+        });
+
+        // Blur: show evaluated result (e.g. 5)
+        document.addEventListener('focusout', function(e) {
+            const input = e.target;
+            if (input.matches && (input.matches('.qty-calc-inline') || input.matches('.qty-calc-edit') || input.matches('.formula-field'))) {
+                const raw = input.value.trim();
+                if (raw) {
+                    input.dataset.formula = raw;
+                    const val = safeEval(raw);
+                    if (val !== null) {
+                        input.value = val;
+                    }
+                }
+            }
+        });
+
+        // Submit: restore raw equation before sending to server
+        document.addEventListener('submit', function(e) {
+            const form = e.target;
+            form.querySelectorAll('.qty-calc-inline, .qty-calc-edit, .formula-field').forEach(function(input) {
+                if (input.dataset.formula) {
+                    input.value = input.dataset.formula;
+                }
+            });
+        });
 
         document.addEventListener('keydown', function(e) {
             if (e.key !== 'Enter') return;
@@ -496,10 +559,10 @@ if (!function_exists('evalTakeoffExpr')) {
             input.addEventListener('input', function() {
                 const sid = this.dataset.sid;
                 const row = document.getElementById('inline-form-' + sid);
-                const l = safeEval(row.querySelector('input[name="length"]').value.trim());
-                const w = safeEval(row.querySelector('input[name="width"]').value.trim());
-                const h = safeEval(row.querySelector('input[name="height"]').value.trim());
-                const c = safeEval(row.querySelector('input[name="count"]').value.trim());
+                const l = safeEval((row.querySelector('input[name="length"]').dataset.formula || row.querySelector('input[name="length"]').value).trim());
+                const w = safeEval((row.querySelector('input[name="width"]').dataset.formula || row.querySelector('input[name="width"]').value).trim());
+                const h = safeEval((row.querySelector('input[name="height"]').dataset.formula || row.querySelector('input[name="height"]').value).trim());
+                const c = safeEval((row.querySelector('input[name="count"]').dataset.formula || row.querySelector('input[name="count"]').value).trim());
 
                 let total = 1, hasVal = false, dims = 0;
                 if (l !== null && l !== 0) { total *= l; hasVal = true; dims++; }
@@ -514,6 +577,34 @@ if (!function_exists('evalTakeoffExpr')) {
                 if (dims === 1) unit.value = 'm';
                 if (dims === 2) unit.value = 'm2';
                 if (dims === 3) unit.value = 'm3';
+            });
+        });
+
+        document.querySelectorAll('.qty-calc-edit').forEach(function(input) {
+            input.addEventListener('input', function() {
+                const itemid = this.dataset.itemid;
+                const row = document.getElementById('edit-row-' + itemid);
+                if (!row) return;
+                const l = safeEval((row.querySelector('input[name="length"]').dataset.formula || row.querySelector('input[name="length"]').value).trim());
+                const w = safeEval((row.querySelector('input[name="width"]').dataset.formula || row.querySelector('input[name="width"]').value).trim());
+                const h = safeEval((row.querySelector('input[name="height"]').dataset.formula || row.querySelector('input[name="height"]').value).trim());
+                const c = safeEval((row.querySelector('input[name="count"]').dataset.formula || row.querySelector('input[name="count"]').value).trim());
+
+                let total = 1, hasVal = false, dims = 0;
+                if (l !== null && l !== 0) { total *= l; hasVal = true; dims++; }
+                if (w !== null && w !== 0) { total *= w; hasVal = true; dims++; }
+                if (h !== null && h !== 0) { total *= h; hasVal = true; dims++; }
+                if (c !== null) { total *= c; hasVal = true; }
+
+                const netQty = document.getElementById('net-qty-edit-' + itemid);
+                const unit   = document.getElementById('unit-edit-' + itemid);
+                if (netQty) netQty.value = hasVal ? total.toFixed(3) : '1.000';
+                if (unit) {
+                    if (dims === 0 && unit.value === '') unit.value = 'pcs';
+                    if (dims === 1) unit.value = 'm';
+                    if (dims === 2) unit.value = 'm2';
+                    if (dims === 3) unit.value = 'm3';
+                }
             });
         });
     });
