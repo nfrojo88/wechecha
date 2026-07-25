@@ -446,7 +446,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('erp-plans', App\Http\Controllers\ErpPlanController::class);
 
     // Standard Works (Conversion Ratios)
-    Route::resource('standard-works', App\Http\Controllers\StandardWorkController::class)->except(['edit','update']);
+    Route::resource('standard-works', App\Http\Controllers\StandardWorkController::class);
 
     // Manpower Roles (predefined selectable list)
     Route::get('manpower-roles',              [App\Http\Controllers\ManpowerRoleController::class, 'index'])->name('manpower-roles.index');
