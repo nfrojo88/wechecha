@@ -66,13 +66,16 @@
                             </span>
                         </td>
                         <td class="text-end">
-                            <a href="{{ route('standard-works.show', $work) }}" class="btn btn-sm btn-outline-secondary">
+                            <a href="{{ route('standard-works.show', $work) }}" class="btn btn-sm btn-outline-secondary" title="View Details">
                                 <i class="fa-solid fa-eye"></i>
+                            </a>
+                            <a href="{{ route('standard-works.edit', $work) }}" class="btn btn-sm btn-outline-primary ms-1" title="Edit Standard Work">
+                                <i class="fa-solid fa-pen-to-square"></i>
                             </a>
                             <form action="{{ route('standard-works.destroy', $work) }}" method="POST" class="d-inline ms-1"
                                   onsubmit="return confirm('Delete this Standard Work?')">
                                 @csrf @method('DELETE')
-                                <button class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" title="Delete"><i class="fa-solid fa-trash"></i></button>
                             </form>
                         </td>
                     </tr>
