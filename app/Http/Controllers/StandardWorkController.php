@@ -52,11 +52,36 @@ class StandardWorkController extends Controller
     {
         $request->validate([
             'name'        => 'required|string|max:255',
-            'unit'        => 'required|string|max:50',
+            'description' => 'nullable|string',
+
             // Productivity rates
             'min_productivity'     => 'nullable|numeric|min:0',
             'max_productivity'     => 'nullable|numeric|min:0',
             'default_productivity' => 'nullable|numeric|min:0',
+
+            // Materials — optional, zero qty OK
+            'materials'                   => 'nullable|array',
+            'materials.*.material_name'   => 'nullable|string|max:255',
+            'materials.*.quantity'        => 'nullable|numeric|min:0',
+            'materials.*.unit'            => 'nullable|string|max:50',
+
+            // Manpower — optional, zero qty OK
+            'manpower'                    => 'nullable|array',
+            'manpower.*.role'             => 'nullable|string|max:255',
+            'manpower.*.quantity'         => 'nullable|numeric|min:0',
+            'manpower.*.unit'             => 'nullable|string|max:50',
+
+            // Equipment — optional, zero qty OK
+            'equipment'                   => 'nullable|array',
+            'equipment.*.equipment_name'  => 'nullable|string|max:255',
+            'equipment.*.quantity'        => 'nullable|numeric|min:0',
+            'equipment.*.unit'            => 'nullable|string|max:50',
+
+            // Scientific Manpower — optional, zero qty OK
+            'scientific_manpower'            => 'nullable|array',
+            'scientific_manpower.*.role'     => 'nullable|string|max:255',
+            'scientific_manpower.*.quantity' => 'nullable|numeric|min:0',
+            'scientific_manpower.*.unit'     => 'nullable|string|max:50',
         ]);
 
         $work = StandardWork::create([
