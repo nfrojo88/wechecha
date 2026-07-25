@@ -48,20 +48,27 @@
                 $sectionLengthPerDia = array_fill_keys($diameters, 0);
             @endphp
 
-            {{-- ── Section header row ─────────────────────────────────── --}}
+            {{-- ── Section header row ───────────────────────────────── --}}
             @if($section->name)
-            <tr class="rebar-section-hdr">
-                <td colspan="{{ 6 + count($diameters) }}">
-                    <i class="fa-solid fa-layer-group me-2" style="opacity:.8;"></i>
-                    <strong>{{ $section->name }}</strong>
+            <tr style="background:linear-gradient(90deg,#7c1d0c 0%,#9a3412 100%); color:#fff;">
+                <td colspan="{{ 6 + count($diameters) }}" style="padding:8px 14px; border-color:#b45309;">
+                    <div style="display:flex; align-items:center; gap:10px; font-size:12px; font-weight:700; letter-spacing:.5px; text-transform:uppercase;">
+                        <i class="fa-solid fa-layer-group" style="opacity:.7; font-size:11px;"></i>
+                        {{ $section->name }}
+                        @if($section->task)
+                            <span style="font-size:10px; font-weight:600; background:rgba(255,255,255,.15); color:#fed7aa; border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:2px 9px; letter-spacing:.3px;">
+                                <i class="fa-solid fa-list-check me-1" style="font-size:9px;"></i>{{ $section->task->name }}
+                            </span>
+                        @endif
+                    </div>
                 </td>
                 @if($canEdit)
-                <td class="text-center">
+                <td style="text-align:center; padding:6px 10px; border-color:#b45309;">
                     <form method="POST" action="{{ route('takeoff.sections.destroy', [$takeoff, $section]) }}"
                           onsubmit="return confirm('Delete section and all its items?')">
                         @csrf @method('DELETE')
-                        <button class="btn btn-sm btn-outline-light border-0 py-0 px-2" title="Delete Section">
-                            <i class="fa-solid fa-trash-can"></i>
+                        <button type="submit" class="action-btn del-section" title="Delete Section" style="color:#fca5a5; border-color:transparent;">
+                            <i class="fa-solid fa-trash-can"></i> Delete
                         </button>
                     </form>
                 </td>
@@ -76,19 +83,21 @@
                         <td colspan="{{ 6 + count($diameters) }}" class="fw-bold" style="color:#c2410c; border-left:3px solid #f97316; padding-left:12px;">
                             {{ $item->element }}
                         </td>
-                        @if($canEdit)
-                        <td class="text-center" style="white-space:nowrap;">
-                            <form method="POST" action="{{ route('takeoff.items.toggle-header', [$takeoff, $item]) }}" class="d-inline">
-                                @csrf @method('PATCH')
-                                <button class="btn btn-sm btn-outline-warning border-0 py-0 px-1" title="Toggle Header">H</button>
-                            </form>
-                            <button type="button" onclick="showInlineForm({{ $section->id }})" class="btn btn-sm btn-outline-success border-0 py-0 px-1" title="Add">+</button>
-                            <form method="POST" action="{{ route('takeoff.items.destroy', [$takeoff, $item]) }}" class="d-inline" onsubmit="return confirm('Delete this item?')">
-                                @csrf @method('DELETE')
-                                <button class="btn btn-sm btn-outline-danger border-0 py-0 px-1" title="Delete">✕</button>
-                            </form>
+                    @if($canEdit)
+                        <td>
+                            <div class="actions-cell">
+                                <form method="POST" action="{{ route('takeoff.items.toggle-header', [$takeoff, $item]) }}" class="d-inline">
+                                    @csrf @method('PATCH')
+                                    <button class="action-btn header" title="Toggle Header">H</button>
+                                </form>
+                                <button type="button" onclick="showInlineForm({{ $section->id }})" class="action-btn add" title="Add"><i class="fa-solid fa-plus"></i></button>
+                                <form method="POST" action="{{ route('takeoff.items.destroy', [$takeoff, $item]) }}" class="d-inline" onsubmit="return confirm('Delete this item?')">
+                                    @csrf @method('DELETE')
+                                    <button class="action-btn del" title="Delete"><i class="fa-solid fa-xmark"></i></button>
+                                </form>
+                            </div>
                         </td>
-                        @endif
+                    @endif
                     </tr>
                 @else
                     @php
@@ -118,23 +127,21 @@
                             <td>{{ ($dia == $d && $totalLength > 0) ? number_format($totalLength, 2) : '' }}</td>
                         @endforeach
                         @if($canEdit)
-                        <td style="white-space:nowrap;">
-                            {{-- Edit button --}}
-                            <button type="button"
-                                    onclick="showEditRow({{ $item->id }})"
-                                    class="btn btn-sm btn-outline-primary border-0 py-0 px-1"
-                                    title="Edit">
-                                <i class="fa-solid fa-pen-to-square"></i>
-                            </button>
-                            <form method="POST" action="{{ route('takeoff.items.toggle-header', [$takeoff, $item]) }}" class="d-inline">
-                                @csrf @method('PATCH')
-                                <button class="btn btn-sm btn-outline-warning border-0 py-0 px-1" title="Make Header">H</button>
-                            </form>
-                            <button type="button" onclick="showInlineForm({{ $section->id }})" class="btn btn-sm btn-outline-success border-0 py-0 px-1" title="Add">+</button>
-                            <form method="POST" action="{{ route('takeoff.items.destroy', [$takeoff, $item]) }}" class="d-inline" onsubmit="return confirm('Delete this item?')">
-                                @csrf @method('DELETE')
-                                <button class="btn btn-sm btn-outline-danger border-0 py-0 px-1" title="Delete">✕</button>
-                            </form>
+                        <td>
+                            <div class="actions-cell">
+                                <button type="button" onclick="showEditRow({{ $item->id }})" class="action-btn edit" title="Edit">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <form method="POST" action="{{ route('takeoff.items.toggle-header', [$takeoff, $item]) }}" class="d-inline">
+                                    @csrf @method('PATCH')
+                                    <button class="action-btn header" title="Make Header">H</button>
+                                </form>
+                                <button type="button" onclick="showInlineForm({{ $section->id }})" class="action-btn add" title="Add"><i class="fa-solid fa-plus"></i></button>
+                                <form method="POST" action="{{ route('takeoff.items.destroy', [$takeoff, $item]) }}" class="d-inline" onsubmit="return confirm('Delete this item?')">
+                                    @csrf @method('DELETE')
+                                    <button class="action-btn del" title="Delete"><i class="fa-solid fa-xmark"></i></button>
+                                </form>
+                            </div>
                         </td>
                         @endif
                     </tr>
