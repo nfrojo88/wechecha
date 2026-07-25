@@ -702,12 +702,13 @@
         });
     });
 
-    /* ─── Role select change handler ─── */
+    /* ─── Role select change handler (regular + scientific manpower) ─── */
     document.addEventListener('change', function(e) {
+        // Regular manpower
         if (e.target.classList.contains('mp-role-select')) {
             const tr = e.target.closest('tr');
             const customInput = tr.querySelector('.mp-custom-input');
-            const unitSelect = tr.querySelector('.mp-unit-select');
+            const unitSelect  = tr.querySelector('.mp-unit-select');
 
             if (e.target.value === '__custom__') {
                 customInput.classList.remove('d-none');
@@ -717,13 +718,29 @@
                 customInput.classList.add('d-none');
                 customInput.required = false;
                 customInput.value = e.target.value;
-
-                // Auto select default unit if set on option
                 const selectedOpt = e.target.options[e.target.selectedIndex];
                 const defUnit = selectedOpt ? selectedOpt.dataset.unit : '';
-                if (defUnit && unitSelect) {
-                    unitSelect.value = defUnit;
-                }
+                if (defUnit && unitSelect) unitSelect.value = defUnit;
+            }
+        }
+
+        // Scientific manpower
+        if (e.target.classList.contains('smp-role-select')) {
+            const tr = e.target.closest('tr');
+            const customInput = tr.querySelector('.smp-custom-input');
+            const unitSelect  = tr.querySelector('.smp-unit-select');
+
+            if (e.target.value === '__custom__') {
+                customInput.classList.remove('d-none');
+                customInput.required = true;
+                customInput.focus();
+            } else {
+                customInput.classList.add('d-none');
+                customInput.required = false;
+                customInput.value = e.target.value;
+                const selectedOpt = e.target.options[e.target.selectedIndex];
+                const defUnit = selectedOpt ? selectedOpt.dataset.unit : '';
+                if (defUnit && unitSelect) unitSelect.value = defUnit;
             }
         }
     });
