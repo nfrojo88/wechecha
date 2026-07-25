@@ -281,30 +281,58 @@ class TakeoffController extends Controller
         $this->checkEditPermission($takeoff);
 
         $validated = $request->validate([
-            'element'    => 'required|string|max:255',
-            'bar_dia'    => 'nullable|numeric',
-            'bar_length' => 'nullable|numeric|min:0',
-            'no_of_bar'  => 'nullable|integer|min:0',
-            'count'      => 'nullable|integer|min:1',
+            'element'         => 'required|string|max:255',
+            'result_unit'     => 'nullable|string|max:50',
+            'length'          => 'nullable|string',
+            'width'           => 'nullable|string',
+            'height'          => 'nullable|string',
+            'count'           => 'nullable|string',
+            'result_quantity' => 'nullable|numeric|min:0',
+            'unit_rate'       => 'nullable|numeric|min:0',
+            'bar_dia'         => 'nullable|numeric',
+            'bar_length'      => 'nullable|numeric|min:0',
+            'no_of_bar'       => 'nullable|numeric|min:0',
         ]);
 
-        // Merge into calculation_data
         $calcData = $item->calculation_data ?? [];
-        $calcData['bar_dia']    = $validated['bar_dia']    ?? null;
-        $calcData['bar_length'] = $validated['bar_length'] ?? null;
-        $calcData['no_of_bar']  = $validated['no_of_bar']  ?? null;
+        if ($request->has('length'))     $calcData['length']     = $validated['length']     ?? null;
+        if ($request->has('width'))      $calcData['width']      = $validated['width']      ?? null;
+        if ($request->has('height'))     $calcData['height']     = $validated['height']     ?? null;
+        if ($request->has('bar_dia'))    $calcData['bar_dia']    = $validated['bar_dia']    ?? null;
+        if ($request->has('bar_length')) $calcData['bar_length'] = $validated['bar_length'] ?? null;
+        if ($request->has('no_of_bar'))  $calcData['no_of_bar']  = $validated['no_of_bar']  ?? null;
 
-        $noOfBar    = (int)   ($validated['no_of_bar']  ?? 0);
-        $count      = (int)   ($validated['count']       ?? 1);
-        $barLength  = (float) ($validated['bar_length']  ?? 0);
-        $totalLength = $barLength * $noOfBar * $count;
-
-        $item->update([
+        $updateData = [
             'element'          => $validated['element'],
-            'count'            => $count,
-            'result_quantity'  => $totalLength,
             'calculation_data' => $calcData,
-        ]);
+        ];
+
+        if (array_key_exists('count', $validated)) {
+            $updateData['count'] = is_numeric($validated['count']) ? (float)$validated['count'] : 1;
+        }
+
+        if (array_key_exists('result_quantity', $validated) && $validated['result_quantity'] !== null) {
+            $updateData['result_quantity'] = (float)$validated['result_quantity'];
+        } elseif (isset($validated['bar_length']) && isset($validated['no_of_bar'])) {
+            $noOfBar     = (int)   ($validated['no_of_bar']  ?? 0);
+            $count       = (int)   ($validated['count']       ?? 1);
+            $barLength   = (float) ($validated['bar_length']  ?? 0);
+            $updateData['result_quantity'] = $barLength * $noOfBar * $count;
+        }
+
+        if (array_key_exists('result_unit', $validated) && $validated['result_unit']) {
+            $updateData['result_unit'] = $validated['result_unit'];
+        }
+
+        if (array_key_exists('unit_rate', $validated)) {
+            $updateData['unit_rate'] = $validated['unit_rate'];
+        }
+
+        $qty  = $updateData['result_quantity'] ?? $item->result_quantity ?? 0;
+        $rate = $updateData['unit_rate'] ?? $item->unit_rate ?? 0;
+        $updateData['total_cost'] = $qty * $rate;
+
+        $item->update($updateData);
 
         return redirect()->route('takeoff.show', $takeoff)->with('success', 'Item updated.');
     }
