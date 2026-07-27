@@ -230,44 +230,33 @@
                     </p>
                 </div>
                 {{-- Min Rate --}}
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label small fw-semibold mb-1">
-                        Min Rate
+                        Min Output Rate <span class="text-danger">*</span>
                         <span class="text-muted prod-unit-label">({{ old('unit','unit') }}/day)</span>
                     </label>
                     <input type="number" step="0.001" min="0" name="min_productivity"
                            id="minProductivity"
                            class="form-control @error('min_productivity') is-invalid @enderror"
                            value="{{ old('min_productivity') }}"
-                           placeholder="e.g. 1.5">
+                           placeholder="e.g. 1.5" required>
                     @error('min_productivity')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 {{-- Max Rate --}}
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label small fw-semibold mb-1">
-                        Max Rate
+                        Max Output Rate <span class="text-danger">*</span>
                         <span class="text-muted prod-unit-label">({{ old('unit','unit') }}/day)</span>
                     </label>
                     <input type="number" step="0.001" min="0" name="max_productivity"
                            id="maxProductivity"
                            class="form-control @error('max_productivity') is-invalid @enderror"
                            value="{{ old('max_productivity') }}"
-                           placeholder="e.g. 3.0">
+                           placeholder="e.g. 3.0" required>
                     @error('max_productivity')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
-                {{-- Default Output per Day --}}
-                <div class="col-md-3">
-                    <label class="form-label small fw-semibold mb-1 text-primary">
-                        Default Output per Day <span class="text-danger">*</span>
-                        <span class="text-muted prod-unit-label">({{ old('unit','unit') }}/day)</span>
-                    </label>
-                    <input type="number" step="0.001" min="0" name="default_productivity"
-                           id="defaultProductivity"
-                           class="form-control border-primary @error('default_productivity') is-invalid @enderror"
-                           value="{{ old('default_productivity') }}"
-                           placeholder="e.g. 2.0">
-                    @error('default_productivity')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
+                {{-- Hidden calculated default productivity --}}
+                <input type="hidden" name="default_productivity" id="defaultProductivity" value="{{ old('default_productivity') }}">
             </div>
         </div>
 
