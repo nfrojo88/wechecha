@@ -106,7 +106,7 @@
                 </span>
             </div>
             <div class="col-md-4">
-                <span class="text-muted small d-block text-primary">Default Output per Day</span>
+                <span class="text-muted small d-block text-primary">Average Output Rate (Default)</span>
                 <span class="fw-bold fs-6 text-primary">
                     {{ $standardWork->default_productivity !== null ? number_format($standardWork->default_productivity, 3) : '—' }}
                     <small class="text-primary opacity-75 fw-normal">{{ $standardWork->unit }}/day</small>
