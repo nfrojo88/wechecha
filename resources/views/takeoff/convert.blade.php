@@ -525,9 +525,29 @@ function expandTemplate(sIdx, swId) {
     if (!swId) return;
     const sw = SW.find(s => String(s.id) === String(swId));
     if (!sw) return;
-    (sw.materials  || []).forEach(item => addPrefilledRow(sIdx, 'material',  sw.name, item, null));
-    (sw.manpower   || []).forEach(item => addPrefilledRow(sIdx, 'manpower',  sw.name, item, null));
-    (sw.equipment  || []).forEach(item => addPrefilledRow(sIdx, 'equipment', sw.name, item, null));
+
+    // Materials: ratio = quantity per 1 unit of work (e.g. 13 HCB per m²)
+    (sw.materials  || []).forEach(item => addPrefilledRow(sIdx, 'material', sw.name, item, null));
+
+    // Manpower: ratio = m³ output per worker per day = default_productivity ÷ quantity_per_m³
+    // e.g. default_productivity=1.0 m³/day, Mason quantity=1.0 day/m³ → ratio = 1.0/1.0 = 1.0 m³/worker/day
+    const defProd = parseFloat(sw.default_productivity) || 0;
+    (sw.manpower || []).forEach(item => {
+        const qtyPerUnit = parseFloat(item.quantity) || 1;
+        // Compute productivity-based ratio; fallback to 1 if defProd not set
+        const ratio = defProd > 0 ? parseFloat((defProd / qtyPerUnit).toFixed(4)) : 1;
+        addPrefilledRow(sIdx, 'manpower', sw.name,
+            Object.assign({}, item, { quantity: ratio }), null);
+    });
+
+    // Equipment: same logic as manpower — ratio = productivity / quantity
+    (sw.equipment || []).forEach(item => {
+        const qtyPerUnit = parseFloat(item.quantity) || 1;
+        const ratio = defProd > 0 ? parseFloat((defProd / qtyPerUnit).toFixed(4)) : 1;
+        addPrefilledRow(sIdx, 'equipment', sw.name,
+            Object.assign({}, item, { quantity: ratio }), null);
+    });
+
     closeAllPanels(sIdx);
     updateCount();
 }
