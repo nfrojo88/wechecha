@@ -381,10 +381,11 @@ class TakeoffController extends Controller
 
         // Encode for JavaScript
         $standardWorksJson = $standardWorks->map(fn($sw) => [
-            'id'        => $sw->id,
-            'name'      => $sw->name,
-            'unit'      => $sw->unit,
-            'category'  => $sw->category,
+            'id'                  => $sw->id,
+            'name'                => $sw->name,
+            'unit'                => $sw->unit,
+            'category'            => $sw->category,
+            'default_productivity'=> (float) $sw->default_productivity,
             'materials' => $sw->materials->map(fn($m) => [
                 'name'     => $m->material_name,
                 'quantity' => $m->quantity,
