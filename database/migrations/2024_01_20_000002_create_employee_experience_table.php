@@ -11,23 +11,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('employee_experience', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('employee_id')->constrained('employees')->onDelete('cascade');
-            $table->string('job_title');
-            $table->string('company_name');
-            $table->string('location')->nullable();
-            $table->date('start_date');
-            $table->date('end_date')->nullable(); // Null if currently working
-            $table->boolean('is_current')->default(false);
-            $table->text('responsibilities')->nullable();
-            $table->string('reference_name')->nullable();
-            $table->string('reference_phone')->nullable();
-            $table->string('license_document')->nullable(); // Path to license PDF/image
-            $table->string('license_number')->nullable();
-            $table->date('license_expiry')->nullable();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('employee_experience')) {
+            Schema::create('employee_experience', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('employee_id')->constrained('employees')->onDelete('cascade');
+                $table->string('job_title');
+                $table->string('company_name');
+                $table->string('location')->nullable();
+                $table->date('start_date');
+                $table->date('end_date')->nullable(); // Null if currently working
+                $table->boolean('is_current')->default(false);
+                $table->text('responsibilities')->nullable();
+                $table->string('reference_name')->nullable();
+                $table->string('reference_phone')->nullable();
+                $table->string('license_document')->nullable(); // Path to license PDF/image
+                $table->string('license_number')->nullable();
+                $table->date('license_expiry')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     /**
