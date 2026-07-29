@@ -177,6 +177,16 @@ try {
     echo "<p class='skip'>⚠️ AdminUserSeeder: " . $e->getMessage() . "</p>";
 }
 
+try {
+    Illuminate\Support\Facades\Artisan::call('db:seed', [
+        '--class' => 'Database\Seeders\EmployeesSqlSeeder',
+        '--force' => true,
+    ]);
+    echo "<p class='ok'>✅ EmployeesSqlSeeder done (employees.sql data loaded).</p>";
+} catch (\Exception $e) {
+    echo "<p class='skip'>⚠️ EmployeesSqlSeeder: " . $e->getMessage() . "</p>";
+}
+
 if (!empty($skippedMigrations)) {
     echo "<h3>Skipped " . count($skippedMigrations) . " already-existing tables:</h3>";
     echo "<ul>";
