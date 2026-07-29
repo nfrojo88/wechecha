@@ -11,15 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('employees', function (Blueprint $table) {
-            // Check if columns don't exist before adding
-            if (!Schema::hasColumn('employees', 'bank_name')) {
-                $table->string('bank_name')->nullable();
-            }
-            if (!Schema::hasColumn('employees', 'account_number')) {
-                $table->string('account_number', 50)->nullable();
-            }
-        });
+        if (Schema::hasTable('employees')) {
+            Schema::table('employees', function (Blueprint $table) {
+                // Check if columns don't exist before adding
+                if (!Schema::hasColumn('employees', 'bank_name')) {
+                    $table->string('bank_name')->nullable();
+                }
+                if (!Schema::hasColumn('employees', 'account_number')) {
+                    $table->string('account_number', 50)->nullable();
+                }
+            });
+        }
     }
 
     /**
