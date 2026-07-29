@@ -11,20 +11,26 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('otp_verifications', function (Blueprint $table) {
-            $table->id();
-            $table->string('phone')->index();
-            $table->string('otp');
-            $table->boolean('verified')->default(false);
-            $table->timestamp('expires_at');
-            $table->integer('attempts')->default(0);
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('otp_verifications')) {
+            Schema::create('otp_verifications', function (Blueprint $table) {
+                $table->id();
+                $table->string('phone')->index();
+                $table->string('otp');
+                $table->boolean('verified')->default(false);
+                $table->timestamp('expires_at');
+                $table->integer('attempts')->default(0);
+                $table->timestamps();
+            });
+        }
 
         // Add phone_verified to users table
         Schema::table('users', function (Blueprint $table) {
-            $table->boolean('phone_verified')->default(false)->after('email_verified_at');
-            $table->timestamp('phone_verified_at')->nullable()->after('phone_verified');
+            if (!Schema::hasColumn('users', 'phone_verified')) {
+                $table->boolean('phone_verified')->default(false);
+            }
+            if (!Schema::hasColumn('users', 'phone_verified_at')) {
+                $table->timestamp('phone_verified_at')->nullable();
+            }
         });
     }
 
