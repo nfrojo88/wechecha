@@ -72,6 +72,17 @@ class RolesAndPermissionsSeeder extends Seeder
 
             // Reports (Phase 10)
             'reports.view', 'reports.export',
+            'reports.daily.view', 'reports.daily.create',
+            'reports.weekly.view', 'reports.weekly.create',
+
+            // Finance IPC
+            'finance.ipcs.manage',
+
+            // Payments
+            'payments.view', 'payments.create', 'payments.edit', 'payments.approve', 'payments.delete',
+
+            // Resources
+            'resources.dispatch',
 
             // Audit
             'audit.view',
