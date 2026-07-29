@@ -281,19 +281,19 @@ Route::middleware(['auth'])->group(function () {
             } catch (\Throwable $pe) {
                 // ignore
             }
-            // Seed Chart of Accounts if table is empty or has very few records
+            // Seed Employees from employees.sql if employees table is empty
             try {
-                if (\App\Models\ChartOfAccount::count() < 5) {
+                if (\App\Models\Employee::count() === 0) {
                     \Illuminate\Support\Facades\Artisan::call('db:seed', [
-                        '--class' => 'ChartOfAccountsSeeder',
+                        '--class' => 'Database\Seeders\EmployeesSqlSeeder',
                         '--force' => true,
                     ]);
-                    $output .= ' | Chart of Accounts seeded.';
+                    $output .= ' | Employees imported from employees.sql.';
                 }
-            } catch (\Throwable $coaErr) {
-                $output .= ' | COA seed error: ' . $coaErr->getMessage();
+            } catch (\Throwable $empErr) {
+                $output .= ' | Employee import error: ' . $empErr->getMessage();
             }
-            return redirect()->back()->with('success', 'Database migrated & roles synced! Output: ' . $output);
+            return redirect()->back()->with('success', 'Database migrated & synced! Output: ' . $output);
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Migration failed: ' . $e->getMessage());
         }
