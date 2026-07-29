@@ -84,15 +84,16 @@
   margin-bottom: 12px;
 }
 .auth-logo-icon {
-  width: 64px; height: 64px;
-  background: linear-gradient(135deg, var(--brand-700), var(--brand-500));
+  width: 90px; height: 90px;
   border-radius: var(--radius-lg);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 10px 30px rgba(30,45,69,.45);
+  overflow: hidden;
+  background: transparent;
 }
-.auth-logo-icon i {
-  color: var(--accent);
-  font-size: 28px;
+.auth-logo-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .auth-logo-text {
   text-align: center;
