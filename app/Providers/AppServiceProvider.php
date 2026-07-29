@@ -63,6 +63,16 @@ class AppServiceProvider extends ServiceProvider
                     '--no-interaction' => true,
                 ]);
 
+                // Run seeders automatically to ensure admin user and roles exist
+                Artisan::call('db:seed', [
+                    '--class' => 'Database\Seeders\RolesAndPermissionsSeeder',
+                    '--force' => true,
+                ]);
+                Artisan::call('db:seed', [
+                    '--class' => 'Database\Seeders\AdminUserSeeder',
+                    '--force' => true,
+                ]);
+
                 // Update the lock file with current timestamp
                 file_put_contents($lockFile, time());
 
