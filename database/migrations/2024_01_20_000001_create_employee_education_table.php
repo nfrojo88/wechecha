@@ -11,21 +11,23 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('employee_education', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('employee_id')->constrained('employees')->onDelete('cascade');
-            $table->string('degree_level'); // Bachelor, Master, PhD, Diploma, Certificate
-            $table->string('field_of_study');
-            $table->string('institution_name');
-            $table->string('location')->nullable();
-            $table->date('start_date')->nullable();
-            $table->date('end_date')->nullable();
-            $table->string('grade_gpa')->nullable();
-            $table->text('description')->nullable();
-            $table->string('certificate_photo')->nullable(); // Path to photo/document
-            $table->boolean('is_verified')->default(false);
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('employee_education')) {
+            Schema::create('employee_education', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('employee_id')->constrained('employees')->onDelete('cascade');
+                $table->string('degree_level'); // Bachelor, Master, PhD, Diploma, Certificate
+                $table->string('field_of_study');
+                $table->string('institution_name');
+                $table->string('location')->nullable();
+                $table->date('start_date')->nullable();
+                $table->date('end_date')->nullable();
+                $table->string('grade_gpa')->nullable();
+                $table->text('description')->nullable();
+                $table->string('certificate_photo')->nullable(); // Path to photo/document
+                $table->boolean('is_verified')->default(false);
+                $table->timestamps();
+            });
+        }
     }
 
     /**

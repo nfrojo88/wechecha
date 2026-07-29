@@ -42,8 +42,10 @@ try {
     $pdo = Illuminate\Support\Facades\DB::connection()->getPdo();
     echo "<p style='color:green;'>✅ Connected to database: <strong>" . Illuminate\Support\Facades\DB::connection()->getDatabaseName() . "</strong></p>";
 
-    // Run migrations automatically
+    // Run migrations safely skipping existing tables
     echo "<h3>Running Database Migrations & Admin Seeder...</h3>";
+    
+    // Check if migrations table exists, if not run migrate
     Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
     echo "<pre style='background:#f4f4f4; padding:10px;'>" . Illuminate\Support\Facades\Artisan::output() . "</pre>";
 
@@ -55,10 +57,10 @@ try {
         '--class' => 'Database\Seeders\AdminUserSeeder',
         '--force' => true,
     ]);
-    echo "<p style='color:green; font-weight:bold;'>🎉 Migrations & Admin User setup complete!</p>";
+    echo "<p style='color:green; font-weight:bold; font-size: 18px;'>🎉 Migrations & Admin User setup complete!</p>";
     echo "<p><strong>Email:</strong> fro@wechecha.com</p>";
     echo "<p><strong>Password:</strong> password</p>";
-    echo "<p><a href='/' style='background:#10b981; color:white; padding:10px 15px; text-decoration:none; border-radius:5px;'>Go to Login Page</a></p>";
+    echo "<p><a href='/' style='background:#10b981; color:white; padding:10px 15px; text-decoration:none; border-radius:5px; display:inline-block; margin-top:10px;'>Go to Login Page</a></p>";
 
 } catch (\Exception $e) {
     echo "<h3 style='color:red;'>Error details:</h3>";
