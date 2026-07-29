@@ -1,21 +1,5 @@
 <IfModule mod_rewrite.c>
-    <IfModule mod_negotiation.c>
-        Options -MultiViews -Indexes
-    </IfModule>
-
     RewriteEngine On
-
-    # Prevent access to sensitive files
-    <FilesMatch "^\.env|composer\.json|composer\.lock|package\.json|package-lock\.json">
-        Order allow,deny
-        Deny from all
-    </FilesMatch>
-
-    # Handle Authorization Header
-    RewriteCond %{HTTP:Authorization} .
-    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-
-    # Redirect requests to public directory if public/ isn't explicitly requested
     RewriteCond %{REQUEST_URI} !^/public/
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
