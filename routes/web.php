@@ -23,6 +23,19 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// One-click migration route for all pending migrations
+Route::get('/migrate-material-prices', function () {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate', [
+            '--force' => true,
+        ]);
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        return "<h2 style='font-family:sans-serif;color:green'>✅ Migration Complete!</h2><pre>$output</pre><a href='/erp-plans'>→ Open ERP Plans</a>";
+    } catch (\Exception $e) {
+        return "<h2 style='font-family:sans-serif;color:red'>❌ Migration Error</h2><pre>" . $e->getMessage() . "</pre>";
+    }
+});
+
 // ====== TEMPORARY: SMS Test Route - Remove after testing ======
 Route::get('/test-sms/{phone}', function ($phone) {
     $smsService = new \App\Services\SmsEthiopiaService();
@@ -453,6 +466,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('manpower-roles',             [App\Http\Controllers\ManpowerRoleController::class, 'store'])->name('manpower-roles.store');
     Route::delete('manpower-roles/{manpowerRole}', [App\Http\Controllers\ManpowerRoleController::class, 'destroy'])->name('manpower-roles.destroy');
 
+    // Equipment Master (Fixed Assets)
+    Route::resource('equipment', App\Http\Controllers\EquipmentController::class);
+
     // Weekly Dispatches
     Route::resource('weekly-dispatches', App\Http\Controllers\WeeklyDispatchController::class)->only(['index', 'show']);
     // ─── Phase 4 Procurement ────────────────────────────────────────────────
@@ -838,6 +854,36 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('{engSchedule}/status',    [App\Http\Controllers\EngScheduleController::class, 'updateStatus'])->name('update-status');
         Route::patch('{engSchedule}/reschedule',[App\Http\Controllers\EngScheduleController::class, 'reschedule'])->name('reschedule');
         Route::post('{engSchedule}/comments',   [App\Http\Controllers\EngScheduleController::class, 'addComment'])->name('add-comment');
+    });
+
+    // ─── Equipment Master & Fixed Asset Units ───────────────────────────────────
+    Route::prefix('equipment')->name('equipment.')->group(function () {
+        Route::get('/',             [App\Http\Controllers\EquipmentController::class, 'index'])->name('index');
+        Route::get('/create',       [App\Http\Controllers\EquipmentController::class, 'create'])->name('create');
+        Route::post('/',            [App\Http\Controllers\EquipmentController::class, 'store'])->name('store');
+        Route::get('/{equipment}',  [App\Http\Controllers\EquipmentController::class, 'show'])->name('show');
+
+        // Fixed Asset Unit CRUD per equipment type
+        Route::post('/{equipment}/units',              [App\Http\Controllers\EquipmentController::class, 'storeUnit'])->name('units.store');
+        Route::patch('/{equipment}/units/{unit}',      [App\Http\Controllers\EquipmentController::class, 'updateUnit'])->name('units.update');
+        Route::delete('/{equipment}/units/{unit}',     [App\Http\Controllers\EquipmentController::class, 'destroyUnit'])->name('units.destroy');
+
+        // Productivity logging
+        Route::post('/{equipment}/productivity',       [App\Http\Controllers\EquipmentController::class, 'logProductivity'])->name('productivity.store');
+    });
+
+    // ─── Marketing Module ───────────────────────────────────────────────────────
+    Route::prefix('marketing')->name('marketing.')->group(function () {
+        Route::get('dashboard', [App\Http\Controllers\MarketingController::class, 'dashboard'])->name('dashboard');
+        
+        // Prices
+        Route::get('prices/create', [App\Http\Controllers\MarketingController::class, 'createPrice'])->name('prices.create');
+        Route::post('prices/store', [App\Http\Controllers\MarketingController::class, 'storePrice'])->name('prices.store');
+        Route::get('prices/history', [App\Http\Controllers\MarketingController::class, 'priceHistory'])->name('prices.history');
+
+        // Reports
+        Route::get('reports/inflation', [App\Http\Controllers\MarketingController::class, 'inflationReport'])->name('reports.inflation');
+        Route::get('reports/planning-vs-actual', [App\Http\Controllers\MarketingController::class, 'planningVsActual'])->name('reports.planning-vs-actual');
     });
 });
 

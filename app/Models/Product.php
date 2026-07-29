@@ -204,4 +204,20 @@ class Product extends Model
     {
         return $this->hasMany(Inventory::class, 'product_id');
     }
+
+    /**
+     * Get the market price history entries for this product.
+     */
+    public function materialPrices()
+    {
+        return $this->hasMany(MaterialPrice::class, 'product_id')->orderBy('effective_date', 'desc');
+    }
+
+    /**
+     * Get the latest market price record for this product.
+     */
+    public function latestMarketPrice()
+    {
+        return $this->hasOne(MaterialPrice::class, 'product_id')->latestOfMany('effective_date');
+    }
 }

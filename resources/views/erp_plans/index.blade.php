@@ -445,9 +445,18 @@
                         Updated {{ $schedule->updated_at->format('d M Y') }}
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <a href="{{ route('schedules.show', $schedule) }}" class="view-btn">
-                            <i class="fa-solid fa-chart-gantt fa-sm"></i> Open Gantt
+                        @php
+                            $erpPlan = \App\Models\ErpPlanHeader::where('project_id', $schedule->project_id)->latest()->first();
+                        @endphp
+                        @if($erpPlan)
+                        <a href="{{ route('erp-plans.show', $erpPlan) }}" class="view-btn">
+                            <i class="fa-solid fa-diagram-project fa-sm me-1"></i> Show ERP
                         </a>
+                        @else
+                        <a href="{{ route('schedules.show', $schedule) }}" class="view-btn">
+                            <i class="fa-solid fa-chart-gantt fa-sm me-1"></i> Show ERP
+                        </a>
+                        @endif
                     </div>
                 </div>
             </div>

@@ -23,14 +23,33 @@ class ManpowerRoleController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'         => 'required|string|max:100|unique:manpower_roles,name',
-            'default_unit' => 'required|in:day,hr',
+            'name'         => 'required|string|max:100',
+            'default_unit' => 'nullable|string',
             'category'     => 'nullable|string|max:100',
         ]);
 
-        $role = ManpowerRole::create($request->only('name', 'default_unit', 'category'));
+        $role = ManpowerRole::firstOrCreate(
+            ['name' => $request->name],
+            [
+                'default_unit' => $request->default_unit ?? 'day',
+                'category'     => $request->category ?? 'Skilled Labor',
+            ]
+        );
 
-        return response()->json(['success' => true, 'role' => $role]);
+        // Sync with Designation table used across ERP
+        \App\Models\Designation::firstOrCreate(
+            ['title' => $request->name],
+            [
+                'department' => $request->category ?? 'Operations',
+                'is_active'  => true,
+            ]
+        );
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'role' => $role]);
+        }
+
+        return redirect()->back()->with('success', 'New Manpower Role "' . $role->name . '" created successfully!');
     }
 
     /** Delete a role */

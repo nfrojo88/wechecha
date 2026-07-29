@@ -98,26 +98,27 @@ body {
   margin-bottom: 12px;
 }
 .auth-logo-icon {
-  width: 64px; height: 64px;
-  background: linear-gradient(135deg, var(--brand-700), var(--brand-500));
+  width: 90px; height: 90px;
   border-radius: var(--radius-lg);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 10px 30px rgba(30,45,69,.45);
+  overflow: hidden;
+  background: transparent;
 }
-.auth-logo-icon i {
-  color: var(--accent);
-  font-size: 28px;
+.auth-logo-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .auth-logo-text {
   text-align: center;
   margin-bottom: 6px;
 }
 .auth-logo-text .title {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 800;
   color: var(--gray-900);
   letter-spacing: -.5px;
-  line-height: 1;
+  line-height: 1.2;
 }
 .auth-logo-text .sub {
   font-size: 11.5px;
@@ -227,11 +228,11 @@ body {
         <div class="text-center mb-2">
             <div class="auth-logo">
                 <div class="auth-logo-icon">
-                    <i class="fa-solid fa-helmet-safety"></i>
+                    <img src="https://res.cloudinary.com/dg1ijsqx6/image/upload/v1785238806/Gemini_Generated_Image_4aap624aap624aap_1_djaxwl.png" alt="Company Logo">
                 </div>
             </div>
             <div class="auth-logo-text">
-                <div class="title">Construct-Pro</div>
+                <div class="title">Wechecha Construction</div>
                 <div class="sub">ERP System</div>
             </div>
         </div>

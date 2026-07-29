@@ -3,6 +3,10 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,5 +28,49 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         \Illuminate\Pagination\Paginator::useBootstrap();
+
+        // Auto-run pending migrations on each request in production (cPanel deployment)
+        // This ensures the database schema is always up-to-date without manual artisan commands
+        $this->runAutoMigrations();
+    }
+
+    /**
+     * Automatically run pending migrations.
+     * Safely checks for a lock file to avoid running on every request.
+     */
+    protected function runAutoMigrations()
+    {
+        try {
+            // Only run if connected to DB successfully
+            DB::connection()->getPdo();
+
+            // Use a lock file to prevent running on every request
+            $lockFile = storage_path('app/migration.lock');
+            $migrationsPath = database_path('migrations');
+
+            // Get the latest migration file timestamp
+            $latestMigration = collect(glob($migrationsPath . '/*.php'))
+                ->map(fn($f) => filemtime($f))
+                ->max();
+
+            // Read last migration time from lock file
+            $lastRun = file_exists($lockFile) ? (int) file_get_contents($lockFile) : 0;
+
+            // Only run if there are new migration files since last run
+            if ($latestMigration > $lastRun) {
+                Artisan::call('migrate', [
+                    '--force' => true,   // required in production
+                    '--no-interaction' => true,
+                ]);
+
+                // Update the lock file with current timestamp
+                file_put_contents($lockFile, time());
+
+                Log::info('Auto-migration completed at ' . now());
+            }
+        } catch (\Exception $e) {
+            // Never crash the app due to migration failure — just log it
+            Log::error('Auto-migration failed: ' . $e->getMessage());
+        }
     }
 }

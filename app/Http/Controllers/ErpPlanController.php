@@ -51,6 +51,38 @@ class ErpPlanController extends Controller
     public function show(ErpPlanHeader $erp_plan)
     {
         $erp_plan->load('tasks.dependencies', 'tasks.resources', 'baselines', 'project', 'creator');
+
+        // Dynamically compute zero-rate resources using latest market prices / equipment rates / manpower rates
+        foreach ($erp_plan->tasks as $task) {
+            foreach ($task->resources as $res) {
+                if ((float) $res->rate <= 0) {
+                    $rate = 0;
+                    $rtype = strtolower($res->resource_type);
+                    if ($rtype === 'material') {
+                        $product = \App\Models\Product::where('name', $res->resource_name)->first();
+                        if ($product) {
+                            $latestMarket = \App\Models\MaterialPrice::where('product_id', $product->id)->orderBy('effective_date', 'desc')->first();
+                            $rate = $latestMarket ? (float)$latestMarket->price : (float)$product->unit_price;
+                        }
+                    } elseif ($rtype === 'equipment') {
+                        $eq = \App\Models\EquipmentMaster::where('name', $res->resource_name)->first();
+                        if ($eq) {
+                            $rate = (float)($eq->daily_rate ?: $eq->hourly_rate);
+                        }
+                    } elseif ($rtype === 'manpower') {
+                        $role = \App\Models\Designation::where('title', $res->resource_name)->first();
+                        if ($role && $role->min_salary) {
+                            $rate = (float) round($role->min_salary / 26, 2);
+                        }
+                    }
+                    if ($rate > 0) {
+                        $res->rate = $rate;
+                        $res->total_cost = round($res->quantity * $rate, 2);
+                    }
+                }
+            }
+        }
+
         return view('erp_plans.show', compact('erp_plan'));
     }
 

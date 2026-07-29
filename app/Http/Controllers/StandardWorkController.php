@@ -54,10 +54,15 @@ class StandardWorkController extends Controller
             'name'        => 'required|string|max:255',
             'description' => 'nullable|string',
 
-            // Productivity rates
+            // Manpower Productivity rates
             'min_productivity'     => 'nullable|numeric|min:0',
             'max_productivity'     => 'nullable|numeric|min:0',
             'default_productivity' => 'nullable|numeric|min:0',
+
+            // Equipment Productivity rates
+            'min_equipment_productivity'     => 'nullable|numeric|min:0',
+            'max_equipment_productivity'     => 'nullable|numeric|min:0',
+            'default_equipment_productivity' => 'nullable|numeric|min:0',
 
             // Materials — optional, zero qty OK
             'materials'                   => 'nullable|array',
@@ -85,14 +90,17 @@ class StandardWorkController extends Controller
         ]);
 
         $work = StandardWork::create([
-            'category'             => 'Mixed',
-            'name'                 => $request->name,
-            'unit'                 => $request->unit,
-            'description'          => $request->description,
-            'min_productivity'     => $request->min_productivity,
-            'max_productivity'     => $request->max_productivity,
-            'default_productivity' => $request->default_productivity,
-            'created_by'           => auth()->id(),
+            'category'                       => 'Mixed',
+            'name'                           => $request->name,
+            'unit'                           => $request->unit,
+            'description'                    => $request->description,
+            'min_productivity'               => $request->min_productivity,
+            'max_productivity'               => $request->max_productivity,
+            'default_productivity'           => $request->default_productivity,
+            'min_equipment_productivity'     => $request->min_equipment_productivity,
+            'max_equipment_productivity'     => $request->max_equipment_productivity,
+            'default_equipment_productivity' => $request->default_equipment_productivity,
+            'created_by'                     => auth()->id(),
         ]);
 
         // Save materials — include zero-quantity rows if name is filled
@@ -179,9 +187,12 @@ class StandardWorkController extends Controller
             'name'                 => 'required|string|max:255',
             'unit'                 => 'required|string|max:50',
             'description'          => 'nullable|string',
-            'min_productivity'     => 'nullable|numeric|min:0',
-            'max_productivity'     => 'nullable|numeric|min:0',
-            'default_productivity' => 'nullable|numeric|min:0',
+            'min_productivity'               => 'nullable|numeric|min:0',
+            'max_productivity'               => 'nullable|numeric|min:0',
+            'default_productivity'           => 'nullable|numeric|min:0',
+            'min_equipment_productivity'     => 'nullable|numeric|min:0',
+            'max_equipment_productivity'     => 'nullable|numeric|min:0',
+            'default_equipment_productivity' => 'nullable|numeric|min:0',
 
             'materials'                   => 'nullable|array',
             'materials.*.material_name'   => 'nullable|string|max:255',
@@ -205,12 +216,15 @@ class StandardWorkController extends Controller
         ]);
 
         $standardWork->update([
-            'name'                 => $request->name,
-            'unit'                 => $request->unit,
-            'description'          => $request->description,
-            'min_productivity'     => $request->min_productivity,
-            'max_productivity'     => $request->max_productivity,
-            'default_productivity' => $request->default_productivity,
+            'name'                           => $request->name,
+            'unit'                           => $request->unit,
+            'description'                    => $request->description,
+            'min_productivity'               => $request->min_productivity,
+            'max_productivity'               => $request->max_productivity,
+            'default_productivity'           => $request->default_productivity,
+            'min_equipment_productivity'     => $request->min_equipment_productivity,
+            'max_equipment_productivity'     => $request->max_equipment_productivity,
+            'default_equipment_productivity' => $request->default_equipment_productivity,
         ]);
 
         // Sync materials

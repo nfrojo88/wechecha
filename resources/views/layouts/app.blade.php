@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'Construct-Pro ERP') }}</title>
+    <title>{{ config('app.name', 'Wechecha Construction ERP') }}</title>
 
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -95,14 +95,14 @@ html, body {
   flex-shrink: 0;
 }
 .sidebar-brand-icon {
-  width: 38px; height: 38px;
-  background: var(--accent);
+  width: 42px; height: 42px;
   border-radius: var(--radius-md);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(245,158,11,.4);
+  overflow: hidden;
+  background: transparent;
 }
-.sidebar-brand-icon i { color: white; font-size: 17px; }
+.sidebar-brand-icon img { width: 100%; height: 100%; object-fit: contain; }
 .sidebar-brand-text {
   display: flex;
   flex-direction: column;
@@ -369,8 +369,8 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .auth-wrapper::after { content: ''; position: absolute; bottom: -150px; left: -150px; width: 500px; height: 500px; background: radial-gradient(circle, rgba(50,81,128,.3) 0%, transparent 70%); border-radius: 50%; }
 .auth-card { background: white; border-radius: var(--radius-xl); padding: 44px 48px; width: 100%; max-width: 420px; box-shadow: 0 32px 80px rgba(0,0,0,.3); position: relative; z-index: 1; }
 .auth-card .auth-logo { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 8px; }
-.auth-card .auth-logo-icon { width: 52px; height: 52px; background: linear-gradient(135deg, var(--brand-700), var(--brand-500)); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(30,45,69,.4); }
-.auth-card .auth-logo-icon i { color: var(--accent); font-size: 22px; }
+.auth-card .auth-logo-icon { width: 72px; height: 72px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; overflow: hidden; background: transparent; }
+.auth-card .auth-logo-icon img { width: 100%; height: 100%; object-fit: contain; }
 .auth-card .auth-logo-text .title { font-size: 22px; font-weight: 800; color: var(--gray-900); line-height: 1; letter-spacing: -.4px; }
 .auth-card .auth-logo-text .sub { font-size: 11px; color: var(--gray-400); text-transform: uppercase; letter-spacing: .8px; margin-top: 2px; }
 /* Utilities */
@@ -405,10 +405,10 @@ textarea.form-control { resize: vertical; min-height: 80px; }
         <div class="sidebar" id="sidebar">
             <a href="{{ url('/') }}" class="sidebar-brand">
                 <div class="sidebar-brand-icon">
-                    <i class="fa-solid fa-helmet-safety"></i>
+                    <img src="https://res.cloudinary.com/dg1ijsqx6/image/upload/v1785238806/Gemini_Generated_Image_4aap624aap624aap_1_djaxwl.png" alt="Company Logo">
                 </div>
                 <div class="sidebar-brand-text">
-                    <span class="brand-name">Construct-Pro</span>
+                    <span class="brand-name">Wechecha Construction</span>
                     <span class="brand-sub">ERP System</span>
                 </div>
             </a>

@@ -133,7 +133,7 @@ class LoginController extends Controller
             'secretary'           => route('dashboard.coordinator'),
             'general_service'     => route('dashboard.coordinator'),
             'law'                 => route('subcon.index'),
-            'marketing'           => route('bidding.index'),
+            'marketing'           => route('marketing.dashboard'),
             'audit_team'          => route('audit.index'),
             default               => route('dashboard.admin'),
         };

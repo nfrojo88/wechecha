@@ -222,7 +222,7 @@
         <div class="text-center mb-2">
             <div class="auth-logo">
                 <div class="auth-logo-icon">
-                    <i class="fa-solid fa-helmet-safety"></i>
+                    <img src="https://res.cloudinary.com/dg1ijsqx6/image/upload/v1785238806/Gemini_Generated_Image_4aap624aap624aap_1_djaxwl.png" alt="Company Logo">
                 </div>
             </div>
             <div class="auth-logo-text">

@@ -336,6 +336,43 @@
         @endcanany
         @endcanany
 
+        {{-- ── Marketing & Pricing ─────────────────────────────────────────── --}}
+        @if(auth()->check() && auth()->user()->hasAnyRole(['marketing', 'admin', 'global_admin', 'planning_manager', 'planning', 'finance_manager', 'finance', 'project_manager']))
+        <li class="sidebar-nav-item sidebar-section-label" style="padding:8px 16px 4px; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#94a3b8; pointer-events:none; user-select:none;">Marketing &amp; Pricing</li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('marketing.dashboard') }}" class="sidebar-nav-link {{ request()->routeIs('marketing.dashboard') ? 'active' : '' }}">
+                <i class="fa-solid fa-bullhorn text-primary"></i>
+                <span>Marketing Dashboard</span>
+            </a>
+        </li>
+        @if(auth()->user()->hasAnyRole(['marketing', 'admin', 'global_admin']))
+        <li class="sidebar-nav-item">
+            <a href="{{ route('marketing.prices.create') }}" class="sidebar-nav-link {{ request()->routeIs('marketing.prices.create') ? 'active' : '' }}">
+                <i class="fa-solid fa-calendar-plus text-success"></i>
+                <span>Price Update</span>
+            </a>
+        </li>
+        @endif
+        <li class="sidebar-nav-item">
+            <a href="{{ route('marketing.prices.history') }}" class="sidebar-nav-link {{ request()->routeIs('marketing.prices.history') ? 'active' : '' }}">
+                <i class="fa-solid fa-clock-rotate-left text-info"></i>
+                <span>Price History &amp; Trends</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('marketing.reports.inflation') }}" class="sidebar-nav-link {{ request()->routeIs('marketing.reports.inflation') ? 'active' : '' }}">
+                <i class="fa-solid fa-chart-line text-danger"></i>
+                <span>Inflation Report</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('marketing.reports.planning-vs-actual') }}" class="sidebar-nav-link {{ request()->routeIs('marketing.reports.planning-vs-actual') ? 'active' : '' }}">
+                <i class="fa-solid fa-scale-balanced text-warning"></i>
+                <span>Planning vs Actual</span>
+            </a>
+        </li>
+        @endif
+
         {{-- Coordinator Tools --}}
         @if(auth()->check() && (auth()->user()->hasAnyRole(['Coordinator', 'coordinator', 'admin', 'global_admin'])))
 
@@ -343,6 +380,12 @@
             <a href="{{ route('dashboard.coordinator') }}" class="sidebar-nav-link {{ request()->routeIs('dashboard.coordinator') ? 'active' : '' }}">
                 <i class="fa-solid fa-users-viewfinder text-primary"></i>
                 <span>Coordinator Dashboard</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('erp-plans.index') }}" class="sidebar-nav-link {{ request()->routeIs('erp-plans.*') || request()->routeIs('takeoff.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-calculator text-primary"></i>
+                <span>ERP Plans &amp; Take-Offs</span>
             </a>
         </li>
         <li class="sidebar-nav-item">

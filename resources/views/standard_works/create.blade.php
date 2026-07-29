@@ -223,9 +223,9 @@
         {{-- ── Productivity Row ── --}}
         <div class="card-body border-bottom pb-3">
             <div class="row g-3 align-items-end">
-                <div class="col-12 col-sm-auto">
-                    <p class="fw-semibold mb-2 text-muted small" style="letter-spacing:.4px;text-transform:uppercase;">
-                        <i class="fa-solid fa-gauge-high me-1 text-primary"></i>Crew Productivity
+                <div class="col-12">
+                    <p class="fw-semibold mb-1 text-muted small" style="letter-spacing:.4px;text-transform:uppercase;">
+                        <i class="fa-solid fa-gauge-high me-1 text-primary"></i>Manpower &amp; Equipment Productivity Output Rates
                         <span class="text-danger">*</span>
                     </p>
                 </div>
@@ -255,8 +255,22 @@
                            placeholder="e.g. 3.0" required>
                     @error('max_productivity')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
-                {{-- Hidden calculated default productivity --}}
-                <input type="hidden" name="default_productivity" id="defaultProductivity" value="{{ old('default_productivity') }}">
+                {{-- Visible calculated default productivity --}}
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold mb-1 text-primary">
+                        Default Output Rate <small class="text-muted fw-normal">(Auto Average)</small>
+                        <span class="text-muted prod-unit-label">({{ old('unit','unit') }}/day)</span>
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-primary bg-opacity-10 text-primary border-primary border-opacity-25">
+                            <i class="fa-solid fa-calculator"></i>
+                        </span>
+                        <input type="number" step="0.001" name="default_productivity" id="defaultProductivity"
+                               class="form-control bg-light fw-bold text-primary border-primary border-opacity-25"
+                               value="{{ old('default_productivity') }}"
+                               placeholder="Auto-calculated default" readonly>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -377,6 +391,59 @@
             <button type="button" class="btn btn-sm btn-outline-warning" onclick="addRow('equipment')">
                 <i class="fa-solid fa-plus me-1"></i>Add Equipment
             </button>
+        </div>
+        {{-- ── Equipment Productivity Row ── --}}
+        <div class="card-body border-bottom pb-3">
+            <div class="row g-3 align-items-end">
+                <div class="col-12">
+                    <p class="fw-semibold mb-1 text-muted small" style="letter-spacing:.4px;text-transform:uppercase;">
+                        <i class="fa-solid fa-gauge-high me-1 text-warning"></i>Equipment Productivity Output Rates
+                        <span class="text-danger">*</span>
+                    </p>
+                </div>
+                {{-- Min Rate --}}
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold mb-1">
+                        Min Equipment Output Rate <span class="text-danger">*</span>
+                        <span class="text-muted prod-unit-label">({{ old('unit','unit') }}/day)</span>
+                    </label>
+                    <input type="number" step="0.001" min="0" name="min_equipment_productivity"
+                           id="minEquipmentProductivity"
+                           class="form-control @error('min_equipment_productivity') is-invalid @enderror"
+                           value="{{ old('min_equipment_productivity') }}"
+                           placeholder="e.g. 1.5" required>
+                    @error('min_equipment_productivity')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                {{-- Max Rate --}}
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold mb-1">
+                        Max Equipment Output Rate <span class="text-danger">*</span>
+                        <span class="text-muted prod-unit-label">({{ old('unit','unit') }}/day)</span>
+                    </label>
+                    <input type="number" step="0.001" min="0" name="max_equipment_productivity"
+                           id="maxEquipmentProductivity"
+                           class="form-control @error('max_equipment_productivity') is-invalid @enderror"
+                           value="{{ old('max_equipment_productivity') }}"
+                           placeholder="e.g. 3.0" required>
+                    @error('max_equipment_productivity')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                {{-- Visible calculated default equipment productivity --}}
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold mb-1 text-dark">
+                        Default Equipment Output Rate <small class="text-muted fw-normal">(Auto Average)</small>
+                        <span class="text-muted prod-unit-label">({{ old('unit','unit') }}/day)</span>
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-warning bg-opacity-10 text-warning border-warning border-opacity-25">
+                            <i class="fa-solid fa-calculator"></i>
+                        </span>
+                        <input type="number" step="0.001" name="default_equipment_productivity" id="defaultEquipmentProductivity"
+                               class="form-control bg-light fw-bold text-dark border-warning border-opacity-25"
+                               value="{{ old('default_equipment_productivity') }}"
+                               placeholder="Auto-calculated default" readonly>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -646,6 +713,7 @@
     const defaultProdInput = document.getElementById('defaultProductivity');
 
     function calcAverageProductivity() {
+        if (!minProdInput || !maxProdInput || !defaultProdInput) return;
         const minVal = parseFloat(minProdInput.value);
         const maxVal = parseFloat(maxProdInput.value);
 
@@ -656,12 +724,41 @@
             defaultProdInput.value = minVal;
         } else if (!isNaN(maxVal)) {
             defaultProdInput.value = maxVal;
+        } else {
+            defaultProdInput.value = '';
         }
     }
 
     if (minProdInput && maxProdInput) {
         minProdInput.addEventListener('input', calcAverageProductivity);
         maxProdInput.addEventListener('input', calcAverageProductivity);
+    }
+
+    /* ─── Auto-calculate Default Equipment Output as average of Min and Max Equipment Rate ─── */
+    const minEqProdInput     = document.getElementById('minEquipmentProductivity');
+    const maxEqProdInput     = document.getElementById('maxEquipmentProductivity');
+    const defaultEqProdInput = document.getElementById('defaultEquipmentProductivity');
+
+    function calcAverageEquipmentProductivity() {
+        if (!minEqProdInput || !maxEqProdInput || !defaultEqProdInput) return;
+        const minVal = parseFloat(minEqProdInput.value);
+        const maxVal = parseFloat(maxEqProdInput.value);
+
+        if (!isNaN(minVal) && !isNaN(maxVal)) {
+            const avg = (minVal + maxVal) / 2;
+            defaultEqProdInput.value = Math.round(avg * 1000) / 1000;
+        } else if (!isNaN(minVal)) {
+            defaultEqProdInput.value = minVal;
+        } else if (!isNaN(maxVal)) {
+            defaultEqProdInput.value = maxVal;
+        } else {
+            defaultEqProdInput.value = '';
+        }
+    }
+
+    if (minEqProdInput && maxEqProdInput) {
+        minEqProdInput.addEventListener('input', calcAverageEquipmentProductivity);
+        maxEqProdInput.addEventListener('input', calcAverageEquipmentProductivity);
     }
 
     /* ─── Add Role always goes to Labour ─── */
@@ -671,6 +768,8 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         updateUnitLabels();
+        calcAverageProductivity();
+        calcAverageEquipmentProductivity();
         // Init all counts
         ['materials','manpower','equipment'].forEach(s => {
             const tbody = document.getElementById(s + '-body');

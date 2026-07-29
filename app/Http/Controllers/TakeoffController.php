@@ -357,21 +357,27 @@ class TakeoffController extends Controller
     {
         $takeoff->load(['sections.items', 'sections.task', 'project', 'creator']);
 
-        // Build section totals: sum of all item result_quantities per section
+        // Build section totals & extract linked task dates/durations
         foreach ($takeoff->sections as $section) {
             $section->total_quantity = $section->items->sum('result_quantity');
             $section->primary_unit   = $section->items->first()?->result_unit ?? '';
-            // Duration from linked schedule task: prefer duration_days, fallback to date diff
+            
             $task = $section->task;
             if ($task) {
+                $section->linked_task_name = ($task->wbs_code ? $task->wbs_code . ' - ' : '') . $task->name;
+                $section->task_start_date  = $task->start_date ? $task->start_date->format('Y-m-d') : null;
+                $section->task_end_date    = $task->end_date ? $task->end_date->format('Y-m-d') : null;
                 if ($task->duration_days) {
                     $section->schedule_duration_days = $task->duration_days;
                 } elseif ($task->start_date && $task->end_date) {
                     $section->schedule_duration_days = $task->start_date->diffInDays($task->end_date) + 1;
                 } else {
-                    $section->schedule_duration_days = null; // no duration info at all
+                    $section->schedule_duration_days = null;
                 }
             } else {
+                $section->linked_task_name = null;
+                $section->task_start_date  = null;
+                $section->task_end_date    = null;
                 $section->schedule_duration_days = null;
             }
         }
@@ -385,36 +391,42 @@ class TakeoffController extends Controller
             'name'                => $sw->name,
             'unit'                => $sw->unit,
             'category'            => $sw->category,
-            'default_productivity'=> (float) $sw->default_productivity,
+            'default_productivity'           => (float) ($sw->default_productivity ?? 0),
+            'avg_output'                     => (float) ($sw->default_productivity ?? 0),
+            'default_equipment_productivity' => (float) ($sw->default_equipment_productivity ?? $sw->default_productivity ?? 0),
             'materials' => $sw->materials->map(fn($m) => [
                 'name'     => $m->material_name,
-                'quantity' => $m->quantity,
+                'quantity' => (float) $m->quantity,
                 'unit'     => $m->unit,
             ])->values(),
             'manpower' => $sw->manpower->map(fn($m) => [
                 'name'     => $m->role,
-                'quantity' => $m->quantity,
+                'quantity' => (float) $m->quantity,
                 'unit'     => $m->unit,
             ])->values(),
             'equipment' => $sw->equipment->map(fn($e) => [
                 'name'     => $e->equipment_name,
-                'quantity' => $e->quantity,
+                'quantity' => (float) $e->quantity,
                 'unit'     => $e->unit,
             ])->values(),
         ])->values();
 
         $stores = Store::orderBy('name')->get();
 
-        // Registered products for manual material selection
+        // Registered products for manual material selection (uses latest market price from Marketing team)
         $registeredProducts = Product::orderBy('name')
             ->get(['id', 'name', 'unit', 'category', 'unit_price'])
-            ->map(fn($p) => [
-                'id'       => $p->id,
-                'name'     => $p->name,
-                'unit'     => $p->unit,
-                'category' => $p->category,
-                'rate'     => (float) $p->unit_price,
-            ])->values();
+            ->map(function($p) {
+                $latestMarket = \App\Models\MaterialPrice::where('product_id', $p->id)->orderBy('effective_date', 'desc')->first();
+                $rate = $latestMarket ? (float) $latestMarket->price : (float) $p->unit_price;
+                return [
+                    'id'       => $p->id,
+                    'name'     => $p->name,
+                    'unit'     => $p->unit,
+                    'category' => $p->category,
+                    'rate'     => $rate,
+                ];
+            })->values();
 
         // Registered equipment for manual equipment selection
         $registeredEquipment = EquipmentMaster::where('is_active', true)
@@ -459,11 +471,24 @@ class TakeoffController extends Controller
         $totalBudget = 0;
         foreach ($request->input('sections', []) as $sectionData) {
             foreach ($sectionData['resources'] ?? [] as $resource) {
-                $qty  = (float)($sectionData['section_total'] ?? 0) * (float)($resource['ratio'] ?? 1);
+                $qty  = (float)($resource['qty'] ?? 0);
                 $rate = (float)($resource['rate'] ?? 0);
                 $totalBudget += round($qty * $rate, 2);
             }
         }
+
+        // Delete any existing ERP plans created from this takeoff or project to replace with the fresh plan
+        $existingPlans = ErpPlanHeader::where('project_id', $takeoff->project_id)->get();
+        foreach ($existingPlans as $oldPlan) {
+            $oldPlan->tasks()->each(function ($t) {
+                $t->resources()->delete();
+                $t->delete();
+            });
+            $oldPlan->delete();
+        }
+
+        // Lock / mark takeoff sheet as converted so it cannot be modified after conversion
+        $takeoff->update(['status' => 'converted']);
 
         // Create ERP Plan Header
         $plan = ErpPlanHeader::create([
@@ -483,15 +508,26 @@ class TakeoffController extends Controller
         $wbsIdx = 1;
         foreach ($request->input('sections', []) as $sIdx => $sectionData) {
             $sectionName  = $sectionData['section_name'] ?? "Section {$sIdx}";
-            $sectionTotal = (float) ($sectionData['section_total'] ?? 0);
+            $workedQty    = (float) ($sectionData['worked_quantity'] ?? $sectionData['section_total'] ?? 0);
+            $scheduleDays = max(1, (float) ($sectionData['schedule_days'] ?? 1));
             $resources    = $sectionData['resources'] ?? [];
-            $startDate    = $request->plan_start_date;
-            $endDate      = $request->plan_end_date;
+
+            // Use linked schedule task dates if provided, otherwise fall back to plan dates
+            $taskStartRaw = $sectionData['task_start_date'] ?? null;
+            $taskEndRaw   = $sectionData['task_end_date'] ?? null;
+            $startDate    = ($taskStartRaw && $taskStartRaw !== '') ? $taskStartRaw : $request->plan_start_date;
+            $endDate      = ($taskEndRaw && $taskEndRaw !== '') ? $taskEndRaw : $request->plan_end_date;
+
+            // Recalculate duration from dates if we have real task dates
+            if ($taskStartRaw && $taskEndRaw && $taskStartRaw !== '' && $taskEndRaw !== '') {
+                $scheduleDays = now()->parse($startDate)->diffInDays(now()->parse($endDate)) + 1;
+                $scheduleDays = max(1, $scheduleDays);
+            }
 
             // Calculate planned cost for this task
             $taskCost = 0;
             foreach ($resources as $resource) {
-                $qty = $sectionTotal * (float)($resource['ratio'] ?? 1);
+                $qty = (float)($resource['qty'] ?? 0);
                 $taskCost += round($qty * (float)($resource['rate'] ?? 0), 2);
             }
 
@@ -500,10 +536,10 @@ class TakeoffController extends Controller
                 'parent_task_id'   => null,
                 'wbs_code'         => (string)$wbsIdx,
                 'name'             => $sectionName,
-                'description'      => "Section from takeoff: {$takeoff->title}. Total Qty: {$sectionTotal}",
+                'description'      => "Section from takeoff: {$takeoff->title}. Worked Qty: {$workedQty}, Schedule Days: {$scheduleDays}",
                 'start_date'       => $startDate,
                 'end_date'         => $endDate,
-                'duration_days'    => now()->parse($startDate)->diffInDays(now()->parse($endDate)),
+                'duration_days'    => $scheduleDays,
                 'planned_progress' => 0,
                 'actual_progress'  => 0,
                 'planned_cost'     => $taskCost,
@@ -515,7 +551,7 @@ class TakeoffController extends Controller
             // Add resources to the task
             foreach ($resources as $resource) {
                 if (empty($resource['name'])) continue;
-                $qty  = round($sectionTotal * (float)($resource['ratio'] ?? 1), 3);
+                $qty  = (float)($resource['qty'] ?? 0);
                 $rate = (float)($resource['rate'] ?? 0);
 
                 ErpPlanTaskResource::create([
@@ -527,19 +563,26 @@ class TakeoffController extends Controller
                     'rate'          => $rate,
                     'total_cost'    => round($qty * $rate, 2),
                     'details'       => [
-                        'section_name'  => $sectionName,
-                        'section_total' => $sectionTotal,
-                        'ratio'         => $resource['ratio'] ?? 1,
-                        'from_takeoff'  => $takeoff->id,
+                        'worked_quantity'  => $workedQty,
+                        'schedule_days'    => $scheduleDays,
+                        'req_daily_output' => (float)($resource['req_daily_output'] ?? 0),
+                        'std_avg_output'   => (float)($resource['std_avg_output'] ?? 0),
+                        'output_ratio'     => (float)($resource['output_ratio'] ?? 1),
+                        'per_day_qty'      => (float)($resource['per_day_qty'] ?? 0),
+                        'total_qty'        => $qty,
+                        'std_resource_qty' => (float)($resource['std_resource_qty'] ?? 0),
+                        'section_name'     => $sectionName,
+                        'from_takeoff'     => $takeoff->id,
                     ],
                 ]);
             }
             $wbsIdx++;
         }
 
+        // Redirect directly to Project Schedules (Gantt tab) in ERP Plans index
         return redirect()
-            ->route('erp-plans.show', $plan)
-            ->with('success', 'ERP Plan "' . $plan->name . '" created successfully from takeoff with ' . ($wbsIdx - 1) . ' tasks.');
+            ->route('erp-plans.index', ['schedules_page' => 1])
+            ->with('success', 'ERP Plan "' . $plan->name . '" created successfully from takeoff! Takeoff is locked.');
     }
 
     // ─────────────────────────────────────────────────────────────────

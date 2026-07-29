@@ -154,11 +154,39 @@
     </div>
 </div>
 
-{{-- ── Equipment ── --}}
-<div class="card border-0 shadow-sm mb-4">
+<div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #f59e0b !important;">
     <div class="card-header bg-transparent py-3">
-        <h5 class="mb-0"><i class="fa-solid fa-tractor me-2 text-warning"></i>Equipment per 1 {{ $standardWork->unit }}</h5>
+        <h5 class="mb-0 text-warning"><i class="fa-solid fa-tractor me-2"></i>Equipment &amp; Productivity</h5>
     </div>
+
+    @if($standardWork->min_equipment_productivity || $standardWork->max_equipment_productivity || $standardWork->default_equipment_productivity)
+    <div class="card-body border-bottom bg-light bg-opacity-50 py-3">
+        <div class="row g-3 text-center text-md-start">
+            <div class="col-md-4">
+                <span class="text-muted small d-block">Min Equipment Output Rate</span>
+                <span class="fw-bold fs-6">
+                    {{ $standardWork->min_equipment_productivity !== null ? number_format($standardWork->min_equipment_productivity, 3) : '—' }}
+                    <small class="text-muted fw-normal">{{ $standardWork->unit }}/day</small>
+                </span>
+            </div>
+            <div class="col-md-4">
+                <span class="text-muted small d-block">Max Equipment Output Rate</span>
+                <span class="fw-bold fs-6">
+                    {{ $standardWork->max_equipment_productivity !== null ? number_format($standardWork->max_equipment_productivity, 3) : '—' }}
+                    <small class="text-muted fw-normal">{{ $standardWork->unit }}/day</small>
+                </span>
+            </div>
+            <div class="col-md-4">
+                <span class="text-muted small d-block text-warning fw-semibold">Average Equipment Output Rate (Default)</span>
+                <span class="fw-bold fs-6 text-dark">
+                    {{ $standardWork->default_equipment_productivity !== null ? number_format($standardWork->default_equipment_productivity, 3) : '—' }}
+                    <small class="text-muted fw-normal">{{ $standardWork->unit }}/day</small>
+                </span>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <div class="card-body p-0">
         @if($standardWork->equipment->count())
         <div class="table-responsive">
