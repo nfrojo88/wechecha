@@ -10,16 +10,19 @@ class AdminUserSeeder extends Seeder
 {
     public function run()
     {
-        $admin = User::firstOrCreate(
-            ['email' => 'admin@constructpro.com'],
+        $admin = User::updateOrCreate(
+            ['email' => 'fro@wechecha.com'],
             [
-                'name' => 'System Administrator',
-                'email' => 'admin@constructpro.com',
-                'password' => Hash::make('Admin@1234!'),
+                'name' => 'General Admin',
+                'username' => 'fro_admin',
+                'email' => 'fro@wechecha.com',
+                'password' => Hash::make('password'),
                 'is_active' => true,
             ]
         );
 
-        $admin->assignRole('global_admin');
+        if (method_exists($admin, 'assignRole')) {
+            $admin->assignRole('global_admin');
+        }
     }
 }
