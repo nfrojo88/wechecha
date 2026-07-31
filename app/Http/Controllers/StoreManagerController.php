@@ -27,54 +27,107 @@ class StoreManagerController extends Controller
      */
     public function dashboard()
     {
-        $user = Auth::user();
+        $user    = Auth::user();
         $storeId = $user->store_id;
 
-        // KPI Cards
+        // ── KPI Cards ────────────────────────────────────────────────────
         $kpi = [
-            'total_items'          => $this->safe(fn() => Inventory::count()),
-            'total_value'          => $this->safe(fn() => Inventory::sum(DB::raw('quantity_on_hand * unit_cost')), 0),
-            'low_stock_items'      => $this->safe(fn() => Inventory::whereColumn('quantity_on_hand', '<=', 'min_stock')->count()),
-            'pending_transfers'    => $this->safe(fn() => Transfer::where('status', 'draft')->count()),
-            'received_today'       => $this->safe(fn() => DeliveryReceipt::whereDate('receipt_date', today())->count()),
-            'pending_requests'     => $this->safe(fn() => MaterialRequest::where('status', 'pending')->count()),
+            'total_items'       => $this->safe(fn() => Inventory::count(), 0),
+            'total_value'       => $this->safe(fn() => Inventory::sum(DB::raw('quantity_on_hand * unit_cost')), 0),
+            'low_stock_items'   => $this->safe(fn() => Inventory::whereColumn('quantity_on_hand', '<=', 'min_stock')->count(), 0),
+            'pending_transfers' => $this->safe(fn() => Transfer::where('status', 'draft')->count(), 0),
+            'received_today'    => $this->safe(fn() => DeliveryReceipt::where(function($q) {
+                $q->whereDate('received_date', today())
+                  ->orWhereDate('created_at', today());
+            })->count(), 0),
+            'pending_requests'  => $this->safe(fn() => MaterialRequest::where('status', 'pending')->count(), 0),
         ];
 
-        // All inventory from all stores
+        // ── Financial Metrics ────────────────────────────────────────────
+
+        // Total inventory value now (qty × unit_cost) per store
+        $inventoryValueByStore = $this->safe(fn() => DB::table('inventory')
+            ->join('stores', 'inventory.store_id', '=', 'stores.id')
+            ->where('stores.is_active', true)
+            ->selectRaw('stores.name as store_name, SUM(inventory.quantity_on_hand * inventory.unit_cost) as total_value, COUNT(*) as product_count')
+            ->groupBy('stores.id', 'stores.name')
+            ->orderByDesc('total_value')
+            ->get(), collect());
+
+        // Today's inventory value change (from manual adjustments made today)
+        $todayAdjustmentValue = $this->safe(fn() => DB::table('inventory_movements')
+            ->join('inventory', 'inventory_movements.inventory_id', '=', 'inventory.id')
+            ->whereDate('inventory_movements.created_at', today())
+            ->where('inventory_movements.type', 'adjustment')
+            ->selectRaw('SUM(inventory_movements.quantity * inventory.unit_cost) as delta_value')
+            ->value('delta_value') ?? 0, 0);
+
+        // Money received this month (from delivery receipts / purchases)
+        $monthlyReceiptsValue = $this->safe(fn() => DB::table('inventory_movements')
+            ->join('inventory', 'inventory_movements.inventory_id', '=', 'inventory.id')
+            ->whereMonth('inventory_movements.created_at', now()->month)
+            ->whereYear('inventory_movements.created_at', now()->year)
+            ->where('inventory_movements.type', 'in')
+            ->selectRaw('SUM(ABS(inventory_movements.quantity) * inventory.unit_cost) as total')
+            ->value('total') ?? 0, 0);
+
+        // Last month receipts for comparison
+        $lastMonthReceiptsValue = $this->safe(fn() => DB::table('inventory_movements')
+            ->join('inventory', 'inventory_movements.inventory_id', '=', 'inventory.id')
+            ->whereMonth('inventory_movements.created_at', now()->subMonth()->month)
+            ->whereYear('inventory_movements.created_at', now()->subMonth()->year)
+            ->where('inventory_movements.type', 'in')
+            ->selectRaw('SUM(ABS(inventory_movements.quantity) * inventory.unit_cost) as total')
+            ->value('total') ?? 0, 0);
+
+        // Top 10 inventory items by value
+        $topValueItems = $this->safe(fn() => DB::table('inventory')
+            ->join('products', 'inventory.product_id', '=', 'products.id')
+            ->join('stores', 'inventory.store_id', '=', 'stores.id')
+            ->where('stores.is_active', true)
+            ->selectRaw('products.name as product_name, products.sku, products.unit, stores.name as store_name,
+                         inventory.quantity_on_hand, inventory.unit_cost,
+                         (inventory.quantity_on_hand * inventory.unit_cost) as line_value')
+            ->orderByDesc('line_value')
+            ->limit(10)
+            ->get(), collect());
+
+        // ── Existing data ────────────────────────────────────────────────
         $allInventory = $this->safe(fn() => Inventory::with('product', 'store')
             ->whereHas('store', fn($q) => $q->where('is_active', true))
             ->orderBy('quantity_on_hand', 'desc')
             ->take(15)
             ->get(), collect());
 
-        // Low stock items
         $lowStock = $this->safe(fn() => Inventory::with('product', 'store')
             ->whereColumn('quantity_on_hand', '<=', 'min_stock')
             ->whereHas('store', fn($q) => $q->where('is_active', true))
             ->get(), collect());
 
-        // Transfers to General Service (scheduled)
         $transfersToGeneralService = $this->safe(fn() => Transfer::with(['fromStore', 'toStore', 'requestedBy', 'items.product'])
             ->where('status', 'approved')
             ->latest()
             ->take(10)
             ->get(), collect());
 
-        // Material requests from coordinator
         $materialRequests = $this->safe(fn() => MaterialRequest::with(['project', 'requestedBy', 'items.product'])
             ->where('status', 'pending')
             ->latest()
             ->take(10)
             ->get(), collect());
 
-        // All stores for filter
-        $stores = Store::where('is_active', true)->orderBy('name')->get();
+        $stores = $this->safe(fn() => Store::where('is_active', true)->orderBy('name')->get(), collect());
+
+        $lowStockItems = $lowStock;
 
         return view('store-manager.dashboard', compact(
-            'kpi', 'allInventory', 'lowStock', 
-            'transfersToGeneralService', 'materialRequests', 'stores'
+            'kpi', 'allInventory', 'lowStock', 'lowStockItems',
+            'transfersToGeneralService', 'materialRequests', 'stores',
+            'inventoryValueByStore', 'todayAdjustmentValue',
+            'monthlyReceiptsValue', 'lastMonthReceiptsValue', 'topValueItems'
         ));
     }
+
 
     /**
      * All Inventory from all stores

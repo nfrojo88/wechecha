@@ -230,6 +230,11 @@ Route::get('register', [App\Http\Controllers\Auth\RegisterController::class, 'sh
 // Protected routes
 Route::middleware(['auth'])->group(function () {
     
+    // Unassigned role fallback page
+    Route::get('/pending-role', function () {
+        return view('auth.pending_role');
+    })->name('pending-role');
+    
     // --- Admin Dashboard Enhancements ---
     Route::middleware('role:global_admin|admin')->group(function () {
         Route::get('/admin/activity-logs', [ActivityLogController::class, 'index'])->name('admin.activity-logs');
@@ -269,17 +274,15 @@ Route::middleware(['auth'])->group(function () {
             } catch (\Throwable $seederErr) {
                 // ignore if seeder class name differs
             }
-            // Seed products if table is empty
+            // Seed/sync products dump
             try {
-                if (\App\Models\Product::count() === 0) {
-                    \Illuminate\Support\Facades\Artisan::call('db:seed', [
-                        '--class' => 'ProductSeeder',
-                        '--force' => true,
-                    ]);
-                    $output .= ' | Products seeded.';
-                }
+                \Illuminate\Support\Facades\Artisan::call('db:seed', [
+                    '--class' => 'ProductSeeder',
+                    '--force' => true,
+                ]);
+                $output .= ' | Products dumped/synced.';
             } catch (\Throwable $pe) {
-                // ignore
+                $output .= ' | Product seed notice: ' . $pe->getMessage();
             }
             // Seed Employees from employees.sql if employees table is empty
             try {
@@ -345,7 +348,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/coordinator/forecast',     [App\Http\Controllers\CoordinatorController::class, 'forecastDemand'])->name('coordinator.forecast');
     Route::get('/dashboard/site-engineer',  [App\Http\Controllers\DashboardController::class, 'siteEngineer'])->name('dashboard.site-engineer');
     Route::get('/dashboard/foreman',        [App\Http\Controllers\DashboardController::class, 'foreman'])->name('dashboard.foreman');
-    Route::get('/dashboard/store-manager',  [App\Http\Controllers\DashboardController::class, 'storeManager'])->name('dashboard.store-manager');
+    Route::get('/dashboard/store-manager',  fn() => redirect()->route('store-manager.dashboard'))->name('dashboard.store-manager');
     Route::get('/dashboard/hr',             [App\Http\Controllers\DashboardController::class, 'hr'])->name('dashboard.hr');
     Route::get('/dashboard/finance',        [App\Http\Controllers\DashboardController::class, 'finance'])->name('dashboard.finance');
     Route::get('/dashboard/purchase',       [App\Http\Controllers\DashboardController::class, 'purchase'])->name('dashboard.purchase');
@@ -376,6 +379,9 @@ Route::middleware(['auth'])->group(function () {
     // Inventory
     Route::prefix('inventory')->name('inventory.')->group(function () {
         Route::get('/', [InventoryController::class, 'index'])->name('index');
+        Route::get('bulk-adjust', [InventoryController::class, 'showBulkAdjust'])->name('bulk-adjust');
+        Route::post('bulk-adjust', [InventoryController::class, 'bulkAdjust'])->name('bulk-adjust.store');
+        Route::post('save-single', [InventoryController::class, 'saveSingle'])->name('save-single');
         Route::get('{inventory}', [InventoryController::class, 'show'])->name('show');
         Route::post('{inventory}/adjust', [InventoryController::class, 'adjust'])->name('adjust');
         Route::get('{inventory}/movements', [InventoryController::class, 'movements'])->name('movements');
@@ -599,8 +605,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('manpower-forecast/{manpowerForecast}/assign', [App\Http\Controllers\ManpowerForecastController::class, 'assignEmployee'])->name('manpower-forecast.assignEmployee');
     
     // ─── Finance Dashboard ──────────────────────────────────────────────────────
-    Route::get('/finance-dashboard', [App\Http\Controllers\FinanceDashboardController::class, 'index'])->name('finance.dashboard');
-    Route::get('/finance-dashboard/revenue-data', [App\Http\Controllers\FinanceDashboardController::class, 'revenueVsExpensesData'])->name('finance.dashboard.revenue-data');
+    // TODO: Create FinanceDashboardController before un-commenting these routes
+    // Route::get('/finance-dashboard', [App\Http\Controllers\FinanceDashboardController::class, 'index'])->name('finance.dashboard');
+    // Route::get('/finance-dashboard/revenue-data', [App\Http\Controllers\FinanceDashboardController::class, 'revenueVsExpensesData'])->name('finance.dashboard.revenue-data');
+    Route::get('/finance-dashboard', function() { return redirect()->route('dashboard'); })->name('finance.dashboard');
+    Route::get('/finance-dashboard/revenue-data', function() { return response()->json([]); })->name('finance.dashboard.revenue-data');
 
     // ─── Assigned Accounts Portal ───────────────────────────────────────────────
     Route::get('/assigned-accounts', [App\Http\Controllers\AssignedAccountController::class, 'index'])->name('assigned-accounts.index');
