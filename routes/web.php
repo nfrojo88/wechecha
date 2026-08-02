@@ -23,6 +23,31 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// Git pull deployment route (triggers server-side git pull from GitHub)
+Route::get('/deploy-from-github', function () {
+    $output = [];
+    $return = 0;
+
+    // Run git pull
+    exec('cd ' . base_path() . ' && git pull origin main 2>&1', $output, $return);
+    $pullResult = implode("\n", $output);
+
+    // Clear caches
+    $cacheOutput = [];
+    exec('cd ' . base_path() . ' && php artisan config:clear 2>&1 && php artisan route:clear 2>&1 && php artisan view:clear 2>&1', $cacheOutput);
+    $cacheResult = implode("\n", $cacheOutput);
+
+    $color = ($return === 0) ? 'green' : 'red';
+    $icon  = ($return === 0) ? '✅' : '❌';
+
+    return "<h2 style='font-family:sans-serif;color:{$color}'>{$icon} Git Pull Result (exit: {$return})</h2>"
+         . "<pre style='background:#f1f5f9;padding:16px;border-radius:8px'>" . htmlspecialchars($pullResult) . "</pre>"
+         . "<h3 style='font-family:sans-serif'>Cache Clear Output:</h3>"
+         . "<pre style='background:#f1f5f9;padding:16px;border-radius:8px'>" . htmlspecialchars($cacheResult) . "</pre>"
+         . "<p><a href='/public/index.php/migrate-material-prices'>→ Run Migrations</a> | "
+         . "<a href='/public/index.php/debug-store-manager-error'>→ Debug Store Manager</a></p>";
+});
+
 // One-click migration route for all pending migrations
 Route::get('/migrate-material-prices', function () {
     try {
