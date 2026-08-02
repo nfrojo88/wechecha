@@ -107,14 +107,14 @@ class EmployeeController extends Controller
             'department'      => 'nullable|string|max:100',
             'project_id'      => 'nullable|exists:projects,id',
             'site_assignment' => 'nullable|string|max:100',
-            'employment_type' => 'required|in:permanent,contract,daily',
-            'date_of_joining' => 'required|date',
-            'basic_salary'    => 'required|numeric|min:0',
+            'employment_type' => 'nullable|in:permanent,contract,daily',
+            'date_of_joining' => 'nullable|date',
+            'basic_salary'    => 'nullable|numeric|min:0',
             'transport_allowance' => 'nullable|numeric|min:0',
             'house_allowance' => 'nullable|numeric|min:0',
             'position_allowance' => 'nullable|numeric|min:0',
             'contract_type' => 'nullable|string',
-            'status'          => 'required|in:active,suspended,terminated',
+            'status'          => 'nullable|in:active,suspended,terminated',
             'bank_name'       => 'nullable|string|max:255',
             'account_number'  => 'nullable|string|max:50',
             'notes'           => 'nullable|string',
@@ -135,7 +135,10 @@ class EmployeeController extends Controller
             'device_user_id' => 'nullable|string|max:100',
         ]);
 
-        // Default allowances to 0 if null
+        // Apply defaults for optional fields
+        $validated['employment_type']    = $validated['employment_type'] ?? 'permanent';
+        $validated['status']             = $validated['status'] ?? 'active';
+        $validated['basic_salary']       = $validated['basic_salary'] ?? 0;
         $validated['transport_allowance'] = $validated['transport_allowance'] ?? 0;
         $validated['house_allowance'] = $validated['house_allowance'] ?? 0;
         $validated['position_allowance'] = $validated['position_allowance'] ?? 0;
@@ -243,7 +246,7 @@ class EmployeeController extends Controller
                     'employee_code' => 'required|string',
                     'full_name' => 'required|string|max:255',
                     'phone' => 'required|string|max:20',
-                    'department' => 'required|string|max:100',
+                    'department' => 'nullable|string|max:100',
                     'role_title' => 'nullable|string|max:255',
                 ]);
                 break;
@@ -260,9 +263,9 @@ class EmployeeController extends Controller
                 ]);
                 
                 $request->validate([
-                    'employment_type' => 'required|in:permanent,contract,daily',
-                    'date_of_joining' => 'required|date',
-                    'status' => 'required|in:active,suspended,terminated',
+                    'employment_type' => 'nullable|in:permanent,contract,daily',
+                    'date_of_joining' => 'nullable|date',
+                    'status' => 'nullable|in:active,suspended,terminated',
                 ]);
                 break;
             case 3:
@@ -282,7 +285,7 @@ class EmployeeController extends Controller
                 ]);
                 
                 $request->validate([
-                    'basic_salary' => 'required|numeric|min:0',
+                    'basic_salary' => 'nullable|numeric|min:0',
                     'transport_allowance' => 'nullable|numeric|min:0',
                     'house_allowance' => 'nullable|numeric|min:0',
                     'position_allowance' => 'nullable|numeric|min:0',

@@ -342,7 +342,8 @@ class RegisterController extends Controller
             return '/';
         }
 
-        $role = $user->roles->first()->name;
+        $rawRole = $user->roles->first()->name;
+        $role = strtolower(str_replace([' ', '-'], '_', trim($rawRole)));
         
         return match($role) {
             'global_admin', 'admin' => route('dashboard.admin'),
@@ -353,8 +354,8 @@ class RegisterController extends Controller
             'coordinator'         => route('dashboard.coordinator'),
             'site_engineer'       => route('dashboard.site-engineer'),
             'foreman'             => route('dashboard.foreman'),
-            'store_manager'       => route('dashboard.store-manager'),
-            'store_keeper'        => route('dashboard.store-manager'),
+            'store_manager', 'storemanager', 'store' => route('store-manager.dashboard'),
+            'store_keeper', 'storekeeper'           => route('store-manager.dashboard'),
             'hr', 'hr_officer'    => route('dashboard.hr'),
             'finance', 'finance_head' => route('dashboard.finance'),
             'purchase', 'purchase_manager', 'market_research' => route('dashboard.purchase'),

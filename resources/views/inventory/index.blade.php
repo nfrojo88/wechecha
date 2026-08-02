@@ -5,6 +5,11 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3 mb-0">Inventory</h1>
+    @can('inventory.edit')
+    <a href="{{ route('inventory.bulk-adjust') }}" class="btn btn-warning fw-semibold shadow-sm px-4" style="border-radius:10px;">
+        <i class="fa-solid fa-sliders me-2"></i> Manual Stock Adjustment
+    </a>
+    @endcan
 </div>
 
 {{-- Filters --}}

@@ -36,6 +36,95 @@ Route::get('/migrate-material-prices', function () {
     }
 });
 
+// Diagnostic route to reveal store-manager error
+Route::get('/debug-store-manager-error', function () {
+    try {
+        $user = \App\Models\User::whereHas('roles', fn($q) => $q->where('name', 'store_manager'))->with('employee')->first();
+        
+        $results = [];
+
+        // 1. Check DB connection
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        $results[] = '✅ DB connected to: ' . \Illuminate\Support\Facades\DB::connection()->getDatabaseName();
+
+        // 2. Check store_manager user
+        $results[] = $user ? "✅ Found store_manager user: {$user->name} (id={$user->id})" : "❌ No user with role 'store_manager' found";
+
+        // 3. Check employee record
+        if ($user) {
+            $emp = $user->employee;
+            $results[] = $emp ? "✅ Employee record found: date_of_joining=" . ($emp->date_of_joining ?? 'NULL') : "⚠️ No employee record for this user";
+        }
+
+        // 4. Check tables exist
+        $tables = ['inventory', 'stores', 'products', 'transfers', 'inventory_movements', 'delivery_receipts', 'material_requests'];
+        foreach ($tables as $t) {
+            $exists = \Illuminate\Support\Facades\Schema::hasTable($t);
+            $results[] = ($exists ? "✅" : "❌") . " Table '{$t}' " . ($exists ? "exists" : "MISSING");
+        }
+
+        // 5. Check columns on stores
+        $hasCols = [
+            'stores' => ['is_active'],
+            'products' => ['is_active'],
+            'delivery_receipts' => ['received_date', 'status'],
+        ];
+        foreach ($hasCols as $tbl => $cols) {
+            foreach ($cols as $col) {
+                $ok = \Illuminate\Support\Facades\Schema::hasColumn($tbl, $col);
+                $results[] = ($ok ? "✅" : "❌") . " Column '{$tbl}.{$col}' " . ($ok ? "exists" : "MISSING");
+            }
+        }
+
+        // 6. Try the dashboard query
+        try {
+            $cnt = \App\Models\Inventory::count();
+            $results[] = "✅ Inventory count: $cnt";
+        } catch (\Throwable $e) {
+            $results[] = "❌ Inventory query: " . $e->getMessage();
+        }
+
+        try {
+            $cnt = \App\Models\Store::where('is_active', true)->count();
+            $results[] = "✅ Active stores: $cnt";
+        } catch (\Throwable $e) {
+            $results[] = "❌ Store query: " . $e->getMessage();
+        }
+
+        // 7. Try loading the view
+        try {
+            $view = view('store-manager.dashboard', [
+                'kpi' => ['total_items'=>0,'total_value'=>0,'low_stock_items'=>0,'pending_transfers'=>0,'received_today'=>0,'pending_requests'=>0],
+                'inventoryValueByStore' => collect(),
+                'todayAdjustmentValue' => 0,
+                'monthlyReceiptsValue' => 0,
+                'lastMonthReceiptsValue' => 0,
+                'topValueItems' => collect(),
+                'allInventory' => collect(),
+                'lowStock' => collect(),
+                'lowStockItems' => collect(),
+                'transfersToGeneralService' => collect(),
+                'materialRequests' => collect(),
+                'stores' => collect(),
+            ])->render();
+            $results[] = "✅ View rendered OK (" . strlen($view) . " bytes)";
+        } catch (\Throwable $e) {
+            $results[] = "❌ View render error: " . $e->getMessage() . "\n   in " . $e->getFile() . " line " . $e->getLine();
+        }
+
+        $html = '<style>body{font-family:monospace;padding:20px;} .ok{color:green;} .err{color:red;}</style>';
+        $html .= '<h2>Store Manager Debug Report</h2><pre>';
+        foreach ($results as $r) {
+            $html .= htmlspecialchars($r) . "\n";
+        }
+        $html .= '</pre>';
+        return $html;
+
+    } catch (\Throwable $e) {
+        return '<pre style="color:red;padding:20px;font-family:monospace;">CRITICAL ERROR: ' . htmlspecialchars($e->getMessage()) . "\n\n" . htmlspecialchars($e->getTraceAsString()) . '</pre>';
+    }
+});
+
 // ====== TEMPORARY: SMS Test Route - Remove after testing ======
 Route::get('/test-sms/{phone}', function ($phone) {
     $smsService = new \App\Services\SmsEthiopiaService();

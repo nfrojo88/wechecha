@@ -47,10 +47,12 @@ class LoginController extends Controller
                     $localPhone = '0' . substr($phoneDigits, 3);
                 }
 
-                // First check users table
-                $user = \App\Models\User::where('phone', $intlPhone)
-                    ->orWhere('phone', $localPhone)
-                    ->first();
+                // First check users table if phone column exists
+                if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'phone')) {
+                    $user = \App\Models\User::where('phone', $intlPhone)
+                        ->orWhere('phone', $localPhone)
+                        ->first();
+                }
 
                 // If not in users, check employees
                 if (!$user) {
@@ -79,7 +81,7 @@ class LoginController extends Controller
             }
 
             // Check GM approval restriction
-            if ($authUser->employee && !$authUser->employee->is_approved_by_gm) {
+            if ($authUser->employee && !$authUser->employee->is_approved_by_gm && $authUser->employee->created_at) {
                 // Check if 1 week has passed since registration
                 if ($authUser->employee->created_at->diffInDays(now()) >= 7) {
                     Auth::logout();
@@ -109,10 +111,11 @@ class LoginController extends Controller
     {
         $user = auth()->user();
         if (!$user || !$user->roles || $user->roles->isEmpty()) {
-            return '/';
+            return route('pending-role');
         }
 
-        $role = $user->roles->first()->name;
+        $rawRole = $user->roles->first()->name;
+        $role = strtolower(str_replace([' ', '-'], '_', trim($rawRole)));
         
         return match($role) {
             'global_admin', 'admin' => route('dashboard.admin'),
@@ -123,8 +126,8 @@ class LoginController extends Controller
             'coordinator'         => route('dashboard.coordinator'),
             'site_engineer'       => route('dashboard.site-engineer'),
             'foreman'             => route('dashboard.foreman'),
-            'store_manager'       => route('dashboard.store-manager'),
-            'store_keeper'        => route('dashboard.store-manager'),
+            'store_manager', 'storemanager', 'store' => route('store-manager.dashboard'),
+            'store_keeper', 'storekeeper'           => route('store-manager.dashboard'),
             'hr', 'hr_officer'    => route('dashboard.hr'),
             'finance', 'finance_head' => route('dashboard.finance'),
             'purchase', 'purchase_manager', 'market_research' => route('dashboard.purchase'),
@@ -135,7 +138,7 @@ class LoginController extends Controller
             'law'                 => route('subcon.index'),
             'marketing'           => route('marketing.dashboard'),
             'audit_team'          => route('audit.index'),
-            default               => route('dashboard.admin'),
+            default               => route('pending-role'),
         };
     }
 }

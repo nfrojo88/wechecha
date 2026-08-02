@@ -136,7 +136,7 @@ class Employee extends Model
      */
     public function isGuaranteeLetterExpired()
     {
-        if (!$this->guarantee_letter_required || $this->guarantee_letter) {
+        if (!$this->guarantee_letter_required || $this->guarantee_letter || !$this->date_of_joining) {
             return false;
         }
         
@@ -159,7 +159,7 @@ class Employee extends Model
      */
     public function getIsGuaranteeOverdueAttribute()
     {
-        if (!$this->guarantee_letter_required || $this->guarantee_letter) {
+        if (!$this->guarantee_letter_required || $this->guarantee_letter || !$this->date_of_joining) {
             return false;
         }
         
@@ -171,7 +171,7 @@ class Employee extends Model
      */
     public function getShowGuaranteeWarningAttribute()
     {
-        if (!$this->guarantee_letter_required || $this->guarantee_letter) {
+        if (!$this->guarantee_letter_required || $this->guarantee_letter || !$this->date_of_joining) {
             return false;
         }
         
@@ -183,7 +183,7 @@ class Employee extends Model
      */
     public function getDaysUntilGuaranteeDeadlineAttribute()
     {
-        if (!$this->guarantee_letter_required || $this->guarantee_letter) {
+        if (!$this->guarantee_letter_required || $this->guarantee_letter || !$this->date_of_joining) {
             return null;
         }
         

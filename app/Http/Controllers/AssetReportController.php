@@ -272,7 +272,7 @@ class AssetReportController extends Controller
                     $employee->role_title ?? 'N/A',
                     $employee->activeAssets()->count(),
                     $employee->total_asset_value ?? 0,
-                    $employee->date_of_joining->format('Y-m-d')
+                    $employee->date_of_joining ? $employee->date_of_joining->format('Y-m-d') : 'N/A'
                 ]);
             }
 

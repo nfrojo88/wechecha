@@ -284,42 +284,9 @@
             @endif
         </div>
         @if($products->hasPages())
-        <nav>
-            <ul class="pagination mb-0">
-                {{-- Previous --}}
-                @if($products->onFirstPage())
-                <li class="page-item disabled">
-                    <span class="page-link"><i class="fas fa-chevron-left" style="font-size:.65rem;"></i></span>
-                </li>
-                @else
-                <li class="page-item">
-                    <a class="page-link" href="{{ $products->previousPageUrl() }}&{{ http_build_query(request()->except('page')) }}">
-                        <i class="fas fa-chevron-left" style="font-size:.65rem;"></i>
-                    </a>
-                </li>
-                @endif
-
-                {{-- Page numbers --}}
-                @foreach($products->getUrlRange(1, $products->lastPage()) as $page => $url)
-                <li class="page-item {{ $page == $products->currentPage() ? 'active' : '' }}">
-                    <a class="page-link" href="{{ $url }}&{{ http_build_query(request()->except('page')) }}">{{ $page }}</a>
-                </li>
-                @endforeach
-
-                {{-- Next --}}
-                @if($products->hasMorePages())
-                <li class="page-item">
-                    <a class="page-link" href="{{ $products->nextPageUrl() }}&{{ http_build_query(request()->except('page')) }}">
-                        <i class="fas fa-chevron-right" style="font-size:.65rem;"></i>
-                    </a>
-                </li>
-                @else
-                <li class="page-item disabled">
-                    <span class="page-link"><i class="fas fa-chevron-right" style="font-size:.65rem;"></i></span>
-                </li>
-                @endif
-            </ul>
-        </nav>
+        <div>
+            {{ $products->withQueryString()->links() }}
+        </div>
         @endif
     </div>
 </div>
