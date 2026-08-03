@@ -54,7 +54,16 @@ class StoreManagerController extends Controller
 
             // ── KPI Cards ────────────────────────────────────────────────
             $kpi['total_items']       = $this->safe(fn() => Inventory::count(), 0);
-            $kpi['total_value']       = $this->safe(fn() => Inventory::sum(DB::raw('quantity_on_hand * unit_cost')), 0);
+            $kpi['total_value']       = $this->safe(fn() => DB::table('inventory')
+                ->join('products', 'inventory.product_id', '=', 'products.id')
+                ->whereNull('products.deleted_at')
+                ->sum(DB::raw('inventory.quantity_on_hand * COALESCE(
+                    inventory.unit_cost,
+                    (SELECT price FROM material_prices WHERE product_id = products.id ORDER BY effective_date DESC, id DESC LIMIT 1),
+                    (SELECT unit_price FROM purchase_order_items WHERE product_id = products.id ORDER BY id DESC LIMIT 1),
+                    products.unit_price,
+                    0
+                )')), 0);
             $kpi['low_stock_items']   = $this->safe(fn() => Inventory::whereColumn('quantity_on_hand', '<=', 'min_stock')->count(), 0);
             $kpi['pending_transfers'] = $this->safe(fn() => Transfer::where('status', 'draft')->count(), 0);
             $kpi['received_today']    = $this->safe(fn() => DeliveryReceipt::where(function($q) {
@@ -66,8 +75,15 @@ class StoreManagerController extends Controller
             // ── Financial Metrics ────────────────────────────────────────
             $inventoryValueByStore = $this->safe(fn() => DB::table('inventory')
                 ->join('stores', 'inventory.store_id', '=', 'stores.id')
+                ->join('products', 'inventory.product_id', '=', 'products.id')
                 ->where('stores.is_active', true)
-                ->selectRaw('stores.name as store_name, SUM(inventory.quantity_on_hand * inventory.unit_cost) as total_value, COUNT(*) as product_count')
+                ->selectRaw('stores.name as store_name, SUM(inventory.quantity_on_hand * COALESCE(
+                    inventory.unit_cost,
+                    (SELECT price FROM material_prices WHERE product_id = products.id ORDER BY effective_date DESC, id DESC LIMIT 1),
+                    (SELECT unit_price FROM purchase_order_items WHERE product_id = products.id ORDER BY id DESC LIMIT 1),
+                    products.unit_price,
+                    0
+                )) as total_value, COUNT(*) as product_count')
                 ->groupBy('stores.id', 'stores.name')
                 ->orderByDesc('total_value')
                 ->get(), collect());
@@ -100,8 +116,21 @@ class StoreManagerController extends Controller
                 ->join('stores', 'inventory.store_id', '=', 'stores.id')
                 ->where('stores.is_active', true)
                 ->selectRaw('products.name as product_name, products.sku, products.unit, stores.name as store_name,
-                             inventory.quantity_on_hand, inventory.unit_cost,
-                             (inventory.quantity_on_hand * inventory.unit_cost) as line_value')
+                             inventory.quantity_on_hand,
+                             COALESCE(
+                                inventory.unit_cost,
+                                (SELECT price FROM material_prices WHERE product_id = products.id ORDER BY effective_date DESC, id DESC LIMIT 1),
+                                (SELECT unit_price FROM purchase_order_items WHERE product_id = products.id ORDER BY id DESC LIMIT 1),
+                                products.unit_price,
+                                0
+                             ) as unit_cost,
+                             (inventory.quantity_on_hand * COALESCE(
+                                inventory.unit_cost,
+                                (SELECT price FROM material_prices WHERE product_id = products.id ORDER BY effective_date DESC, id DESC LIMIT 1),
+                                (SELECT unit_price FROM purchase_order_items WHERE product_id = products.id ORDER BY id DESC LIMIT 1),
+                                products.unit_price,
+                                0
+                             )) as line_value')
                 ->orderByDesc('line_value')
                 ->limit(10)
                 ->get(), collect());

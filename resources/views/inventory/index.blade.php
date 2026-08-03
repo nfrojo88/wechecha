@@ -73,7 +73,24 @@
                 </thead>
                 <tbody>
                     @forelse($inventory as $item)
-                    @php $isLow = $item->quantity_on_hand <= $item->min_stock && $item->min_stock > 0; @endphp
+                    @php
+                        $isLow = $item->quantity_on_hand <= $item->min_stock && $item->min_stock > 0;
+                        $effectiveCost = (float) (
+                            $item->unit_cost ?: (
+                                \Illuminate\Support\Facades\DB::table('material_prices')
+                                    ->where('product_id', $item->product_id)
+                                    ->orderByDesc('effective_date')
+                                    ->orderByDesc('id')
+                                    ->value('price') ?: (
+                                        \Illuminate\Support\Facades\DB::table('purchase_order_items')
+                                            ->where('product_id', $item->product_id)
+                                            ->orderByDesc('id')
+                                            ->value('unit_price') ?: ($item->product->unit_price ?? 0)
+                                    )
+                            )
+                        );
+                        $totalVal = $item->quantity_on_hand * $effectiveCost;
+                    @endphp
                     <tr class="{{ $isLow ? 'table-warning' : '' }}">
                         <td>{{ $item->store->name }}</td>
                         <td>
@@ -86,8 +103,8 @@
                         <td class="{{ $isLow ? 'text-danger fw-bold' : '' }}">
                             {{ number_format($item->quantity_available, 3) }}
                         </td>
-                        <td>{{ $item->unit_cost ? number_format($item->unit_cost, 2) : '—' }}</td>
-                        <td>{{ $item->total_value ? number_format($item->total_value, 2) : '—' }}</td>
+                        <td>{{ $effectiveCost ? number_format($effectiveCost, 2) : '—' }}</td>
+                        <td class="fw-bold text-success">{{ $totalVal ? number_format($totalVal, 2) : '—' }}</td>
                         <td>
                             @if($isLow)
                             <span class="badge bg-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>Low</span>

@@ -66,6 +66,23 @@
                     </thead>
                     <tbody>
                         @forelse($inventory as $item)
+                        @php
+                            $effectiveCost = (float) (
+                                $item->unit_cost ?: (
+                                    \Illuminate\Support\Facades\DB::table('material_prices')
+                                        ->where('product_id', $item->product_id)
+                                        ->orderByDesc('effective_date')
+                                        ->orderByDesc('id')
+                                        ->value('price') ?: (
+                                            \Illuminate\Support\Facades\DB::table('purchase_order_items')
+                                                ->where('product_id', $item->product_id)
+                                                ->orderByDesc('id')
+                                                ->value('unit_price') ?: ($item->product->unit_price ?? 0)
+                                        )
+                                )
+                            );
+                            $totalVal = $item->quantity_on_hand * $effectiveCost;
+                        @endphp
                         <tr>
                             <td>
                                 <strong>{{ $item->product->name ?? 'N/A' }}</strong>
@@ -78,8 +95,8 @@
                             <td class="text-end fw-bold">{{ number_format($item->quantity_on_hand, 3) }}</td>
                             <td class="text-end">{{ number_format($item->quantity_reserved ?? 0, 3) }}</td>
                             <td class="text-end">{{ number_format($item->min_stock, 3) }}</td>
-                            <td class="text-end">{{ number_format($item->unit_cost, 2) }}</td>
-                            <td class="text-end fw-bold">{{ number_format($item->quantity_on_hand * $item->unit_cost, 2) }}</td>
+                            <td class="text-end">{{ number_format($effectiveCost, 2) }}</td>
+                            <td class="text-end fw-bold text-success">{{ number_format($totalVal, 2) }}</td>
                             <td>
                                 @if($item->quantity_on_hand <= $item->min_stock)
                                     <span class="badge bg-danger">Low Stock</span>
