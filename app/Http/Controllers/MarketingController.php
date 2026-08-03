@@ -150,7 +150,14 @@ class MarketingController extends Controller
         $products  = $this->safe(fn() => Product::orderBy('name')->get(), collect());
         $roles     = $this->safe(fn() => \App\Models\Designation::orderBy('title')->get(), collect());
         $equipment = $this->safe(fn() => \App\Models\EquipmentMaster::orderBy('name')->get(), collect());
-        return view('marketing.prices.create', compact('products', 'roles', 'equipment'));
+        
+        $priceHistory = $this->safe(fn() => MaterialPrice::with('product', 'creator')
+            ->orderBy('effective_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->take(15)
+            ->get(), collect());
+
+        return view('marketing.prices.create', compact('products', 'roles', 'equipment', 'priceHistory'));
     }
 
     /**

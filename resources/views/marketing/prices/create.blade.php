@@ -178,9 +178,10 @@
     </div>
     @endif
 
-    <div class="row justify-content-center">
-        <div class="col-lg-9 col-xl-8">
-            <div class="price-card">
+    <div class="row g-4">
+        {{-- Left Column: Price Entry Form --}}
+        <div class="col-lg-7 col-xl-7">
+            <div class="price-card h-100">
                 
                 <div class="price-card-header d-flex align-items-center justify-content-between">
                     <div>
@@ -192,7 +193,7 @@
                     </span>
                 </div>
 
-                <div class="card-body p-4 p-md-5">
+                <div class="card-body p-4 p-md-4">
                     <form method="POST" action="{{ route('marketing.prices.store') }}">
                         @csrf
 
@@ -349,6 +350,68 @@
                         </div>
 
                     </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- Right Column: White Section - Price History & Detail List --}}
+        <div class="col-lg-5 col-xl-5">
+            <div class="bg-white border rounded-4 shadow-sm p-4 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
+                    <div>
+                        <h6 class="fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-list-check text-primary me-2"></i>Price History & Details
+                        </h6>
+                        <span class="text-muted small">Live price intelligence records & recent updates</span>
+                    </div>
+                    <span class="badge bg-primary-subtle text-primary fw-bold px-2.5 py-1.5 rounded-pill small">
+                        {{ count($priceHistory ?? []) }} Records
+                    </span>
+                </div>
+
+                {{-- Live Search Filter --}}
+                <div class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </span>
+                        <input type="text" id="historySearchInput" class="form-control bg-light border-start-0 text-dark small" placeholder="Filter history list by material name, category..." onkeyup="filterHistoryList()">
+                    </div>
+                </div>
+
+                {{-- History Detail List --}}
+                <div style="max-height: 480px; overflow-y: auto;" class="pe-1">
+                    @forelse($priceHistory ?? [] as $record)
+                    <div class="history-item p-3 mb-2 rounded-3 border bg-light-subtle hover-shadow-sm transition-all" data-search="{{ strtolower(($record->product->name ?? '') . ' ' . ($record->product->category ?? '') . ' ' . ($record->source ?? '')) }}">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <div class="fw-bold text-dark text-truncate" style="max-width: 200px;">
+                                {{ $record->product->name ?? 'Resource Item #' . $record->product_id }}
+                            </div>
+                            <span class="badge bg-success-subtle text-success fw-bold">
+                                ETB {{ number_format($record->price, 2) }}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center small text-muted">
+                            <div>
+                                <span class="badge bg-secondary-subtle text-secondary me-1">{{ $record->product->unit ?? 'unit' }}</span>
+                                <span>{{ $record->effective_date ? $record->effective_date->format('M d, Y') : 'N/A' }}</span>
+                            </div>
+                            <div class="fst-italic fs-7 text-truncate" style="max-width: 130px;">
+                                By {{ $record->creator->name ?? 'System' }}
+                            </div>
+                        </div>
+                        @if($record->notes)
+                        <div class="mt-2 text-muted small border-top pt-1 text-truncate" title="{{ $record->notes }}">
+                            <i class="fa-solid fa-quote-left text-muted me-1 fs-7"></i>{{ $record->notes }}
+                        </div>
+                        @endif
+                    </div>
+                    @empty
+                    <div class="text-center py-4 text-muted">
+                        <i class="fa-solid fa-folder-open fs-3 mb-2 d-block opacity-50"></i>
+                        <p class="mb-0 small">No recent market price entries recorded yet.</p>
+                    </div>
+                    @endforelse
                 </div>
             </div>
         </div>
@@ -524,6 +587,18 @@ function onTomSelectChange(instance) {
             maximumFractionDigits: 2
         });
     }
+}
+
+function filterHistoryList() {
+    const query = (document.getElementById('historySearchInput')?.value || '').toLowerCase().trim();
+    document.querySelectorAll('.history-item').forEach(item => {
+        const text = item.dataset.search || item.innerText.toLowerCase();
+        if (!query || text.includes(query)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
 }
 
 document.addEventListener('DOMContentLoaded', function() {
