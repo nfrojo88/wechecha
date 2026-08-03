@@ -273,18 +273,55 @@ class DashboardController extends Controller
     public function finance()
     {
         $kpi = [
-            'total_income'    => $this->safe(fn() => \App\Models\IncomeRecord::sum('amount')),
-            'total_expense'   => $this->safe(fn() => \App\Models\Expense::sum('amount')),
-            'cash_balance'    => $this->safe(fn() => \App\Models\BankAccount::sum('current_balance')),
-            'pending_payments'=> $this->safe(fn() => \App\Models\Payment::where('status', 'pending')->count()),
+            'total_income'    => $this->safe(fn() => (float) \App\Models\Payment::sum('amount') + (float) \Illuminate\Support\Facades\DB::table('client_ipcs')->where('status', 'paid')->sum('gross_amount'), 0),
+            'total_expense'   => $this->safe(fn() => (float) \Illuminate\Support\Facades\DB::table('expenses')->sum('amount') + (float) \Illuminate\Support\Facades\DB::table('payrolls')->sum('net_salary'), 0),
+            'cash_balance'    => $this->safe(fn() => (float) \Illuminate\Support\Facades\DB::table('bank_accounts')->sum('current_balance'), 0),
+            'pending_payments'=> $this->safe(fn() => \Illuminate\Support\Facades\DB::table('expenses')->where('status', 'pending')->count() + \Illuminate\Support\Facades\DB::table('payrolls')->where('status', 'pending')->count(), 0),
         ];
 
-        $recentJournals = $this->safe(fn() => \App\Models\JournalEntry::latest()->take(5)->get(), collect());
+        // 6-Month Real Monthly Income vs Expense Data
+        $monthlyAnalytics = $this->safe(function() {
+            $labels = [];
+            $incomes = [];
+            $expenses = [];
+            for ($i = 5; $i >= 0; $i--) {
+                $monthDate = \Carbon\Carbon::now()->subMonths($i);
+                $labels[] = $monthDate->format('M');
+                
+                $inc = (float) \Illuminate\Support\Facades\DB::table('payments')
+                    ->whereMonth('payment_date', $monthDate->month)
+                    ->whereYear('payment_date', $monthDate->year)
+                    ->sum('amount');
+                $exp = (float) \Illuminate\Support\Facades\DB::table('expenses')
+                    ->whereMonth('expense_date', $monthDate->month)
+                    ->whereYear('expense_date', $monthDate->year)
+                    ->sum('amount');
+
+                $incomes[] = $inc;
+                $expenses[] = $exp;
+            }
+            return [
+                'labels' => $labels,
+                'incomes' => $incomes,
+                'expenses' => $expenses,
+            ];
+        }, ['labels' => [], 'incomes' => [], 'expenses' => []]);
+
+        // Category Breakdown from real Expenses table
+        $expenseCategories = $this->safe(function() {
+            return \Illuminate\Support\Facades\DB::table('expenses')
+                ->select('category', \Illuminate\Support\Facades\DB::raw('SUM(amount) as total'))
+                ->groupBy('category')
+                ->orderByDesc('total')
+                ->get();
+        }, collect());
+
+        $recentTransactions = $this->safe(fn() => \App\Models\Payment::with('project')->latest('payment_date')->take(10)->get(), collect());
+        $recentExpenses = $this->safe(fn() => \Illuminate\Support\Facades\DB::table('expenses')->orderByDesc('created_at')->take(10)->get(), collect());
         
         $coas = $this->safe(fn() => \App\Models\ChartOfAccount::with('parent')->orderBy('code')->get(), collect());
-        $parentCoas = $this->safe(fn() => \App\Models\ChartOfAccount::whereNull('parent_id')->orderBy('code')->get(), collect());
 
-        return view('dashboard.finance', compact('kpi', 'recentJournals', 'coas', 'parentCoas'));
+        return view('dashboard.finance', compact('kpi', 'monthlyAnalytics', 'expenseCategories', 'recentTransactions', 'recentExpenses', 'coas'));
     }
 
     // ─── Purchase / Purchase Manager / Market Research ──────────────────────────

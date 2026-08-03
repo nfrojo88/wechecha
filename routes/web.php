@@ -719,11 +719,31 @@ Route::middleware(['auth'])->group(function () {
     Route::post('manpower-forecast/{manpowerForecast}/assign', [App\Http\Controllers\ManpowerForecastController::class, 'assignEmployee'])->name('manpower-forecast.assignEmployee');
     
     // ─── Finance Dashboard ──────────────────────────────────────────────────────
-    // TODO: Create FinanceDashboardController before un-commenting these routes
-    // Route::get('/finance-dashboard', [App\Http\Controllers\FinanceDashboardController::class, 'index'])->name('finance.dashboard');
-    // Route::get('/finance-dashboard/revenue-data', [App\Http\Controllers\FinanceDashboardController::class, 'revenueVsExpensesData'])->name('finance.dashboard.revenue-data');
-    Route::get('/finance-dashboard', function() { return redirect()->route('dashboard'); })->name('finance.dashboard');
-    Route::get('/finance-dashboard/revenue-data', function() { return response()->json([]); })->name('finance.dashboard.revenue-data');
+    Route::get('/finance-dashboard', [App\Http\Controllers\DashboardController::class, 'finance'])->name('finance.dashboard');
+    Route::get('/finance-dashboard/revenue-data', function() {
+        $months = [];
+        $incomeData = [];
+        $expenseData = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $monthDate = \Carbon\Carbon::now()->subMonths($i);
+            $months[] = $monthDate->format('M');
+            $inc = (float) \Illuminate\Support\Facades\DB::table('payments')
+                ->whereMonth('payment_date', $monthDate->month)
+                ->whereYear('payment_date', $monthDate->year)
+                ->sum('amount');
+            $exp = (float) \Illuminate\Support\Facades\DB::table('expenses')
+                ->whereMonth('expense_date', $monthDate->month)
+                ->whereYear('expense_date', $monthDate->year)
+                ->sum('amount');
+            $incomeData[] = $inc;
+            $expenseData[] = $exp;
+        }
+        return response()->json([
+            'labels' => $months,
+            'income' => $incomeData,
+            'expenses' => $expenseData,
+        ]);
+    })->name('finance.dashboard.revenue-data');
 
     // ─── Assigned Accounts Portal ───────────────────────────────────────────────
     Route::get('/assigned-accounts', [App\Http\Controllers\AssignedAccountController::class, 'index'])->name('assigned-accounts.index');
