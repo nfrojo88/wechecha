@@ -637,12 +637,14 @@
             </a>
         </li>
         @endif
+        @if(!auth()->check() || !auth()->user()->hasAnyRole(['Finance head', 'finance_head']))
         <li class="sidebar-nav-item">
             <a href="{{ route('budgets.index') }}" class="sidebar-nav-link {{ request()->routeIs('budgets.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-sack-dollar text-warning"></i>
                 <span>Project Budget</span>
             </a>
         </li>
+        @endif
         <!-- Company Income -->
         @if(auth()->check() && auth()->user()->hasAnyRole(['Finance head', 'finance_head', 'admin', 'global_admin']))
         <li class="sidebar-nav-item">
