@@ -64,7 +64,7 @@
         @if(auth()->check() && auth()->user()->hasAnyRole(['store_manager', 'store_keeper', 'admin', 'global_admin']))
 
         <li class="sidebar-nav-item">
-            <a href="{{ route('store-manager.dashboard') }}" class="sidebar-nav-link {{ request()->routeIs('store-manager.dashboard') ? 'active' : '' }}">
+            <a href="{{ route('dashboard.store-manager') }}" class="sidebar-nav-link {{ request()->routeIs('dashboard.store-manager') || request()->routeIs('store-manager.dashboard') ? 'active' : '' }}">
                 <i class="fa-solid fa-gauge-high text-primary"></i>
                 <span>Dashboard</span>
             </a>
