@@ -204,7 +204,8 @@ class MarketingController extends Controller
                 ]);
             }
             Product::where('id', $request->product_id)->update(['unit_price' => $request->price]);
-            $msg = 'Material market price recorded for ' . $date->format('F Y') . '.';
+            \App\Models\Inventory::where('product_id', $request->product_id)->update(['unit_cost' => $request->price]);
+            $msg = 'Material market price recorded and synced to inventory unit cost for ' . $date->format('F Y') . '.';
 
         } elseif ($type === 'manpower') {
             $role = \App\Models\Designation::find($request->role_id);
