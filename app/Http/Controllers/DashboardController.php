@@ -29,7 +29,10 @@ class DashboardController extends Controller
             'total_projects'   => $this->safe(fn() => \App\Models\Project::where('status', 'active')->count()),
             'total_employees'  => $this->safe(fn() => \App\Models\Employee::where('status', 'active')->count()),
             'monthly_expenses' => $this->safe(fn() => \App\Models\Expense::whereMonth('expense_date', now()->month)->sum('amount')),
-            'inventory_value'  => $this->safe(fn() => \App\Models\Inventory::sum('total_value')),
+            'inventory_value'  => $this->safe(fn() => \Illuminate\Support\Facades\DB::table('inventory')
+                ->join('products', 'inventory.product_id', '=', 'products.id')
+                ->whereNull('products.deleted_at')
+                ->sum(\Illuminate\Support\Facades\DB::raw('inventory.quantity_on_hand * COALESCE(inventory.unit_cost, products.unit_price, 0)'))),
         ];
 
         $usersByRole = $this->safe(fn() =>
