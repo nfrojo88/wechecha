@@ -50,6 +50,16 @@ class Project extends Model
         return $this->hasMany(Store::class);
     }
 
+    public function team()
+    {
+        return $this->belongsToMany(User::class, 'project_user');
+    }
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'project_user');
+    }
+
     public function budgets()
     {
         return $this->hasMany(ProjectBudget::class);
