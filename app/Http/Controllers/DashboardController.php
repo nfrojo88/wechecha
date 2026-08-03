@@ -179,7 +179,10 @@ class DashboardController extends Controller
             'total_value'       => $this->safe(fn() => Inventory::sum(DB::raw('quantity_on_hand * unit_cost')), 0),
             'low_stock_items'   => $this->safe(fn() => Inventory::whereColumn('quantity_on_hand', '<=', 'min_stock')->count(), 0),
             'pending_transfers' => $this->safe(fn() => Transfer::where('status', 'draft')->count(), 0),
-            'received_today'    => $this->safe(fn() => DeliveryReceipt::whereDate('receipt_date', today())->count(), 0),
+            'received_today'    => $this->safe(fn() => DeliveryReceipt::where(function($q) {
+                $q->whereDate('received_date', today())
+                  ->orWhereDate('created_at', today());
+            })->count(), 0),
             'pending_requests'  => $this->safe(fn() => MaterialRequest::where('status', 'pending')->count(), 0),
         ];
 
