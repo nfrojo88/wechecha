@@ -272,6 +272,9 @@ class DashboardController extends Controller
     // ─── Finance / Finance Head ─────────────────────────────────────────────────
     public function finance()
     {
+        $user = auth()->user();
+        $isFinanceHead = $user && $user->hasAnyRole(['Finance head', 'finance_head', 'admin', 'global_admin']);
+
         $kpi = [
             'total_income'    => $this->safe(fn() => (float) \App\Models\Payment::sum('amount') + (float) \Illuminate\Support\Facades\DB::table('client_ipcs')->where('status', 'paid')->sum('gross_amount'), 0),
             'total_expense'   => $this->safe(fn() => (float) \Illuminate\Support\Facades\DB::table('expenses')->sum('amount') + (float) \Illuminate\Support\Facades\DB::table('payrolls')->sum('net_salary'), 0),
@@ -287,7 +290,6 @@ class DashboardController extends Controller
             for ($i = 5; $i >= 0; $i--) {
                 $monthDate = \Carbon\Carbon::now()->subMonths($i);
                 $labels[] = $monthDate->format('M');
-                
                 $inc = (float) \Illuminate\Support\Facades\DB::table('payments')
                     ->whereMonth('payment_date', $monthDate->month)
                     ->whereYear('payment_date', $monthDate->year)
@@ -296,15 +298,10 @@ class DashboardController extends Controller
                     ->whereMonth('expense_date', $monthDate->month)
                     ->whereYear('expense_date', $monthDate->year)
                     ->sum('amount');
-
                 $incomes[] = $inc;
                 $expenses[] = $exp;
             }
-            return [
-                'labels' => $labels,
-                'incomes' => $incomes,
-                'expenses' => $expenses,
-            ];
+            return ['labels' => $labels, 'incomes' => $incomes, 'expenses' => $expenses];
         }, ['labels' => [], 'incomes' => [], 'expenses' => []]);
 
         // Category Breakdown from real Expenses table
@@ -317,11 +314,53 @@ class DashboardController extends Controller
         }, collect());
 
         $recentTransactions = $this->safe(fn() => \App\Models\Payment::with('project')->latest('payment_date')->take(10)->get(), collect());
-        $recentExpenses = $this->safe(fn() => \Illuminate\Support\Facades\DB::table('expenses')->orderByDesc('created_at')->take(10)->get(), collect());
-        
-        $coas = $this->safe(fn() => \App\Models\ChartOfAccount::with('parent')->orderBy('code')->get(), collect());
+        $recentExpenses     = $this->safe(fn() => \Illuminate\Support\Facades\DB::table('expenses')->orderByDesc('created_at')->take(10)->get(), collect());
+        $coas               = $this->safe(fn() => \App\Models\ChartOfAccount::with('parent')->orderBy('code')->get(), collect());
 
-        return view('dashboard.finance', compact('kpi', 'monthlyAnalytics', 'expenseCategories', 'recentTransactions', 'recentExpenses', 'coas'));
+        // ── Bank Accounts (role-scoped) ──────────────────────────────────────────
+        // Finance Head → ALL bank accounts
+        // Regular Finance → only their assigned Chart of Account records
+        if ($isFinanceHead) {
+            $bankAccounts = $this->safe(fn() => \App\Models\BankAccount::where('is_active', true)->orderByDesc('current_balance')->get(), collect());
+            $assignedAccounts = collect();
+        } else {
+            $bankAccounts = collect();
+            $assignedAccounts = $this->safe(fn() => \App\Models\ChartOfAccount::where('assigned_to', $user->id)->get(), collect());
+        }
+
+        // ── Plan vs Actual (Finance Head only) ───────────────────────────────────
+        // Compare project_budgets.budgeted_amount vs actual expenses per project
+        $planVsActual = collect();
+        if ($isFinanceHead) {
+            $planVsActual = $this->safe(function() {
+                return \App\Models\Project::where('status', 'active')
+                    ->withSum('budgets as total_budget', 'budgeted_amount')
+                    ->get()
+                    ->map(function($project) {
+                        $actualExpenses = (float) \Illuminate\Support\Facades\DB::table('expenses')
+                            ->where('project_id', $project->id)
+                            ->sum('amount');
+                        $budget = (float) ($project->total_budget ?? 0);
+                        $variance = $budget - $actualExpenses;
+                        $percentage = $budget > 0 ? min(round(($actualExpenses / $budget) * 100, 1), 200) : 0;
+                        return (object)[
+                            'id'              => $project->id,
+                            'name'            => $project->name,
+                            'budget'          => $budget,
+                            'actual'          => $actualExpenses,
+                            'variance'        => $variance,
+                            'percentage'      => $percentage,
+                            'over_budget'     => $actualExpenses > $budget && $budget > 0,
+                        ];
+                    });
+            }, collect());
+        }
+
+        return view('dashboard.finance', compact(
+            'kpi', 'monthlyAnalytics', 'expenseCategories',
+            'recentTransactions', 'recentExpenses', 'coas',
+            'bankAccounts', 'assignedAccounts', 'planVsActual', 'isFinanceHead'
+        ));
     }
 
     // ─── Purchase / Purchase Manager / Market Research ──────────────────────────
