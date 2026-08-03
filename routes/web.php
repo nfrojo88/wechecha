@@ -462,7 +462,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/coordinator/forecast',     [App\Http\Controllers\CoordinatorController::class, 'forecastDemand'])->name('coordinator.forecast');
     Route::get('/dashboard/site-engineer',  [App\Http\Controllers\DashboardController::class, 'siteEngineer'])->name('dashboard.site-engineer');
     Route::get('/dashboard/foreman',        [App\Http\Controllers\DashboardController::class, 'foreman'])->name('dashboard.foreman');
-    Route::get('/dashboard/store-manager',  [App\Http\Controllers\StoreManagerController::class, 'dashboard'])->name('dashboard.store-manager');
+    Route::get('/dashboard/store-manager',  [App\Http\Controllers\DashboardController::class, 'storeManager'])->name('dashboard.store-manager');
     Route::get('/dashboard/hr',             [App\Http\Controllers\DashboardController::class, 'hr'])->name('dashboard.hr');
     Route::get('/dashboard/finance',        [App\Http\Controllers\DashboardController::class, 'finance'])->name('dashboard.finance');
     Route::get('/dashboard/purchase',       [App\Http\Controllers\DashboardController::class, 'purchase'])->name('dashboard.purchase');
