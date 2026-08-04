@@ -23,6 +23,21 @@
                 <span>Payroll Approvals</span>
             </a>
         </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('payroll.advances') }}?status=pending" class="sidebar-nav-link {{ request()->routeIs('payroll.advances*') && request('status') === 'pending' ? 'active' : '' }}">
+                <i class="fa-solid fa-hand-holding-dollar text-success"></i>
+                <span>Loan Approvals</span>
+                @php
+                    $pendingLoansCount = 0;
+                    try {
+                        $pendingLoansCount = \App\Models\EmployeeAdvance::where('status', 'pending')->count();
+                    } catch (\Exception $e) {}
+                @endphp
+                @if($pendingLoansCount > 0)
+                    <span class="badge bg-danger rounded-pill ms-auto">{{ $pendingLoansCount }}</span>
+                @endif
+            </a>
+        </li>
 
         @endrole
         {{-- Masters --}}
@@ -846,6 +861,12 @@
             <a href="{{ route('employee.dashboard') }}" class="sidebar-nav-link {{ request()->routeIs('employee.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-user-tie text-info"></i>
                 <span>Self-Service Portal</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('payroll.advances') }}" class="sidebar-nav-link {{ request()->routeIs('payroll.advances*') ? 'active' : '' }}">
+                <i class="fa-solid fa-hand-holding-dollar text-warning"></i>
+                <span>Salary Advance Loans</span>
             </a>
         </li>
         @endif
