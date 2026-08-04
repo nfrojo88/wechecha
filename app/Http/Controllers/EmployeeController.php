@@ -508,8 +508,9 @@ class EmployeeController extends Controller
     public function edit(Employee $employee)
     {
         Gate::authorize('update', $employee);
-        $projects = Project::where('status', '!=', 'cancelled')->get();
-        return view('hr.employees.edit', compact('employee', 'projects'));
+        $projects     = Project::where('status', '!=', 'cancelled')->get();
+        $departments  = \App\Models\Department::where('is_active', true)->get();
+        return view('hr.employees.edit', compact('employee', 'projects', 'departments'));
     }
 
     public function update(Request $request, Employee $employee)
@@ -517,19 +518,26 @@ class EmployeeController extends Controller
         Gate::authorize('update', $employee);
 
         $validated = $request->validate([
-            'employee_code'   => 'required|string|unique:employees,employee_code,'.$employee->id,
-            'full_name'       => 'required|string|max:255',
-            'phone'           => 'nullable|string|max:20',
-            'email'           => 'nullable|email|max:255',
-            'role_title'      => 'nullable|string|max:255',
-            'department'      => 'nullable|string|max:100',
-            'project_id'      => 'nullable|exists:projects,id',
-            'employment_type' => 'required|in:permanent,contract,daily',
-            'date_of_joining' => 'required|date',
-            'basic_salary'    => 'required|numeric|min:0',
-            'status'          => 'required|in:active,suspended,terminated',
-            'notes'           => 'nullable|string',
-            'device_user_id'  => 'nullable|string|max:100',
+            'employee_code'        => 'required|string|unique:employees,employee_code,'.$employee->id,
+            'full_name'            => 'required|string|max:255',
+            'phone'                => 'nullable|string|max:20',
+            'email'                => 'nullable|email|max:255',
+            'role_title'           => 'nullable|string|max:255',
+            'department'           => 'nullable|string|max:100',
+            'project_id'           => 'nullable|exists:projects,id',
+            'site_assignment'      => 'nullable|string|max:100',
+            'employment_type'      => 'required|in:permanent,contract,daily',
+            'contract_type'        => 'nullable|in:Full-Time,Part-Time,Temporary',
+            'date_of_joining'      => 'required|date',
+            'basic_salary'         => 'required|numeric|min:0',
+            'transport_allowance'  => 'nullable|numeric|min:0',
+            'house_allowance'      => 'nullable|numeric|min:0',
+            'position_allowance'   => 'nullable|numeric|min:0',
+            'bank_name'            => 'nullable|string|max:255',
+            'account_number'       => 'nullable|string|max:100',
+            'status'               => 'required|in:active,suspended,terminated',
+            'notes'                => 'nullable|string',
+            'device_user_id'       => 'nullable|string|max:100',
         ]);
 
         // Check if status changed to terminated
