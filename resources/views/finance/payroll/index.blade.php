@@ -201,11 +201,11 @@
                     </td>
                     <td class="text-muted">{{ $p->employee->department ?? '—' }}</td>
                     <td class="text-end">{{ number_format($p->basic_salary, 2) }}</td>
-                    <td class="text-end text-info">{{ number_format($p->transport_allowance, 2) }}</td>
-                    <td class="text-end text-info">{{ number_format($p->house_allowance, 2) }}</td>
-                    <td class="text-end text-info">{{ number_format($p->position_allowance, 2) }}</td>
-                    <td class="text-end fw-semibold text-primary">{{ number_format($p->gross_salary, 2) }}</td>
-                    <td class="text-end text-secondary">{{ number_format($p->pension, 2) }}</td>
+                    <td class="text-end text-info">{{ number_format($p->transport_allowance ?? 0, 2) }}</td>
+                    <td class="text-end text-info">{{ number_format($p->house_allowance ?? 0, 2) }}</td>
+                    <td class="text-end text-info">{{ number_format($p->position_allowance ?? 0, 2) }}</td>
+                    <td class="text-end fw-semibold text-primary">{{ number_format($p->gross_salary ?? ($p->basic_salary + $p->allowances + $p->overtime_pay), 2) }}</td>
+                    <td class="text-end text-secondary">{{ number_format($p->pension ?? round($p->basic_salary * 0.07, 2), 2) }}</td>
                     <td class="text-end text-warning">{{ number_format($p->tax, 2) }}</td>
                     <td class="text-end text-danger">{{ number_format($p->deductions, 2) }}</td>
                     <td class="text-end fw-bold text-success">{{ number_format($p->net_salary, 2) }}</td>

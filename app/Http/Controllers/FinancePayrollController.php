@@ -30,25 +30,28 @@ class FinancePayrollController extends Controller
             ->orderBy('id')
             ->get();
 
+        $hasTransport = \Illuminate\Support\Facades\Schema::hasColumn('payrolls', 'transport_allowance');
+        $hasGmStatus  = \Illuminate\Support\Facades\Schema::hasColumn('payrolls', 'gm_status');
+
         // Summary totals
         $totals = [
             'basic'     => $payrolls->sum('basic_salary'),
-            'transport' => $payrolls->sum('transport_allowance'),
-            'house'     => $payrolls->sum('house_allowance'),
-            'position'  => $payrolls->sum('position_allowance'),
+            'transport' => $hasTransport ? $payrolls->sum('transport_allowance') : 0,
+            'house'     => $hasTransport ? $payrolls->sum('house_allowance') : 0,
+            'position'  => $hasTransport ? $payrolls->sum('position_allowance') : 0,
             'overtime'  => $payrolls->sum('overtime_pay'),
-            'pension'   => $payrolls->sum('pension'),
+            'pension'   => $hasTransport ? $payrolls->sum('pension') : round($payrolls->sum('basic_salary') * 0.07, 2),
             'tax'       => $payrolls->sum('tax'),
             'deductions'=> $payrolls->sum('deductions'),
-            'gross'     => $payrolls->sum('gross_salary'),
+            'gross'     => $payrolls->sum(function($p) { return $p->gross_salary ?? ($p->basic_salary + $p->allowances + $p->overtime_pay); }),
             'net'       => $payrolls->sum('net_salary'),
             'count'     => $payrolls->count(),
         ];
 
         // GM status for this batch
-        $gmStatus  = $payrolls->first()->gm_status ?? null;
-        $submitted = $payrolls->where('gm_status', 'submitted')->count();
-        $approved  = $payrolls->where('gm_status', 'approved')->count();
+        $gmStatus  = $hasGmStatus ? ($payrolls->first()->gm_status ?? null) : null;
+        $submitted = $hasGmStatus ? $payrolls->where('gm_status', 'submitted')->count() : 0;
+        $approved  = $hasGmStatus ? $payrolls->where('gm_status', 'approved')->count() : 0;
 
         return view('finance.payroll.index', compact(
             'payrolls', 'totals', 'month', 'year', 'gmStatus', 'submitted', 'approved'
@@ -72,6 +75,9 @@ class FinancePayrollController extends Controller
         $created = 0;
         $skipped = 0;
 
+        $hasTransport = \Illuminate\Support\Facades\Schema::hasColumn('payrolls', 'transport_allowance');
+        $hasGmStatus  = \Illuminate\Support\Facades\Schema::hasColumn('payrolls', 'gm_status');
+
         foreach ($employees as $emp) {
             $exists = Payroll::where('employee_id', $emp->id)
                              ->where('month', $month)
@@ -89,20 +95,26 @@ class FinancePayrollController extends Controller
             $taxable  = $basic + $transport + $house + $position - $pension;
             $tax      = Payroll::calculateIncomeTax($taxable);
 
-            Payroll::create([
-                'employee_id'         => $emp->id,
-                'month'               => $month,
-                'year'                => $year,
-                'basic_salary'        => $basic,
-                'transport_allowance' => $transport,
-                'house_allowance'     => $house,
-                'position_allowance'  => $position,
-                'overtime_pay'        => 0,
-                'deductions'          => 0,
-                'tax'                 => round($tax, 2),
-                'status'              => 'draft',
-                'created_by'          => auth()->id(),
-            ]);
+            $payload = [
+                'employee_id'  => $emp->id,
+                'month'        => $month,
+                'year'         => $year,
+                'basic_salary' => $basic,
+                'allowances'   => $transport + $house + $position,
+                'overtime_pay' => 0,
+                'deductions'   => 0,
+                'tax'          => round($tax, 2),
+                'status'       => 'draft',
+                'created_by'   => auth()->id(),
+            ];
+
+            if ($hasTransport) {
+                $payload['transport_allowance'] = $transport;
+                $payload['house_allowance']     = $house;
+                $payload['position_allowance']  = $position;
+            }
+
+            Payroll::create($payload);
             $created++;
         }
 
@@ -126,6 +138,13 @@ class FinancePayrollController extends Controller
         $month = (int) $request->month;
         $year  = (int) $request->year;
 
+        $hasGmStatus = \Illuminate\Support\Facades\Schema::hasColumn('payrolls', 'gm_status');
+
+        if (!$hasGmStatus) {
+            return redirect()->route('finance.payroll.index', ['month' => $month, 'year' => $year])
+                             ->with('error', 'Database migration required before submitting to GM. Please run migrations.');
+        }
+
         $updated = Payroll::where('month', $month)
             ->where('year',  $year)
             ->whereNotIn('gm_status', ['approved', 'rejected'])
@@ -147,6 +166,15 @@ class FinancePayrollController extends Controller
      */
     public function gmIndex()
     {
+        // Check if database table has gm_status column
+        $hasGmStatus = \Illuminate\Support\Facades\Schema::hasColumn('payrolls', 'gm_status');
+
+        if (!$hasGmStatus) {
+            $batches = collect();
+            $history = collect();
+            return view('finance.payroll.gm-approval', compact('batches', 'history'));
+        }
+
         // Get distinct month/year combos that have submitted payrolls
         $batches = Payroll::with('employee')
             ->where('gm_status', 'submitted')
@@ -154,7 +182,7 @@ class FinancePayrollController extends Controller
             ->selectRaw('COUNT(*) as employee_count')
             ->selectRaw('SUM(basic_salary) as total_basic')
             ->selectRaw('SUM(net_salary) as total_net')
-            ->selectRaw('SUM(gross_salary) as total_gross')
+            ->selectRaw('COALESCE(SUM(basic_salary + allowances + overtime_pay), 0) as total_gross')
             ->selectRaw('MIN(submitted_to_gm_at) as submitted_at')
             ->groupBy('year', 'month')
             ->orderByDesc('year')
@@ -194,15 +222,17 @@ class FinancePayrollController extends Controller
                              ->with('error', 'No submitted payrolls found for this period.');
         }
 
+        $hasTransport = \Illuminate\Support\Facades\Schema::hasColumn('payrolls', 'transport_allowance');
+
         $totals = [
             'basic'     => $payrolls->sum('basic_salary'),
-            'transport' => $payrolls->sum('transport_allowance'),
-            'house'     => $payrolls->sum('house_allowance'),
-            'position'  => $payrolls->sum('position_allowance'),
+            'transport' => $hasTransport ? $payrolls->sum('transport_allowance') : 0,
+            'house'     => $hasTransport ? $payrolls->sum('house_allowance') : 0,
+            'position'  => $hasTransport ? $payrolls->sum('position_allowance') : 0,
             'overtime'  => $payrolls->sum('overtime_pay'),
-            'pension'   => $payrolls->sum('pension'),
+            'pension'   => $hasTransport ? $payrolls->sum('pension') : round($payrolls->sum('basic_salary') * 0.07, 2),
             'tax'       => $payrolls->sum('tax'),
-            'gross'     => $payrolls->sum('gross_salary'),
+            'gross'     => $payrolls->sum(function($p) { return $p->gross_salary ?? ($p->basic_salary + $p->allowances + $p->overtime_pay); }),
             'net'       => $payrolls->sum('net_salary'),
         ];
 

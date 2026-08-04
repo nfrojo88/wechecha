@@ -60,13 +60,17 @@ class Payroll extends Model
     protected static function booted()
     {
         static::saving(function (Payroll $p) {
-            // Total allowances = individual parts
-            $p->allowances  = ($p->transport_allowance ?? 0)
-                            + ($p->house_allowance     ?? 0)
-                            + ($p->position_allowance  ?? 0);
+            $hasTransport = \Illuminate\Support\Facades\Schema::hasColumn('payrolls', 'transport_allowance');
+            
+            if ($hasTransport) {
+                // Total allowances = individual parts if available
+                $p->allowances  = ($p->transport_allowance ?? 0)
+                                + ($p->house_allowance     ?? 0)
+                                + ($p->position_allowance  ?? 0);
 
-            // Pension = 7% of basic (employee portion)
-            $p->pension     = round(($p->basic_salary ?? 0) * 0.07, 2);
+                // Pension = 7% of basic (employee portion)
+                $p->pension     = round(($p->basic_salary ?? 0) * 0.07, 2);
+            }
 
             // Gross = basic + allowances + overtime
             $p->gross_salary = ($p->basic_salary  ?? 0)
