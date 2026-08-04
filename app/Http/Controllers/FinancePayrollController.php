@@ -90,6 +90,19 @@ class FinancePayrollController extends Controller
             $house    = $emp->house_allowance     ?? 0;
             $position = $emp->position_allowance  ?? 0;
 
+            // Check for active disbursed salary advance loan installments for this employee
+            $loanDeduction = 0;
+            if (\Illuminate\Support\Facades\Schema::hasTable('employee_advances')) {
+                $activeAdvances = \App\Models\EmployeeAdvance::where('employee_id', $emp->id)
+                    ->where('status', 'disbursed')
+                    ->get();
+
+                foreach ($activeAdvances as $adv) {
+                    $monthly = $adv->installments > 0 ? round($adv->amount / $adv->installments, 2) : $adv->amount;
+                    $loanDeduction += $monthly;
+                }
+            }
+
             // Taxable income = basic + allowances - pension(7%)
             $pension  = round($basic * 0.07, 2);
             $taxable  = $basic + $transport + $house + $position - $pension;
@@ -102,7 +115,7 @@ class FinancePayrollController extends Controller
                 'basic_salary' => $basic,
                 'allowances'   => $transport + $house + $position,
                 'overtime_pay' => 0,
-                'deductions'   => 0,
+                'deductions'   => round($loanDeduction, 2),
                 'tax'          => round($tax, 2),
                 'status'       => 'draft',
                 'created_by'   => auth()->id(),

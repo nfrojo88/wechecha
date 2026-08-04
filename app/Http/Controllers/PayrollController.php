@@ -69,6 +69,21 @@ class PayrollController extends Controller
             'paid_at' => now(),
         ]);
 
-        return back()->with('success', 'Payroll marked as paid.');
+        // Auto-recover advance loans linked to this employee
+        if (\Illuminate\Support\Facades\Schema::hasTable('employee_advances')) {
+            $advances = \App\Models\EmployeeAdvance::where('employee_id', $payroll->employee_id)
+                ->where('status', 'disbursed')
+                ->get();
+
+            foreach ($advances as $adv) {
+                // If this is the last installment or single installment, mark recovered
+                $adv->update([
+                    'status'       => 'recovered',
+                    'recovered_at' => now(),
+                ]);
+            }
+        }
+
+        return back()->with('success', 'Payroll marked as paid and advance loan deductions updated.');
     }
 }

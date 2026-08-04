@@ -17,6 +17,8 @@ class EmployeeAdvance extends Model
         'approved_at',
         'disbursed_at',
         'recovered_at',
+        'gm_notes',
+        'finance_notes',
     ];
 
     protected $casts = [

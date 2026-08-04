@@ -222,57 +222,82 @@ class PayrollIntegrationController extends Controller
     /**
      * Request advance
      */
+    /**
+     * Request advance (By employee or selected employee)
+     */
     public function requestAdvance(Request $request)
     {
         $validated = $request->validate([
-            'amount' => 'required|numeric|min:100',
+            'employee_id'  => 'nullable|exists:employees,id',
+            'amount'       => 'required|numeric|min:100',
             'installments' => 'required|integer|min:1|max:12',
-            'reason' => 'nullable|string|max:500',
+            'reason'       => 'nullable|string|max:500',
         ]);
 
-        $employee = Employee::where('user_id', Auth::id())->firstOrFail();
+        $employeeId = $validated['employee_id'] ?? null;
+
+        if (!$employeeId) {
+            $employee = Employee::where('user_id', Auth::id())->first();
+            if (!$employee) {
+                return back()->with('error', 'No employee record linked to your user account.');
+            }
+            $employeeId = $employee->id;
+        }
 
         EmployeeAdvance::create([
-            'employee_id' => $employee->id,
-            'amount' => $validated['amount'],
+            'employee_id'  => $employeeId,
+            'amount'       => $validated['amount'],
             'advance_date' => now()->toDateString(),
             'installments' => $validated['installments'],
-            'reason' => $validated['reason'],
-            'status' => 'pending',
+            'reason'       => $validated['reason'] ?? 'Salary Advance Loan Request',
+            'status'       => 'pending',
         ]);
 
-        return back()->with('success', 'Advance request submitted');
+        return back()->with('success', 'Salary advance loan request submitted successfully for GM approval.');
     }
 
     /**
-     * Approve advance
+     * GM Approves advance loan request
      */
-    public function approveAdvance(EmployeeAdvance $advance)
+    public function approveAdvance(Request $request, EmployeeAdvance $advance)
     {
-        $this->authorize('approve', $advance);
-
         $advance->update([
-            'status' => 'approved',
+            'status'      => 'approved',
             'approved_by' => Auth::id(),
             'approved_at' => now(),
+            'gm_notes'    => $request->input('gm_notes'),
         ]);
 
-        return back()->with('success', 'Advance approved');
+        return back()->with('success', 'Salary advance loan request APPROVED by GM. Sent to Finance for payment disbursement.');
     }
 
     /**
-     * Disburse advance
+     * GM Rejects advance loan request
      */
-    public function disburseAdvance(EmployeeAdvance $advance)
+    public function rejectAdvance(Request $request, EmployeeAdvance $advance)
     {
-        $this->authorize('approve', $advance);
-
         $advance->update([
-            'status' => 'disbursed',
-            'disbursed_at' => now(),
+            'status'      => 'rejected',
+            'approved_by' => Auth::id(),
+            'approved_at' => now(),
+            'gm_notes'    => $request->input('gm_notes', 'Loan request rejected by GM.'),
         ]);
 
-        return back()->with('success', 'Advance disbursed');
+        return back()->with('error', 'Salary advance loan request REJECTED.');
+    }
+
+    /**
+     * Finance Disburses approved advance loan
+     */
+    public function disburseAdvance(Request $request, EmployeeAdvance $advance)
+    {
+        $advance->update([
+            'status'        => 'disbursed',
+            'disbursed_at'  => now(),
+            'finance_notes' => $request->input('finance_notes'),
+        ]);
+
+        return back()->with('success', 'Salary advance loan DISBURSED by Finance. Monthly installments will automatically deduct from payroll.');
     }
 
     /**

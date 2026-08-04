@@ -646,6 +646,12 @@
                 <span>Payroll Management</span>
             </a>
         </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('payroll.advances') }}" class="sidebar-nav-link {{ request()->routeIs('payroll.advances*') ? 'active' : '' }}">
+                <i class="fa-solid fa-hand-holding-dollar text-warning"></i>
+                <span>Salary Advance Loans</span>
+            </a>
+        </li>
         @endif
         @if(!auth()->check() || !auth()->user()->hasAnyRole(['Finance head', 'finance_head']))
         <li class="sidebar-nav-item">

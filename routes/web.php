@@ -794,6 +794,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('payroll/advances', [App\Http\Controllers\PayrollIntegrationController::class, 'advances'])->name('payroll.advances');
     Route::post('payroll/advances/request', [App\Http\Controllers\PayrollIntegrationController::class, 'requestAdvance'])->name('payroll.advance-request');
     Route::post('payroll/advances/{employeeAdvance}/approve', [App\Http\Controllers\PayrollIntegrationController::class, 'approveAdvance'])->name('payroll.advance-approve');
+    Route::post('payroll/advances/{employeeAdvance}/reject', [App\Http\Controllers\PayrollIntegrationController::class, 'rejectAdvance'])->name('payroll.advance-reject');
     Route::post('payroll/advances/{employeeAdvance}/disburse', [App\Http\Controllers\PayrollIntegrationController::class, 'disburseAdvance'])->name('payroll.advance-disburse');
     Route::get('payroll/monthly-status', [App\Http\Controllers\PayrollIntegrationController::class, 'monthlyStatus'])->name('payroll.monthly-status');
     Route::get('payroll/analytics', [App\Http\Controllers\PayrollIntegrationController::class, 'analytics'])->name('payroll.analytics');
