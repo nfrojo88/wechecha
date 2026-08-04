@@ -824,6 +824,16 @@ Route::middleware(['auth'])->group(function () {
         [App\Http\Controllers\PayrollController::class, 'markPaid'])
         ->name('payrolls.markPaid');
 
+    // ─── Finance Head & GM Payroll Workflow ─────────────────────────────────
+    Route::get('finance/payroll',               [App\Http\Controllers\FinancePayrollController::class, 'index'])->name('finance.payroll.index');
+    Route::post('finance/payroll/generate',      [App\Http\Controllers\FinancePayrollController::class, 'generate'])->name('finance.payroll.generate');
+    Route::post('finance/payroll/submit-gm',     [App\Http\Controllers\FinancePayrollController::class, 'submitToGM'])->name('finance.payroll.submit-gm');
+
+    Route::get('finance/payroll/gm-approval',   [App\Http\Controllers\FinancePayrollController::class, 'gmIndex'])->name('finance.payroll.gm');
+    Route::get('finance/payroll/gm-detail',     [App\Http\Controllers\FinancePayrollController::class, 'gmBatchDetail'])->name('finance.payroll.gm.detail');
+    Route::post('finance/payroll/gm-approve',   [App\Http\Controllers\FinancePayrollController::class, 'gmApprove'])->name('finance.payroll.gm.approve');
+    Route::post('finance/payroll/gm-reject',    [App\Http\Controllers\FinancePayrollController::class, 'gmReject'])->name('finance.payroll.gm.reject');
+
     // ─── Phase 5 Finance ────────────────────────────────────────────────────
 
     Route::resource('coa', App\Http\Controllers\ChartOfAccountController::class)->except(['show', 'destroy']);

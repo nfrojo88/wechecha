@@ -17,6 +17,12 @@
                 <span>GM Dashboard</span>
             </a>
         </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('finance.payroll.gm') }}" class="sidebar-nav-link {{ request()->routeIs('finance.payroll.gm*') ? 'active' : '' }}">
+                <i class="fa-solid fa-file-signature text-warning"></i>
+                <span>Payroll Approvals</span>
+            </a>
+        </li>
 
         @endrole
         {{-- Masters --}}
@@ -634,6 +640,10 @@
             <a href="{{ route('income.index') }}" class="sidebar-nav-link {{ request()->routeIs('income.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-receipt text-success"></i>
                 <span>View Receipts</span>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('finance.payroll.index') }}" class="sidebar-nav-link {{ request()->routeIs('finance.payroll.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-money-bill-wave text-success"></i>
+                <span>Payroll Management</span>
             </a>
         </li>
         @endif
