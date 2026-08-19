@@ -44,21 +44,613 @@ Route::get('/deploy-from-github', function () {
          . "<pre style='background:#f1f5f9;padding:16px;border-radius:8px'>" . htmlspecialchars($pullResult) . "</pre>"
          . "<h3 style='font-family:sans-serif'>Cache Clear Output:</h3>"
          . "<pre style='background:#f1f5f9;padding:16px;border-radius:8px'>" . htmlspecialchars($cacheResult) . "</pre>"
-         . "<p><a href='/public/index.php/migrate-material-prices'>→ Run Migrations</a> | "
-         . "<a href='/public/index.php/debug-store-manager-error'>→ Debug Store Manager</a></p>";
+         . "<p><a href='/run-migrations' style='color:blue;'>→ Run Migrations</a> | "
+         . "<a href='/fix-storage-link' style='color:green;'>→ Fix Storage Link (Fix Image 404)</a></p>";
 });
 
 // One-click migration route for all pending migrations
-Route::get('/migrate-material-prices', function () {
+Route::get('/run-migrations', function () {
+    try {
+        // Run ALL pending migrations with --force (for production)
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        $output = \Illuminate\Support\Facades\Artisan::output();
+
+        // Check current columns in employees table
+        $columns = \Illuminate\Support\Facades\Schema::getColumnListing('employees');
+        $gmCols = array_filter($columns, fn($c) => str_contains($c, 'gm_'));
+
+        return "<div style='font-family:sans-serif;max-width:900px;margin:40px auto;padding:0;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.12);'>"
+             . "<div style='background:linear-gradient(135deg,#065f46,#10b981);padding:28px 32px;color:#fff;'>"
+             . "<h2 style='margin:0;font-size:22px;'>✅ Migrations Executed Successfully</h2>"
+             . "<p style='margin:6px 0 0;opacity:.85;'>All pending migrations have been applied to the live database.</p>"
+             . "</div>"
+             . "<div style='padding:28px 32px;background:#fff;'>"
+             . "<h3 style='color:#374151;font-size:15px;margin-top:0;'>📋 Migration Output:</h3>"
+             . "<pre style='background:#f8fafc;border:1px solid #e2e8f0;padding:16px;border-radius:8px;overflow-x:auto;color:#1e293b;font-size:13px;line-height:1.6;'>"
+             . (trim($output) !== '' ? htmlspecialchars($output) : '  Nothing to migrate — all migrations already applied.')
+             . "</pre>"
+             . "<h3 style='color:#374151;font-size:15px;'>🗄️ GM Rejection Columns in <code>employees</code> table:</h3>"
+             . "<pre style='background:#f0fdf4;border:1px solid #bbf7d0;padding:16px;border-radius:8px;color:#15803d;font-size:13px;'>"
+             . (count($gmCols) > 0
+                ? '  ✅ Found: ' . implode(', ', $gmCols)
+                : '  ❌ NOT FOUND — migration may not have run correctly. See error above.')
+             . "</pre>"
+             . "<div style='margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;'>"
+             . "<a href='/dashboard' style='background:#2563eb;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:14px;'>🏠 Go to Dashboard</a>"
+             . "<a href='/run-migrations' style='background:#10b981;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:14px;'>🔄 Run Again</a>"
+             . "<a href='/deploy-from-github' style='background:#7c3aed;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:14px;'>🚀 Git Pull + Deploy</a>"
+             . "</div>"
+             . "</div></div>";
+    } catch (\Exception $e) {
+        return "<div style='font-family:sans-serif;max-width:900px;margin:40px auto;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.12);'>"
+             . "<div style='background:linear-gradient(135deg,#991b1b,#ef4444);padding:28px 32px;color:#fff;'>"
+             . "<h2 style='margin:0;'>❌ Migration Failed</h2>"
+             . "<p style='margin:6px 0 0;opacity:.85;'>An error occurred while running migrations.</p>"
+             . "</div>"
+             . "<div style='padding:28px 32px;background:#fff;'>"
+             . "<pre style='background:#fef2f2;border:1px solid #fecaca;padding:16px;border-radius:8px;color:#991b1b;font-size:13px;overflow-x:auto;'>" . htmlspecialchars($e->getMessage()) . "</pre>"
+             . "<a href='/run-migrations' style='display:inline-block;margin-top:16px;background:#ef4444;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;'>Try Again</a>"
+             . "</div></div>";
+    }
+});
+
+Route::get('/migrate', function() {
+    return redirect('/run-migrations');
+});
+
+// One-time query to lock/reset all employees for GM approval & clear non-admin credentials
+Route::get('/reset-employees-for-gm-approval', function () {
+    try {
+        // Exempt list: General Admin and HR Officer
+        $exemptCodes  = ['EMP-01', 'EMP-25', 'EMP-1', 'EMP-001', 'EMP-025'];
+        $exemptEmails = ['wondeseyum573@gmail.com', 'natnael@wechecha.com'];
+
+        $allEmployees = \App\Models\Employee::all();
+        $exempted = [];
+        $resetList = [];
+        $usersDeletedCount = 0;
+
+        foreach ($allEmployees as $emp) {
+            $code  = strtoupper(trim($emp->employee_code ?? ''));
+            $email = strtolower(trim($emp->email ?? ''));
+
+            $isExempt = in_array($code, $exemptCodes) || in_array($email, $exemptEmails);
+
+            if ($emp->user_id) {
+                $linkedUser = \App\Models\User::find($emp->user_id);
+                if ($linkedUser && ($linkedUser->hasAnyRole(['admin', 'global_admin', 'gm']) || in_array(strtolower($linkedUser->email), $exemptEmails))) {
+                    $isExempt = true;
+                }
+            }
+
+            if ($isExempt) {
+                // Ensure exempt admin accounts remain approved and active
+                $emp->update([
+                    'is_approved_by_gm'   => true,
+                    'gm_approval_status'  => 'approved',
+                    'gm_approved_at'      => $emp->gm_approved_at ?? now(),
+                ]);
+                $exempted[] = [
+                    'code'  => $emp->employee_code,
+                    'name'  => $emp->full_name,
+                    'role'  => $emp->role_title ?: $emp->department,
+                    'email' => $emp->email,
+                ];
+            } else {
+                $oldUserId = $emp->user_id;
+
+                // 1. Reset employee record to Pending GM Approval and detach user credentials
+                $emp->update([
+                    'is_approved_by_gm'   => false,
+                    'gm_approval_status'  => 'pending',
+                    'gm_approved_at'      => null,
+                    'gm_approved_by'      => null,
+                    'gm_rejection_reason' => null,
+                    'gm_rejected_at'      => null,
+                    'gm_rejected_by'      => null,
+                    'user_id'             => null,
+                ]);
+
+                // 2. Delete non-admin user credentials so employee can re-register cleanly via phone OTP
+                if ($oldUserId) {
+                    $user = \App\Models\User::find($oldUserId);
+                    if ($user && !$user->hasAnyRole(['admin', 'global_admin', 'gm']) && !in_array(strtolower($user->email), $exemptEmails)) {
+                        $user->delete();
+                        $usersDeletedCount++;
+                    }
+                }
+
+                // 3. Clear old OTP verifications for this phone
+                if (!empty($emp->phone)) {
+                    $digits = preg_replace('/[^\d]/', '', $emp->phone);
+                    if (!empty($digits)) {
+                        \App\Models\OtpVerification::where('phone', 'like', "%{$digits}%")->delete();
+                    }
+                }
+
+                $resetList[] = [
+                    'code'   => $emp->employee_code,
+                    'name'   => $emp->full_name,
+                    'dept'   => $emp->department,
+                    'role'   => $emp->role_title ?: 'Employee',
+                    'salary' => number_format($emp->basic_salary, 2),
+                ];
+            }
+        }
+
+        // Generate response HTML
+        $exemptRows = '';
+        foreach ($exempted as $ex) {
+            $exemptRows .= "<tr style='border-bottom:1px solid #e2e8f0;background:#f0fdf4;'>
+                <td style='padding:10px 14px;font-weight:bold;color:#15803d;'>{$ex['code']}</td>
+                <td style='padding:10px 14px;font-weight:bold;color:#0f172a;'>{$ex['name']}</td>
+                <td style='padding:10px 14px;color:#475569;'>{$ex['role']}</td>
+                <td style='padding:10px 14px;color:#15803d;'><span style='background:#dcfce7;color:#166534;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:bold;'>🛡️ Admin Preserved & Approved</span></td>
+            </tr>";
+        }
+
+        $resetRows = '';
+        foreach ($resetList as $rs) {
+            $resetRows .= "<tr style='border-bottom:1px solid #f1f5f9;'>
+                <td style='padding:10px 14px;font-family:monospace;font-weight:bold;color:#0f172a;'>{$rs['code']}</td>
+                <td style='padding:10px 14px;font-weight:600;color:#1e293b;'>{$rs['name']}</td>
+                <td style='padding:10px 14px;color:#64748b;'>{$rs['dept']} / {$rs['role']}</td>
+                <td style='padding:10px 14px;color:#b45309;'><span style='background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:bold;'>⏳ Awaiting GM Approval</span></td>
+            </tr>";
+        }
+
+        $exemptCount = count($exempted);
+        $resetCount  = count($resetList);
+
+        return "<div style='font-family:sans-serif;max-width:960px;margin:40px auto;border-radius:16px;overflow:hidden;box-shadow:0 12px 36px rgba(0,0,0,0.12);background:#fff;'>"
+             . "<div style='background:linear-gradient(135deg,#0f172a,#1e293b);padding:32px;color:#fff;'>"
+             . "<div style='display:flex;align-items:center;gap:12px;'>"
+             . "<div style='background:rgba(245,158,11,0.2);color:#f59e0b;padding:12px;border-radius:12px;font-size:24px;'>🔒</div>"
+             . "<div>"
+             . "<h2 style='margin:0;font-size:22px;color:#fff;'>Employee Security Reset & GM Approval Lock Applied</h2>"
+             . "<p style='margin:6px 0 0;color:#94a3b8;font-size:14px;'>All non-admin employees have been reset to <strong>Awaiting GM Approval</strong>. Login credentials detached for fresh self-registration upon approval.</p>"
+             . "</div>"
+             . "</div>"
+             . "</div>"
+             . "<div style='padding:32px;'>"
+             . "<div style='display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-bottom:24px;'>"
+             . "<div style='background:#f8fafc;border:1px solid #e2e8f0;padding:16px;border-radius:10px;text-align:center;'><div style='font-size:24px;font-weight:bold;color:#0f172a;'>{$resetCount}</div><small style='color:#64748b;font-weight:600;'>Employees Locked for GM Approval</small></div>"
+             . "<div style='background:#f0fdf4;border:1px solid #bbf7d0;padding:16px;border-radius:10px;text-align:center;'><div style='font-size:24px;font-weight:bold;color:#15803d;'>{$exemptCount}</div><small style='color:#15803d;font-weight:600;'>Admin Accounts Preserved (EMP-01, EMP-25)</small></div>"
+             . "<div style='background:#fef3c7;border:1px solid #fde68a;padding:16px;border-radius:10px;text-align:center;'><div style='font-size:24px;font-weight:bold;color:#92400e;'>{$usersDeletedCount}</div><small style='color:#92400e;font-weight:600;'>Old Login Credentials Cleared</small></div>"
+             . "</div>"
+             . "<h4 style='color:#0f172a;margin-bottom:8px;'>🛡️ Preserved Administrator Accounts:</h4>"
+             . "<table style='width:100%;border-collapse:collapse;margin-bottom:24px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;'>"
+             . "<thead><tr style='background:#f8fafc;text-align:left;'><th style='padding:10px 14px;'>Code</th><th style='padding:10px 14px;'>Name</th><th style='padding:10px 14px;'>Role</th><th style='padding:10px 14px;'>Status</th></tr></thead>"
+             . "<tbody>{$exemptRows}</tbody>"
+             . "</table>"
+             . "<h4 style='color:#0f172a;margin-bottom:8px;'>⏳ Locked Employees (Awaiting GM Approval):</h4>"
+             . "<table style='width:100%;border-collapse:collapse;margin-bottom:28px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;'>"
+             . "<thead><tr style='background:#f8fafc;text-align:left;'><th style='padding:10px 14px;'>Code</th><th style='padding:10px 14px;'>Name</th><th style='padding:10px 14px;'>Department / Role</th><th style='padding:10px 14px;'>State</th></tr></thead>"
+             . "<tbody>{$resetRows}</tbody>"
+             . "</table>"
+             . "<div style='display:flex;gap:12px;flex-wrap:wrap;'>"
+             . "<a href='/employees' style='background:#2563eb;color:#fff;padding:12px 24px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;'>👥 View Employee List</a>"
+             . "<a href='/dashboard' style='background:#0f172a;color:#fff;padding:12px 24px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;'>🏠 Go to Dashboard</a>"
+             . "</div>"
+             . "</div>"
+             . "</div>";
+
+    } catch (\Exception $e) {
+        return "<div style='font-family:sans-serif;max-width:800px;margin:40px auto;padding:24px;border-radius:12px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;'>"
+             . "<h3 style='margin-top:0;'>❌ Error during employee reset:</h3>"
+             . "<pre>" . htmlspecialchars($e->getMessage()) . "</pre>"
+             . "</div>";
+    }
+});
+
+// Run ONLY the GM rejection migration (safe - skips if columns exist)
+Route::get('/run-gm-migration', function () {
     try {
         \Illuminate\Support\Facades\Artisan::call('migrate', [
+            '--path'  => 'database/migrations/2026_08_19_000001_add_gm_rejection_fields_to_employees_table.php',
             '--force' => true,
         ]);
         $output = \Illuminate\Support\Facades\Artisan::output();
-        return "<h2 style='font-family:sans-serif;color:green'>✅ Migration Complete!</h2><pre>$output</pre><a href='/erp-plans'>→ Open ERP Plans</a>";
+
+        // Verify columns exist
+        $checks = [
+            'gm_approval_status'  => \Illuminate\Support\Facades\Schema::hasColumn('employees', 'gm_approval_status'),
+            'gm_rejection_reason' => \Illuminate\Support\Facades\Schema::hasColumn('employees', 'gm_rejection_reason'),
+            'gm_rejected_at'      => \Illuminate\Support\Facades\Schema::hasColumn('employees', 'gm_rejected_at'),
+            'gm_rejected_by'      => \Illuminate\Support\Facades\Schema::hasColumn('employees', 'gm_rejected_by'),
+        ];
+
+        $rows = '';
+        foreach ($checks as $col => $exists) {
+            $icon  = $exists ? '✅' : '❌';
+            $color = $exists ? '#15803d' : '#dc2626';
+            $rows .= "<tr><td style='padding:8px 12px;font-family:monospace;color:#374151;'>{$col}</td><td style='padding:8px 12px;color:{$color};font-weight:bold;'>{$icon} " . ($exists ? 'EXISTS in DB' : 'MISSING!') . "</td></tr>";
+        }
+
+        $allOk = array_sum($checks) === count($checks);
+        $headerBg = $allOk ? 'linear-gradient(135deg,#065f46,#10b981)' : 'linear-gradient(135deg,#92400e,#f59e0b)';
+        $headerTitle = $allOk ? '✅ GM Rejection Migration Applied!' : '⚠️ Partial Migration — Some Columns Missing';
+
+        return "<div style='font-family:sans-serif;max-width:800px;margin:40px auto;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.12);'>"
+             . "<div style='background:{$headerBg};padding:28px 32px;color:#fff;'>"
+             . "<h2 style='margin:0;font-size:20px;'>{$headerTitle}</h2>"
+             . "<p style='margin:6px 0 0;opacity:.85;'>Migration: <code>2026_08_19_000001_add_gm_rejection_fields_to_employees_table</code></p>"
+             . "</div>"
+             . "<div style='padding:28px 32px;background:#fff;'>"
+             . "<h3 style='color:#374151;font-size:15px;margin-top:0;'>📋 Output:</h3>"
+             . "<pre style='background:#f8fafc;border:1px solid #e2e8f0;padding:14px;border-radius:8px;font-size:13px;color:#1e293b;'>"
+             . (trim($output) !== '' ? htmlspecialchars($output) : '  Nothing to migrate — columns already exist in the database.')
+             . "</pre>"
+             . "<h3 style='color:#374151;font-size:15px;'>🗄️ Column Verification:</h3>"
+             . "<table style='width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;'>"
+             . "<thead><tr style='background:#f9fafb;'><th style='padding:10px 12px;text-align:left;color:#6b7280;font-size:13px;'>Column Name</th><th style='padding:10px 12px;text-align:left;color:#6b7280;font-size:13px;'>Status</th></tr></thead>"
+             . "<tbody>{$rows}</tbody>"
+             . "</table>"
+             . "<div style='margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;'>"
+             . "<a href='/run-migrations' style='background:#2563eb;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:14px;'>🔄 Run All Pending Migrations</a>"
+             . "<a href='/employees' style='background:#10b981;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:14px;'>👥 Go to Employees</a>"
+             . "</div>"
+             . "</div></div>";
     } catch (\Exception $e) {
-        return "<h2 style='font-family:sans-serif;color:red'>❌ Migration Error</h2><pre>" . $e->getMessage() . "</pre>";
+        return "<div style='font-family:sans-serif;max-width:800px;margin:40px auto;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.12);'>"
+             . "<div style='background:#991b1b;padding:28px 32px;color:#fff;'><h2 style='margin:0;'>❌ Migration Error</h2></div>"
+             . "<div style='padding:28px;background:#fff;'>"
+             . "<pre style='background:#fef2f2;border:1px solid #fecaca;padding:16px;border-radius:8px;color:#991b1b;'>" . htmlspecialchars($e->getMessage()) . "</pre>"
+             . "</div></div>";
     }
+});
+
+// Run Expense Requests table migration (one-click)
+Route::get('/run-expense-migration', function () {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate', [
+            '--path'  => 'database/migrations/2026_08_17_000001_create_expense_requests_table.php',
+            '--force' => true,
+        ]);
+        $output = \Illuminate\Support\Facades\Artisan::output();
+
+        $exists = \Illuminate\Support\Facades\Schema::hasTable('expense_requests');
+        $columns = $exists ? \Illuminate\Support\Facades\Schema::getColumnListing('expense_requests') : [];
+
+        return "<div style='font-family:sans-serif;max-width:800px;margin:40px auto;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.12);background:#fff;'>"
+             . "<div style='background:linear-gradient(135deg,#065f46,#10b981);padding:24px 32px;color:#fff;'>"
+             . "<h2 style='margin:0;font-size:20px;'>✅ Expense Requests Migration</h2>"
+             . "<p style='margin:4px 0 0;opacity:0.9;'>Table: <code>expense_requests</code></p>"
+             . "</div>"
+             . "<div style='padding:28px 32px;'>"
+             . "<p>Status: " . ($exists ? "<span style='background:#dcfce7;color:#166534;padding:4px 10px;border-radius:12px;font-weight:bold;'>EXISTS (" . count($columns) . " Columns)</span>" : "<span style='background:#fee2e2;color:#991b1b;padding:4px 10px;border-radius:12px;font-weight:bold;'>NOT FOUND</span>") . "</p>"
+             . "<pre style='background:#f8fafc;border:1px solid #e2e8f0;padding:12px;border-radius:8px;font-size:13px;'>" . (trim($output) !== '' ? htmlspecialchars($output) : 'Nothing to migrate — table already exists.') . "</pre>"
+             . "<div style='margin-top:20px;display:flex;gap:12px;'>"
+             . "<a href='/expense-requests' style='background:#2563eb;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;'>💵 Go to Expense Requests</a>"
+             . "<a href='/dashboard' style='background:#0f172a;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;'>🏠 Dashboard</a>"
+             . "</div>"
+             . "</div></div>";
+    } catch (\Exception $e) {
+        return "<div style='font-family:sans-serif;max-width:800px;margin:40px auto;padding:24px;border-radius:12px;background:#fee2e2;color:#991b1b;'>"
+             . "<h3>❌ Migration Error:</h3>"
+             . "<pre>" . htmlspecialchars($e->getMessage()) . "</pre>"
+             . "</div>";
+    }
+});
+
+// Instant Sync: Match Fixed Assets system with real Store Inventory On-Hand & Unit Costs
+Route::get('/sync-fixed-assets-inventory', function () {
+    try {
+        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
+        \Illuminate\Support\Facades\DB::table('fixed_asset_assignments')->truncate();
+        \Illuminate\Support\Facades\DB::table('fixed_asset_units')->truncate();
+        \Illuminate\Support\Facades\DB::table('fixed_assets')->truncate();
+        \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
+
+        $existingProducts = \Illuminate\Support\Facades\DB::table('products')
+            ->where('category', 'Fixed Asset')
+            ->get();
+
+        $synced = [];
+        $usedPrefixes = [];
+        $usedUnitCodes = [];
+
+        foreach ($existingProducts as $prod) {
+            $totalOnHand = (int) round(\Illuminate\Support\Facades\DB::table('inventory')->where('product_id', $prod->id)->sum('quantity_on_hand'));
+            $totalAvailable = (int) round(\Illuminate\Support\Facades\DB::table('inventory')->where('product_id', $prod->id)->selectRaw('SUM(quantity_on_hand - COALESCE(quantity_reserved, 0)) as avail')->value('avail') ?? 0);
+            $qty = $totalAvailable > 0 ? $totalAvailable : ($totalOnHand > 0 ? $totalOnHand : 0);
+
+            // Only sync products with actual inventory on hand
+            if ($qty <= 0 && $totalOnHand <= 0) {
+                continue;
+            }
+
+            $invCost = (float) \Illuminate\Support\Facades\DB::table('inventory')
+                ->where('product_id', $prod->id)
+                ->where('unit_cost', '>', 0)
+                ->value('unit_cost');
+
+            $matPrice = (float) \Illuminate\Support\Facades\DB::table('material_prices')
+                ->where('product_id', $prod->id)
+                ->orderByDesc('effective_date')
+                ->value('price');
+
+            $prodCost = (float) ($prod->current_cost ?? $prod->standard_cost ?? $prod->unit_price ?? $prod->selling_price ?? 0);
+            $unitCost = $invCost > 0 ? $invCost : ($matPrice > 0 ? $matPrice : $prodCost);
+
+            $storeId = \Illuminate\Support\Facades\DB::table('inventory')->where('product_id', $prod->id)->where('quantity_on_hand', '>', 0)->value('store_id');
+
+            // Clean code prefix
+            $cleanName = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $prod->name));
+            $basePrefix = substr($cleanName, 0, 4) ?: 'AST';
+
+            $prefix = $basePrefix;
+            $counter = 1;
+            while (isset($usedPrefixes[$prefix])) {
+                $counter++;
+                $prefix = substr($basePrefix, 0, 3) . $counter;
+            }
+            $usedPrefixes[$prefix] = true;
+
+            $prodCategory = $prod->sub_category ?? $prod->category ?? 'Computer & IT';
+
+            $fixedAssetId = \Illuminate\Support\Facades\DB::table('fixed_assets')->insertGetId([
+                'name'           => $prod->name,
+                'category'       => $prodCategory,
+                'code_prefix'    => $prefix,
+                'total_quantity' => $qty,
+                'unit_cost'      => $unitCost,
+                'store_id'       => $storeId,
+                'description'    => 'Synced with Inventory On-Hand Stock (Product SKU: ' . ($prod->sku ?? $prod->code ?? '') . ')',
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
+
+            for ($i = 1; $i <= $qty; $i++) {
+                $seq = $i;
+                $unitCode = "{$prefix}-{$seq}";
+                while (isset($usedUnitCodes[$unitCode])) {
+                    $seq++;
+                    $unitCode = "{$prefix}-{$seq}";
+                }
+                $usedUnitCodes[$unitCode] = true;
+
+                \Illuminate\Support\Facades\DB::table('fixed_asset_units')->insert([
+                    'fixed_asset_id'  => $fixedAssetId,
+                    'unit_code'       => $unitCode,
+                    'sequence_number' => $seq,
+                    'status'          => 'in_store',
+                    'condition'       => $prod->equipment_condition ?: 'good',
+                    'current_location'=> $prod->current_location ?: 'Main Store',
+                    'purchase_price'  => $unitCost,
+                    'created_at'      => now(),
+                    'updated_at'      => now(),
+                ]);
+            }
+
+            $synced[] = "<strong>{$prod->name}</strong>: {$qty} units (Prefix: <code>{$prefix}</code>, Unit Cost: Br " . number_format($unitCost, 2) . ", Total: Br " . number_format($qty * $unitCost, 2) . ")";
+        }
+
+        \Illuminate\Support\Facades\Cache::forget('sidebar_fixed_asset_units_count');
+
+        $html = "<div style='font-family:sans-serif;max-width:800px;margin:40px auto;padding:24px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);background:#fff;border-top:6px solid #10b981;'>";
+        $html .= "<h2 style='color:#065f46;margin-top:0;'>✅ Fixed Assets Synced with Store Inventory!</h2>";
+        $html .= "<p style='color:#374151;'>All Fixed Assets and unit codes have been perfectly synchronized to match your live <strong>All Inventory On-Hand quantities and unit costs</strong>.</p>";
+        $html .= "<ul style='background:#f3f4f6;padding:20px 30px;border-radius:8px;line-height:1.8;color:#1f2937;'>";
+        foreach ($synced as $item) {
+            $html .= "<li>{$item}</li>";
+        }
+        $html .= "</ul>";
+        $html .= "<div style='margin-top:24px;'><a href='/store-manager/fixed-assets' style='background:#2563eb;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;'>→ View Fixed Assets Management</a></div>";
+        $html .= "</div>";
+
+        return $html;
+    } catch (\Throwable $e) {
+        return "<div style='font-family:sans-serif;max-width:800px;margin:40px auto;padding:24px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);background:#fff;border-top:6px solid #ef4444;'>"
+             . "<h2 style='color:#991b1b;margin-top:0;'>❌ Sync Error</h2>"
+             . "<pre style='background:#fee2e2;padding:16px;border-radius:8px;color:#991b1b;'>" . htmlspecialchars($e->getMessage()) . "</pre>"
+             . "</div>";
+    }
+});
+
+// Fix code_prefix mismatch: reads unit codes and aligns parent fixed_asset prefix
+Route::get('/fix-fixed-assets-prefix', function () {
+    try {
+        $fixedAssets = \Illuminate\Support\Facades\DB::table('fixed_assets')->get();
+        $fixed = [];
+        $skipped = [];
+
+        foreach ($fixedAssets as $asset) {
+            // Get first unit code for this asset
+            $firstUnit = \Illuminate\Support\Facades\DB::table('fixed_asset_units')
+                ->where('fixed_asset_id', $asset->id)
+                ->orderBy('sequence_number')
+                ->value('unit_code');
+
+            if (!$firstUnit) {
+                $skipped[] = "<strong>{$asset->name}</strong>: no units found, skipped.";
+                continue;
+            }
+
+            // Extract prefix from unit code (everything before the last dash-number)
+            // e.g. "COMP-1" → "COMP", "COMP-24" → "COMP"
+            $parts = explode('-', $firstUnit);
+            array_pop($parts); // remove the trailing number
+            $derivedPrefix = strtoupper(implode('-', $parts));
+
+            if ($derivedPrefix === strtoupper($asset->code_prefix)) {
+                $skipped[] = "<strong>{$asset->name}</strong>: already correct (<code>{$asset->code_prefix}</code>)";
+                continue;
+            }
+
+            // Update the parent fixed_asset record
+            \Illuminate\Support\Facades\DB::table('fixed_assets')
+                ->where('id', $asset->id)
+                ->update([
+                    'code_prefix' => $derivedPrefix,
+                    'updated_at'  => now(),
+                ]);
+
+            $fixed[] = "<strong>{$asset->name}</strong>: <del style='color:#ef4444'>{$asset->code_prefix}</del> → <code style='color:#059669'>{$derivedPrefix}</code>";
+        }
+
+        \Illuminate\Support\Facades\Cache::forget('sidebar_fixed_asset_units_count');
+
+        $html  = "<div style='font-family:sans-serif;max-width:800px;margin:40px auto;padding:24px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);background:#fff;border-top:6px solid #10b981;'>";
+        $html .= "<h2 style='color:#065f46;margin-top:0;'>✅ Fixed Asset Prefixes Corrected!</h2>";
+        if ($fixed) {
+            $html .= "<h4>Updated:</h4><ul style='background:#f0fdf4;padding:16px 24px;border-radius:8px;line-height:2;'>";
+            foreach ($fixed as $f) $html .= "<li>{$f}</li>";
+            $html .= "</ul>";
+        }
+        if ($skipped) {
+            $html .= "<h4>Skipped (already correct):</h4><ul style='background:#f3f4f6;padding:16px 24px;border-radius:8px;line-height:2;color:#6b7280;'>";
+            foreach ($skipped as $s) $html .= "<li>{$s}</li>";
+            $html .= "</ul>";
+        }
+        $html .= "<div style='margin-top:24px;'><a href='/public/index.php/store-manager/fixed-assets' style='background:#2563eb;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;'>→ View Fixed Assets</a></div>";
+        $html .= "</div>";
+
+        return $html;
+    } catch (\Throwable $e) {
+        return "<div style='font-family:sans-serif;max-width:800px;margin:40px auto;padding:24px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);background:#fff;border-top:6px solid #ef4444;'>"
+             . "<h2 style='color:#991b1b;margin-top:0;'>❌ Prefix Fix Error</h2>"
+             . "<pre style='background:#fee2e2;padding:16px;border-radius:8px;color:#991b1b;'>" . htmlspecialchars($e->getMessage()) . "</pre>"
+             . "</div>";
+    }
+});
+
+// Fix storage symlink + migrate in one click (fixes 404 on uploaded images)
+Route::get('/fix-storage-link', function () {
+    $style = 'font-family:sans-serif;max-width:900px;margin:40px auto;padding:28px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.12);background:#fff;';
+    $html  = "<div style='{$style}'>";
+    $html .= "<h2 style='color:#1e40af;margin-top:0;'>🔧 Storage & Migration Fix Tool</h2>";
+
+    // Step 1: Run storage:link
+    try {
+        \Illuminate\Support\Facades\Artisan::call('storage:link', ['--force' => true]);
+        $linkOut = \Illuminate\Support\Facades\Artisan::output();
+        $html .= "<div style='background:#d1fae5;border-left:5px solid #10b981;padding:12px 16px;border-radius:6px;margin-bottom:16px;'>";
+        $html .= "<strong style='color:#065f46;'>✅ Step 1: Storage Symlink Created!</strong><br>";
+        $html .= "<code style='font-size:13px;color:#065f46;'>" . htmlspecialchars($linkOut) . "</code>";
+        $html .= "<br><small>Your uploaded images are now publicly accessible at <code>/storage/...</code></small></div>";
+    } catch (\Exception $e) {
+        // If it fails, try creating symlink manually via PHP
+        $pubStorage = public_path('storage');
+        $appStorage = storage_path('app/public');
+        if (!file_exists($pubStorage)) {
+            try {
+                symlink($appStorage, $pubStorage);
+                $html .= "<div style='background:#d1fae5;border-left:5px solid #10b981;padding:12px 16px;border-radius:6px;margin-bottom:16px;'>";
+                $html .= "<strong style='color:#065f46;'>✅ Step 1: Symlink Created via PHP!</strong></div>";
+            } catch (\Exception $e2) {
+                $html .= "<div style='background:#fee2e2;border-left:5px solid #ef4444;padding:12px 16px;border-radius:6px;margin-bottom:16px;'>";
+                $html .= "<strong style='color:#991b1b;'>⚠️ Step 1: Symlink may need manual creation on server.</strong><br>";
+                $html .= "<code>" . htmlspecialchars($e2->getMessage()) . "</code></div>";
+            }
+        } else {
+            $html .= "<div style='background:#d1fae5;border-left:5px solid #10b981;padding:12px 16px;border-radius:6px;margin-bottom:16px;'>";
+            $html .= "<strong style='color:#065f46;'>✅ Step 1: Storage link already exists.</strong></div>";
+        }
+    }
+
+    // Step 2: Run migrations
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        $migOut = \Illuminate\Support\Facades\Artisan::output();
+        $html .= "<div style='background:#dbeafe;border-left:5px solid #3b82f6;padding:12px 16px;border-radius:6px;margin-bottom:16px;'>";
+        $html .= "<strong style='color:#1e3a8a;'>✅ Step 2: Database Migrations Applied!</strong>";
+        $html .= "<pre style='background:#eff6ff;padding:10px;border-radius:4px;font-size:12px;margin-top:8px;overflow-x:auto;'>" . htmlspecialchars($migOut) . "</pre></div>";
+    } catch (\Exception $e) {
+        $html .= "<div style='background:#fee2e2;border-left:5px solid #ef4444;padding:12px 16px;border-radius:6px;margin-bottom:16px;'>";
+        $html .= "<strong style='color:#991b1b;'>❌ Step 2: Migration Error</strong><br>";
+        $html .= "<code>" . htmlspecialchars($e->getMessage()) . "</code></div>";
+    }
+
+    // Step 3: Clear all caches
+    \Illuminate\Support\Facades\Artisan::call('config:clear');
+    \Illuminate\Support\Facades\Artisan::call('route:clear');
+    \Illuminate\Support\Facades\Artisan::call('view:clear');
+    $html .= "<div style='background:#f3f4f6;border-left:5px solid #6b7280;padding:12px 16px;border-radius:6px;margin-bottom:16px;'>";
+    $html .= "<strong>✅ Step 3: Config, Route & View caches cleared.</strong></div>";
+
+    // Check storage link status
+    $pubStorage = public_path('storage');
+    $isLinked = file_exists($pubStorage) && (is_link($pubStorage) || is_dir($pubStorage));
+    $html .= "<div style='background:#ecfdf5;border-left:5px solid #10b981;padding:12px 16px;border-radius:6px;margin-bottom:16px;'>";
+    $html .= "<strong>📂 Storage Link Status:</strong> " . ($isLinked ? '✅ public/storage is accessible' : '⚠️ public/storage not found') . "<br>";
+    $html .= "<small>Path: <code>{$pubStorage}</code></small></div>";
+
+    $html .= "<div style='margin-top:20px;display:flex;gap:12px;flex-wrap:wrap;'>";
+    $html .= "<a href='/' style='background:#2563eb;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;'>🏠 Go to Home</a>";
+    $html .= "<a href='/letters' style='background:#10b981;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;'>📧 Go to Letters</a>";
+    $html .= "<a href='/daily-reports' style='background:#f59e0b;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;'>📋 Go to Daily Reports</a>";
+    $html .= "</div>";
+    $html .= "</div>";
+
+    return $html;
+});
+
+Route::get('/migrate-material-prices', function () {
+    return redirect('/run-migrations');
+});
+
+// Quick Web Tool: Unlock Employee by Code (e.g., EMP-04)
+Route::get('/unlock-employee/{code?}', function ($code = 'EMP-04') {
+    $searchCode = trim($code);
+    $cleanNum = preg_replace('/[^\d]/', '', $searchCode);
+
+    $employees = \App\Models\Employee::where('employee_code', 'LIKE', "%{$searchCode}%")
+        ->orWhere('employee_code', 'LIKE', "%04%")
+        ->orWhere('employee_code', 'LIKE', "%{$cleanNum}%")
+        ->get();
+
+    if ($employees->isEmpty()) {
+        // Fallback: get all unapproved employees
+        $employees = \App\Models\Employee::where('is_approved_by_gm', false)
+            ->orWhereNull('is_approved_by_gm')
+            ->get();
+    }
+
+    $unlocked = [];
+    foreach ($employees as $emp) {
+        $emp->update([
+            'is_approved_by_gm' => true,
+            'gm_approved_at'    => now(),
+            'status'            => 'active',
+        ]);
+        $unlocked[] = "ID: {$emp->id} | Code: <strong>{$emp->employee_code}</strong> | Name: <strong>{$emp->full_name}</strong> | User ID: " . ($emp->user_id ?? 'None');
+    }
+
+    $style = 'font-family:sans-serif;max-width:800px;margin:40px auto;padding:24px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);background:#fff;border-top:6px solid #10b981;';
+    $html  = "<div style='{$style}'>";
+    $html .= "<h2 style='color:#065f46;margin-top:0;'>🔓 Employee Unlocked Successfully!</h2>";
+
+    if (count($unlocked) > 0) {
+        $html .= "<p style='color:#374151;'>The following employee account(s) have been unlocked and approved for full dashboard access:</p>";
+        $html .= "<ul style='background:#f3f4f6;padding:16px 24px;border-radius:8px;line-height:1.8;'>";
+        foreach ($unlocked as $info) {
+            $html .= "<li>{$info}</li>";
+        }
+        $html .= "</ul>";
+    } else {
+        $html .= "<p style='color:#6b7280;'>No matching locked employee found. All employees are already unlocked and approved.</p>";
+    }
+
+    $html .= "<div style='margin-top:20px;'><a href='/login' style='background:#2563eb;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;'>Go to Login Page</a></div>";
+    $html .= "</div>";
+
+    return $html;
+});
+
+// Quick Web Tool: Unlock ALL Employees
+Route::get('/unlock-all-employees', function () {
+    $count = \App\Models\Employee::query()->update([
+        'is_approved_by_gm' => true,
+        'gm_approved_at'    => now(),
+        'status'            => 'active',
+    ]);
+
+    return "<div style='font-family:sans-serif;max-width:800px;margin:40px auto;padding:24px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);background:#fff;border-top:6px solid #10b981;'>"
+         . "<h2 style='color:#065f46;margin-top:0;'>🔓 All Employee Accounts Unlocked!</h2>"
+         . "<p style='color:#374151;'>Total employee accounts updated & approved: <strong>{$count}</strong></p>"
+         . "<div style='margin-top:20px;'><a href='/login' style='background:#2563eb;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;'>Go to Login Page</a></div>"
+         . "</div>";
 });
 
 // Diagnostic route to reveal store-manager error
@@ -345,9 +937,17 @@ Route::get('register', [App\Http\Controllers\Auth\RegisterController::class, 'sh
 Route::middleware(['auth'])->group(function () {
     
     // Unassigned role fallback page
+    // Unassigned role fallback page
     Route::get('/pending-role', function () {
         return view('auth.pending_role');
     })->name('pending-role');
+
+    // User Profile Routes
+    Route::get('/profile', [App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password', [App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.password.update');
+
+
     
     // --- Admin Dashboard Enhancements ---
     Route::middleware('role:global_admin|admin')->group(function () {
@@ -586,8 +1186,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('manpower-roles',             [App\Http\Controllers\ManpowerRoleController::class, 'store'])->name('manpower-roles.store');
     Route::delete('manpower-roles/{manpowerRole}', [App\Http\Controllers\ManpowerRoleController::class, 'destroy'])->name('manpower-roles.destroy');
 
-    // Equipment Master (Fixed Assets)
-    Route::resource('equipment', App\Http\Controllers\EquipmentController::class);
+
 
     // Weekly Dispatches
     Route::resource('weekly-dispatches', App\Http\Controllers\WeeklyDispatchController::class)->only(['index', 'show']);
@@ -605,6 +1204,33 @@ Route::middleware(['auth'])->group(function () {
     Route::post('purchase-requests/{purchaseRequest}/submit', [App\Http\Controllers\PurchaseRequestController::class, 'submit'])->name('purchase-requests.submit');
     Route::post('purchase-requests/{purchaseRequest}/approve', [App\Http\Controllers\PurchaseRequestController::class, 'approve'])->name('purchase-requests.approve');
     Route::post('purchase-requests/{purchaseRequest}/reject', [App\Http\Controllers\PurchaseRequestController::class, 'reject'])->name('purchase-requests.reject');
+
+    // ── Procurement Lifecycle Upgraded Routes ──────────────────────────────
+    Route::get('procurement/my-queue', [App\Http\Controllers\ProcurementLifecycleController::class, 'myQueue'])->name('procurement.my-queue');
+
+    Route::post('purchase-requests/{purchaseRequest}/send-to-pm', [App\Http\Controllers\PurchaseRequestController::class, 'sendToProcurementManager'])->name('purchase-requests.send-to-pm');
+    Route::post('purchase-requests/{purchaseRequest}/send-back-to-store', [App\Http\Controllers\PurchaseRequestController::class, 'sendBackToStoreManager'])->name('purchase-requests.send-back-to-store');
+    Route::post('purchase-requests/{purchaseRequest}/send-to-proc-team', [App\Http\Controllers\PurchaseRequestController::class, 'sendToProcurementTeam'])->name('purchase-requests.send-to-proc-team');
+    Route::post('purchase-requests/{purchaseRequest}/submit-direct-buy', [App\Http\Controllers\PurchaseRequestController::class, 'submitDirectBuy'])->name('purchase-requests.submit-direct-buy');
+    Route::post('purchase-requests/{purchaseRequest}/submit-proformas', [App\Http\Controllers\PurchaseRequestController::class, 'submitProformas'])->name('purchase-requests.submit-proformas');
+    Route::post('purchase-requests/{purchaseRequest}/add-marketing-variance', [App\Http\Controllers\PurchaseRequestController::class, 'addMarketingVariance'])->name('purchase-requests.add-marketing-variance');
+    Route::post('purchase-requests/{purchaseRequest}/select-proformas', [App\Http\Controllers\PurchaseRequestController::class, 'selectProformas'])->name('purchase-requests.select-proformas');
+    Route::post('purchase-requests/{purchaseRequest}/gm-decide', [App\Http\Controllers\PurchaseRequestController::class, 'gmDecide'])->name('purchase-requests.gm-decide');
+    Route::post('purchase-requests/{purchaseRequest}/finance-credit-approve', [App\Http\Controllers\PurchaseRequestController::class, 'financeCreditApprove'])->name('purchase-requests.finance-credit-approve');
+    Route::post('purchase-requests/{purchaseRequest}/assign-payment', [App\Http\Controllers\PurchaseRequestController::class, 'assignPayment'])->name('purchase-requests.assign-payment');
+    Route::post('purchase-requests/{purchaseRequest}/execute-payment', [App\Http\Controllers\PurchaseRequestController::class, 'executePayment'])->name('purchase-requests.execute-payment');
+    Route::post('purchase-requests/{purchaseRequest}/upload-receipt', [App\Http\Controllers\PurchaseRequestController::class, 'uploadReceipt'])->name('purchase-requests.upload-receipt');
+    Route::post('purchase-requests/{purchaseRequest}/verify-receipt', [App\Http\Controllers\PurchaseRequestController::class, 'verifyReceipt'])->name('purchase-requests.verify-receipt');
+    Route::post('purchase-requests/{purchaseRequest}/book-driver', [App\Http\Controllers\PurchaseRequestController::class, 'bookDriver'])->name('purchase-requests.book-driver');
+    Route::post('purchase-requests/{purchaseRequest}/store-intake', [App\Http\Controllers\PurchaseRequestController::class, 'storeIntake'])->name('purchase-requests.store-intake');
+
+    // Emergency & Standard MR Planning Approvals & Dispatch
+    Route::post('material-requests/{materialRequest}/planning-approve', [App\Http\Controllers\MaterialRequestController::class, 'planningApprove'])->name('material-requests.planning-approve');
+    Route::post('material-requests/{materialRequest}/planning-reject', [App\Http\Controllers\MaterialRequestController::class, 'planningReject'])->name('material-requests.planning-reject');
+    Route::post('material-requests/{materialRequest}/coordinator-dispatch', [App\Http\Controllers\MaterialRequestController::class, 'coordinatorDispatch'])->name('material-requests.coordinator-dispatch');
+    Route::post('material-requests/{materialRequest}/send-to-pr', [App\Http\Controllers\MaterialRequestController::class, 'sendToPr'])->name('material-requests.send-to-pr');
+    Route::post('material-requests/{materialRequest}/create-transfer', [App\Http\Controllers\MaterialRequestController::class, 'createTransfer'])->name('material-requests.create-transfer');
+
 
     Route::get('price-intelligence', [App\Http\Controllers\ProcurementController::class, 'priceIntelligence'])->name('price-intelligence.index');
     Route::get('material-demand', [App\Http\Controllers\ProcurementController::class, 'materialDemand'])->name('material-demand.index');
@@ -659,12 +1285,17 @@ Route::middleware(['auth'])->group(function () {
 
     Route::resource('departments', App\Http\Controllers\DepartmentController::class)->except(['show', 'destroy']);
     Route::resource('attendance', App\Http\Controllers\AttendanceController::class)->only(['index', 'create', 'store']);
+    Route::post('attendance/quick-clock', [App\Http\Controllers\AttendanceController::class, 'quickClock'])->name('attendance.quickClock');
     Route::post('attendance/bulk', [App\Http\Controllers\AttendanceController::class, 'bulkStore'])->name('attendance.bulkStore');
     Route::get('attendance/device-logs', [App\Http\Controllers\AttendanceController::class, 'deviceLogs'])->name('attendance.deviceLogs');
     Route::post('attendance/zkteco-sync', [App\Http\Controllers\AttendanceController::class, 'syncZkteco'])->name('attendance.zkteco-sync');
     Route::get('attendance/zkteco-status', [App\Http\Controllers\AttendanceController::class, 'zktecoStatus'])->name('attendance.zkteco-status');
 
+    Route::get('employees/pending-approval', [App\Http\Controllers\EmployeeController::class, 'pendingApproval'])->name('employees.pending-approval');
+    Route::post('employees/bulk-approve', [App\Http\Controllers\EmployeeController::class, 'bulkApprove'])->name('employees.bulk-approve');
+    Route::post('employees/bulk-reject', [App\Http\Controllers\EmployeeController::class, 'bulkReject'])->name('employees.bulk-reject');
     Route::put('employees/{employee}/approve', [App\Http\Controllers\EmployeeController::class, 'approve'])->name('employees.approve');
+    Route::put('employees/{employee}/reject', [App\Http\Controllers\EmployeeController::class, 'reject'])->name('employees.reject');
     Route::resource('employees', App\Http\Controllers\EmployeeController::class);
     Route::post('employees/{employee}/upload-guarantee', [App\Http\Controllers\EmployeeController::class, 'uploadGuaranteeLetter'])->name('employees.upload-guarantee');
     Route::resource('contracts', App\Http\Controllers\EmployeeContractController::class)->only(['index', 'create', 'store', 'show']);
@@ -921,9 +1552,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('messages', App\Http\Controllers\MessageController::class)->only(['index', 'create', 'store', 'show']);
     Route::post('messages/{message}/reply', [App\Http\Controllers\MessageController::class, 'reply'])->name('messages.reply');
 
-    // ─── Phase 10 Admin & Equipment ──────────────────────────────────────────
-    Route::resource('equipment', App\Http\Controllers\EquipmentController::class)->only(['index', 'create', 'store', 'show']);
-    Route::post('equipment/{equipment}/log', [App\Http\Controllers\EquipmentController::class, 'logProductivity'])->name('equipment.logProductivity');
+
     
     Route::get('settings', [App\Http\Controllers\SettingController::class, 'index'])->name('settings.index');
     Route::post('settings', [App\Http\Controllers\SettingController::class, 'update'])->name('settings.update');
@@ -967,7 +1596,19 @@ Route::middleware(['auth'])->group(function () {
         
         // Issued Materials
         Route::get('issued-materials', [App\Http\Controllers\StoreManagerController::class, 'issuedMaterials'])->name('issued.index');
+
+        // Fixed Assets (Centralized Unit Codes & Quantity Lock)
+        Route::resource('fixed-assets', App\Http\Controllers\FixedAssetController::class);
+        Route::post('fixed-assets/{fixedAsset}/extra-unit', [App\Http\Controllers\FixedAssetController::class, 'storeExtraUnit'])->name('fixed-assets.extra-unit');
+        Route::put('fixed-assets/units/{unit}', [App\Http\Controllers\FixedAssetController::class, 'updateUnit'])->name('fixed-assets.units.update');
+        Route::delete('fixed-assets/units/{unit}', [App\Http\Controllers\FixedAssetController::class, 'destroyUnit'])->name('fixed-assets.units.destroy');
+        Route::post('fixed-assets/units/{unit}/assign', [App\Http\Controllers\FixedAssetController::class, 'assignUnit'])->name('fixed-assets.units.assign');
+        Route::post('fixed-assets/units/{unit}/return', [App\Http\Controllers\FixedAssetController::class, 'returnUnit'])->name('fixed-assets.units.return');
     });
+
+    // API / AJAX: Available Fixed Asset Units for HR assignment dropdown & return
+    Route::get('api/fixed-assets/available', [App\Http\Controllers\FixedAssetController::class, 'availableUnitsAjax'])->name('fixed-assets.available-ajax');
+    Route::post('hr/fixed-assets/{unit}/return', [App\Http\Controllers\FixedAssetController::class, 'returnUnit'])->name('hr.fixed-assets.return');
 
     // ─── Planning Manager Hub ───────────────────────────────────────────────────
     Route::prefix('planning-manager')->name('planning-manager.')->group(function () {
@@ -1010,21 +1651,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('{engSchedule}/comments',   [App\Http\Controllers\EngScheduleController::class, 'addComment'])->name('add-comment');
     });
 
-    // ─── Equipment Master & Fixed Asset Units ───────────────────────────────────
-    Route::prefix('equipment')->name('equipment.')->group(function () {
-        Route::get('/',             [App\Http\Controllers\EquipmentController::class, 'index'])->name('index');
-        Route::get('/create',       [App\Http\Controllers\EquipmentController::class, 'create'])->name('create');
-        Route::post('/',            [App\Http\Controllers\EquipmentController::class, 'store'])->name('store');
-        Route::get('/{equipment}',  [App\Http\Controllers\EquipmentController::class, 'show'])->name('show');
 
-        // Fixed Asset Unit CRUD per equipment type
-        Route::post('/{equipment}/units',              [App\Http\Controllers\EquipmentController::class, 'storeUnit'])->name('units.store');
-        Route::patch('/{equipment}/units/{unit}',      [App\Http\Controllers\EquipmentController::class, 'updateUnit'])->name('units.update');
-        Route::delete('/{equipment}/units/{unit}',     [App\Http\Controllers\EquipmentController::class, 'destroyUnit'])->name('units.destroy');
-
-        // Productivity logging
-        Route::post('/{equipment}/productivity',       [App\Http\Controllers\EquipmentController::class, 'logProductivity'])->name('productivity.store');
-    });
 
     // ─── Marketing Module ───────────────────────────────────────────────────────
     Route::prefix('marketing')->name('marketing.')->group(function () {
@@ -1038,6 +1665,37 @@ Route::middleware(['auth'])->group(function () {
         // Reports
         Route::get('reports/inflation', [App\Http\Controllers\MarketingController::class, 'inflationReport'])->name('reports.inflation');
         Route::get('reports/planning-vs-actual', [App\Http\Controllers\MarketingController::class, 'planningVsActual'])->name('reports.planning-vs-actual');
+    });
+
+    // ─── "Ask Money" (Employee Expense Request) Module ─────────────────────────────
+    Route::prefix('expense-requests')->name('expense-requests.')->group(function () {
+        Route::get('/',                                 [App\Http\Controllers\ExpenseRequestController::class, 'index'])->name('index');
+        Route::post('/',                                [App\Http\Controllers\ExpenseRequestController::class, 'store'])->name('store');
+        Route::get('/history',                          [App\Http\Controllers\ExpenseRequestController::class, 'history'])->name('history');
+        Route::get('/{expenseRequest}',                 [App\Http\Controllers\ExpenseRequestController::class, 'show'])->name('show');
+        Route::post('/{expenseRequest}/hr-review',      [App\Http\Controllers\ExpenseRequestController::class, 'hrReview'])->name('hr-review');
+        Route::post('/{expenseRequest}/gm-review',      [App\Http\Controllers\ExpenseRequestController::class, 'gmReview'])->name('gm-review');
+        Route::post('/{expenseRequest}/finance-assign', [App\Http\Controllers\ExpenseRequestController::class, 'financeAssign'])->name('finance-assign');
+        Route::post('/{expenseRequest}/mark-paid',      [App\Http\Controllers\ExpenseRequestController::class, 'markPaid'])->name('mark-paid');
+    });
+
+    // ─── Correspondence (Letter) Management System ──────────────────────────────────
+    Route::prefix('letters')->name('letters.')->group(function () {
+        Route::get('/dashboard',                         [App\Http\Controllers\LetterController::class, 'dashboard'])->name('dashboard');
+        Route::get('/',                                  [App\Http\Controllers\LetterController::class, 'index'])->name('index');
+        Route::get('/create',                            [App\Http\Controllers\LetterController::class, 'create'])->name('create');
+        Route::post('/',                                 [App\Http\Controllers\LetterController::class, 'store'])->name('store');
+        Route::get('/suggested-number',                  [App\Http\Controllers\LetterController::class, 'getSuggestedNumber'])->name('suggested-number');
+        Route::get('/{letter}',                          [App\Http\Controllers\LetterController::class, 'show'])->name('show');
+        Route::post('/{letter}/redirect',                [App\Http\Controllers\LetterController::class, 'redirectLetter'])->name('redirect');
+        Route::post('/{letter}/close',                   [App\Http\Controllers\LetterController::class, 'closeLetter'])->name('close');
+        Route::get('/attachments/{attachment}/download', [App\Http\Controllers\LetterController::class, 'downloadAttachment'])->name('attachments.download');
+    });
+
+    // ─── Admin Role Management ──────────────────────────────────────────────────────
+    Route::prefix('admin/roles')->name('admin.roles.')->group(function () {
+        Route::post('/',                [App\Http\Controllers\Admin\RoleAssignmentController::class, 'storeRole'])->name('store');
+        Route::delete('/{role}',        [App\Http\Controllers\Admin\RoleAssignmentController::class, 'destroyRole'])->name('destroy');
     });
 });
 

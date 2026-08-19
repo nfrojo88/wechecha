@@ -1,0 +1,263 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
+
+class ExpenseRequest extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $table = 'expense_requests';
+
+    protected $fillable = [
+        'request_number',
+        'user_id',
+        'employee_id',
+        'category',
+        'other_reason',
+        'amount',
+        'description',
+        'attachment',
+        'status',
+        'hr_reviewer_id',
+        'hr_reviewed_at',
+        'gm_reviewer_id',
+        'gm_approver_id',
+        'gm_reviewed_at',
+        'gm_approved_at',
+        'rejection_reason',
+        'finance_head_id',
+        'bank_account_id',
+        'coa_id',
+        'chart_of_account_id',
+        'assigned_finance_staff_id',
+        'finance_staff_id',
+        'finance_assigned_at',
+        'paid_by',
+        'paid_at',
+        'payment_reference',
+        'payment_notes',
+    ];
+
+    protected $casts = [
+        'amount' => 'decimal:2',
+        'hr_reviewed_at' => 'datetime',
+        'gm_reviewed_at' => 'datetime',
+        'gm_approved_at' => 'datetime',
+        'finance_assigned_at' => 'datetime',
+        'paid_at' => 'datetime',
+    ];
+
+    // Status Constants
+    public const STATUS_PENDING_HR = 'Pending (HR Review)';
+    public const STATUS_PENDING_GM = 'Pending (GM Review)';
+    public const STATUS_APPROVED_ASSIGNED = 'Approved - Assigned to Finance';
+    public const STATUS_ASSIGNED = 'Assigned to Finance';
+    public const STATUS_PAID = 'Paid';
+    public const STATUS_REJECTED = 'Rejected';
+
+    // Category Constants
+    public const CATEGORY_TRANSPORT = 'Transport';
+    public const CATEGORY_OFFICE_MATERIAL = 'Office Material';
+    public const CATEGORY_LOADING_UNLOADING = 'Loading & Unloading';
+    public const CATEGORY_CONTRACT_WORK = 'Contract Work';
+    public const CATEGORY_OTHER = 'Other';
+
+    /**
+     * User who submitted the request.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Employee record linked to the user.
+     */
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class, 'employee_id');
+    }
+
+    /**
+     * HR Reviewer User.
+     */
+    public function hrReviewer()
+    {
+        return $this->belongsTo(User::class, 'hr_reviewer_id');
+    }
+
+    /**
+     * GM Approver / Reviewer User.
+     */
+    public function gmApprover()
+    {
+        return $this->belongsTo(User::class, $this->gm_approver_id ? 'gm_approver_id' : 'gm_reviewer_id');
+    }
+
+    public function gmReviewer()
+    {
+        return $this->belongsTo(User::class, $this->gm_reviewer_id ? 'gm_reviewer_id' : 'gm_approver_id');
+    }
+
+    /**
+     * Finance Head User who assigned the request.
+     */
+    public function financeHead()
+    {
+        return $this->belongsTo(User::class, 'finance_head_id');
+    }
+
+    /**
+     * Assigned Finance Staff User.
+     */
+    public function financeStaff()
+    {
+        return $this->belongsTo(User::class, $this->finance_staff_id ? 'finance_staff_id' : 'assigned_finance_staff_id');
+    }
+
+    public function assignedFinanceStaff()
+    {
+        return $this->belongsTo(User::class, $this->assigned_finance_staff_id ? 'assigned_finance_staff_id' : 'finance_staff_id');
+    }
+
+    /**
+     * Finance Staff/Admin who processed payment.
+     */
+    public function paidBy()
+    {
+        return $this->belongsTo(User::class, 'paid_by');
+    }
+
+    /**
+     * Bank Account selected for payment.
+     */
+    public function bankAccount()
+    {
+        return $this->belongsTo(BankAccount::class, 'bank_account_id');
+    }
+
+    /**
+     * Chart of Account selected for deduction.
+     */
+    public function chartOfAccount()
+    {
+        return $this->belongsTo(ChartOfAccount::class, $this->chart_of_account_id ? 'chart_of_account_id' : 'coa_id');
+    }
+
+    public function coa()
+    {
+        return $this->belongsTo(ChartOfAccount::class, $this->coa_id ? 'coa_id' : 'chart_of_account_id')->with('manager');
+    }
+
+    /**
+     * Scopes for query scoping
+     */
+    public function scopePendingHr($query)
+    {
+        return $query->where('status', self::STATUS_PENDING_HR);
+    }
+
+    public function scopePendingGm($query)
+    {
+        return $query->where('status', self::STATUS_PENDING_GM);
+    }
+
+    public function scopePendingFinanceAssignment($query)
+    {
+        return $query->whereIn('status', [self::STATUS_APPROVED_ASSIGNED, self::STATUS_ASSIGNED]);
+    }
+
+    public function scopeAssignedToUser($query, $userId)
+    {
+        return $query->where(function ($q) use ($userId) {
+            $q->where('assigned_finance_staff_id', $userId)
+              ->orWhere('finance_staff_id', $userId);
+        })->where('status', self::STATUS_ASSIGNED);
+    }
+
+    public function scopePaid($query)
+    {
+        return $query->where('status', self::STATUS_PAID);
+    }
+
+    /**
+     * Strict Database-Level Paid History Scope per Section 3:
+     * - Admin / Global Admin: ALL
+     * - Finance Head: ALL
+     * - HR Manager/Officer: Only requests reviewed by them (hr_reviewer_id == user_id)
+     * - GM: Only requests approved by them (gm_approver_id == user_id || gm_reviewer_id == user_id)
+     * - Finance Staff: Only requests assigned to them / processed by them (assigned_finance_staff_id == user_id || finance_staff_id == user_id || paid_by == user_id)
+     * - Employee: Only requests submitted by them (user_id == user_id)
+     */
+    public function scopePaidHistoryForUser($query, User $user)
+    {
+        $roleNames = strtolower(implode(' ', $user->getRoleNames()->toArray()));
+
+        // Admin & Finance Head see ALL paid requests
+        if ($user->hasAnyRole(['admin', 'global_admin', 'finance_head', 'finance_manager']) || 
+            str_contains($roleNames, 'finance_head') || 
+            str_contains($roleNames, 'finance_manager')) {
+            return $query->where('status', self::STATUS_PAID);
+        }
+
+        return $query->where('status', self::STATUS_PAID)->where(function ($q) use ($user, $roleNames) {
+            $conditions = [];
+
+            // 1. Employee's own submitted requests
+            $q->where('user_id', $user->id);
+
+            // 2. HR: paid requests they personally reviewed
+            if ($user->can('hr.view') || str_contains($roleNames, 'hr')) {
+                $q->orWhere('hr_reviewer_id', $user->id);
+            }
+
+            // 3. GM: paid requests they personally approved (> 5,000 ETB)
+            if (str_contains($roleNames, 'gm') || $user->hasRole('gm')) {
+                $q->orWhere('gm_approver_id', $user->id)
+                  ->orWhere('gm_reviewer_id', $user->id);
+            }
+
+            // 4. Finance Staff: paid requests assigned to them or processed by them
+            if (str_contains($roleNames, 'finance') || str_contains($roleNames, 'cashier') || str_contains($roleNames, 'accountant')) {
+                $q->orWhere('assigned_finance_staff_id', $user->id)
+                  ->orWhere('finance_staff_id', $user->id)
+                  ->orWhere('paid_by', $user->id);
+            }
+        });
+    }
+
+    /**
+     * Accessor for full attachment URL.
+     */
+    public function getAttachmentUrlAttribute()
+    {
+        return \App\Services\FileUploadService::url($this->attachment);
+    }
+
+    /**
+     * Accessor for Bootstrap status badge markup.
+     */
+    public function getStatusBadgeAttribute()
+    {
+        switch ($this->status) {
+            case self::STATUS_PENDING_HR:
+                return '<span class="badge bg-warning text-dark"><i class="fa-solid fa-hourglass-half me-1"></i>Pending (HR Review)</span>';
+            case self::STATUS_PENDING_GM:
+                return '<span class="badge bg-info text-white"><i class="fa-solid fa-user-shield me-1"></i>Pending (GM Review)</span>';
+            case self::STATUS_APPROVED_ASSIGNED:
+            case self::STATUS_ASSIGNED:
+                return '<span class="badge bg-primary"><i class="fa-solid fa-file-invoice-dollar me-1"></i>Assigned to Finance</span>';
+            case self::STATUS_PAID:
+                return '<span class="badge bg-success"><i class="fa-solid fa-check-circle me-1"></i>Paid</span>';
+            case self::STATUS_REJECTED:
+                return '<span class="badge bg-danger"><i class="fa-solid fa-times-circle me-1"></i>Rejected</span>';
+            default:
+                return '<span class="badge bg-secondary">' . e($this->status) . '</span>';
+        }
+    }
+}

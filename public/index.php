@@ -7,6 +7,22 @@ define('LARAVEL_START', microtime(true));
 
 /*
 |--------------------------------------------------------------------------
+| Normalize REQUEST_URI (strips /public/index.php, /index.php prefixes)
+|--------------------------------------------------------------------------
+| Fixes 404 errors when accessed via /public/index.php/ URL paths on server.
+*/
+if (isset($_SERVER['REQUEST_URI']) && (str_contains($_SERVER['REQUEST_URI'], 'index.php') || str_starts_with($_SERVER['REQUEST_URI'], '/public'))) {
+    $uri = $_SERVER['REQUEST_URI'];
+    // Strip /public/index.php/ or /index.php/ or /public/
+    $uri = preg_replace('#^/(public/)?(index\.php/?)?#i', '/', $uri);
+    if (empty($uri) || $uri[0] !== '/') {
+        $uri = '/' . $uri;
+    }
+    $_SERVER['REQUEST_URI'] = $uri;
+}
+
+/*
+|--------------------------------------------------------------------------
 | Check If The Application Is Under Maintenance
 |--------------------------------------------------------------------------
 |

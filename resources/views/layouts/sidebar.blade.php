@@ -1,10 +1,50 @@
 <div class="sidebar-scroll">
     <ul class="sidebar-nav">
 
+        @if(!auth()->check() || !auth()->user()->hasAnyRole(['site_engineer', 'foreman']))
         <li class="sidebar-nav-item">
             <a href="{{ route('dashboard') }}" class="sidebar-nav-link {{ request()->routeIs('dashboard*') ? 'active' : '' }}">
                 <i class="fa-solid fa-gauge-high"></i>
                 <span>Dashboard</span>
+            </a>
+        </li>
+        @endif
+
+        <li class="sidebar-nav-item">
+            <a href="{{ route('expense-requests.index') }}" class="sidebar-nav-link {{ request()->routeIs('expense-requests.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-hand-holding-dollar text-success"></i>
+                <span>Ask Money</span>
+                @php
+                    $pendingExpenseCount = 0;
+                    try {
+                        $pendingExpenseCount = \App\Models\ExpenseRequest::where('status', 'like', 'Pending%')->count();
+                    } catch (\Exception $e) {}
+                @endphp
+                @if($pendingExpenseCount > 0 && auth()->check() && auth()->user()->hasAnyRole(['admin', 'global_admin', 'hr_manager', 'hr_officer', 'gm', 'finance_head']))
+                    <span class="badge bg-warning text-dark rounded-pill ms-auto">{{ $pendingExpenseCount }}</span>
+                @endif
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('letters.index') }}" class="sidebar-nav-link {{ request()->routeIs('letters.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-envelope-open-text text-primary"></i>
+                <span>Correspondence (Letters)</span>
+                @php
+                    $unreadLettersCount = 0;
+                    try {
+                        if (auth()->check()) {
+                            $user = auth()->user();
+                            $userRoles = $user->getRoleNames()->toArray();
+                            $unreadLettersCount = \App\Models\Letter::whereHas('recipients', function($q) use ($user, $userRoles) {
+                                $q->where('to_user_id', $user->id)
+                                  ->orWhereIn('to_role_name', $userRoles);
+                            })->where('status', '!=', \App\Models\Letter::STATUS_CLOSED)->count();
+                        }
+                    } catch (\Exception $e) {}
+                @endphp
+                @if($unreadLettersCount > 0)
+                    <span class="badge bg-danger rounded-pill ms-auto">{{ $unreadLettersCount }}</span>
+                @endif
             </a>
         </li>
 
@@ -37,11 +77,27 @@
                     <span class="badge bg-danger rounded-pill ms-auto">{{ $pendingLoansCount }}</span>
                 @endif
             </a>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('employees.pending-approval') }}" class="sidebar-nav-link {{ request()->routeIs('employees.pending-approval') ? 'active' : '' }}">
+                <i class="fa-solid fa-user-clock text-warning"></i>
+                <span>Employee Approvals</span>
+                @php
+                    $pendingEmpCount = 0;
+                    try {
+                        $pendingEmpCount = \App\Models\Employee::where(function($q) {
+                            $q->where('is_approved_by_gm', false)->orWhereNull('is_approved_by_gm');
+                        })->count();
+                    } catch (\Exception $e) {}
+                @endphp
+                @if($pendingEmpCount > 0)
+                    <span class="badge bg-warning text-dark rounded-pill ms-auto">{{ $pendingEmpCount }}</span>
+                @endif
+            </a>
         </li>
-
         @endrole
         {{-- Masters --}}
 
+        @if(!auth()->check() || !auth()->user()->hasAnyRole(['site_engineer', 'foreman']))
         @canany(['projects.view', 'planning.view', 'schedule.view', 'stores.view', 'stores.create', 'stores.edit', 'stores.delete', 'products.view', 'products.create', 'products.edit', 'products.delete'])
 
         @canany(['projects.view', 'planning.view', 'schedule.view'])
@@ -69,8 +125,10 @@
         </li>
         @endcanany
         @endcanany
+        @endif
 
         {{-- Inventory --}}
+        @if(!auth()->check() || !auth()->user()->hasAnyRole(['site_engineer', 'foreman']))
         @canany(['inventory.view', 'inventory.view_all_stores', 'inventory.*'])
 
         <li class="sidebar-nav-item">
@@ -80,6 +138,7 @@
             </a>
         </li>
         @endcanany
+        @endif
 
         {{-- Store Manager Hub --}}
         @if(auth()->check() && auth()->user()->hasAnyRole(['store_manager', 'store_keeper', 'admin', 'global_admin']))
@@ -89,11 +148,28 @@
                 <i class="fa-solid fa-gauge-high text-primary"></i>
                 <span>Dashboard</span>
             </a>
-        </li>
         <li class="sidebar-nav-item">
             <a href="{{ route('store-manager.inventory.all') }}" class="sidebar-nav-link {{ request()->routeIs('store-manager.inventory.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-boxes-stacked text-info"></i>
                 <span>All Inventory</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('store-manager.fixed-assets.index') }}" class="sidebar-nav-link {{ request()->routeIs('store-manager.fixed-assets.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-truck-monster text-warning"></i>
+                <span>Fixed Assets</span>
+                @php
+                    $fixedUnitsCount = cache()->remember('sidebar_fixed_asset_units_count', 60, function() {
+                        try {
+                            return \App\Models\FixedAssetUnit::count();
+                        } catch (\Throwable $e) {
+                            return 0;
+                        }
+                    });
+                @endphp
+                @if($fixedUnitsCount > 0)
+                    <span class="badge bg-warning text-dark rounded-pill ms-auto">{{ $fixedUnitsCount }}</span>
+                @endif
             </a>
         </li>
         <li class="sidebar-nav-item">
@@ -138,6 +214,7 @@
                 <span>Material Catalog</span>
             </a>
         </li>
+
         <li class="sidebar-nav-item">
             <a href="{{ route('store-manager.slip-sequences.index') }}" class="sidebar-nav-link {{ request()->routeIs('store-manager.slip-sequences.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-stream text-info"></i>
@@ -147,7 +224,7 @@
         @endif
 
         {{-- Planning Section --}}
-        @if(auth()->user() && (auth()->user()->hasAnyPermission(['planning.boq.manage', 'boq.view', 'boq.create', 'schedule.view', 'schedule.approve', 'schedule.create', 'schedule.edit', 'schedule.*', 'planning.view', 'planning.*', 'takeoff.view', 'takeoff.create', 'takeoff.edit', 'takeoff.*', 'resources.dispatch', 'material_planning.view', 'material_planning.*', 'material_requests.view', 'material_requests.create', 'material_requests.approve', 'material_requests.issue', 'material_requests.*', 'reports.view', 'reports.weekly.view', 'reports.*.view', 'finance.budgets.manage']) || auth()->user()->hasRole(['planning_manager', 'planning', 'technical_manager'])))
+        @if(auth()->user() && !auth()->user()->hasAnyRole(['site_engineer', 'foreman']) && (auth()->user()->hasAnyPermission(['planning.boq.manage', 'boq.view', 'boq.create', 'schedule.view', 'schedule.approve', 'schedule.create', 'schedule.edit', 'schedule.*', 'planning.view', 'planning.*', 'takeoff.view', 'takeoff.create', 'takeoff.edit', 'takeoff.*', 'resources.dispatch', 'material_planning.view', 'material_planning.*', 'material_requests.view', 'material_requests.create', 'material_requests.approve', 'material_requests.issue', 'material_requests.*', 'reports.view', 'reports.weekly.view', 'reports.*.view', 'finance.budgets.manage']) || auth()->user()->hasRole(['planning_manager', 'planning', 'technical_manager'])))
 
         @role('planning_manager|planning|technical_manager')
         <li class="sidebar-nav-item">
@@ -281,7 +358,7 @@
         @endcanany
 
         {{-- Procurement / Stores --}}
-        @if(auth()->check() && (auth()->user()->hasAnyRole(['Purchase Manager', 'purchase_manager', 'admin', 'global_admin']) || auth()->user()->canAny(['inventory.view', 'inventory.*', 'purchases.suppliers.manage', 'suppliers.*', 'material_requests.view', 'material_requests.create', 'material_requests.approve', 'material_requests.issue', 'material_requests.*', 'purchases.requests.create', 'purchases.view', 'purchases.receive', 'purchases.*', 'transfers.view', 'transfers.*'])))
+        @if(auth()->check() && !auth()->user()->hasAnyRole(['site_engineer', 'foreman']) && (auth()->user()->hasAnyRole(['Purchase Manager', 'purchase_manager', 'admin', 'global_admin']) || auth()->user()->canAny(['inventory.view', 'inventory.*', 'purchases.suppliers.manage', 'suppliers.*', 'material_requests.view', 'material_requests.create', 'material_requests.approve', 'material_requests.issue', 'material_requests.*', 'purchases.requests.create', 'purchases.view', 'purchases.receive', 'purchases.*', 'transfers.view', 'transfers.*'])))
 
         <li class="sidebar-nav-item">
             <a href="{{ route('dashboard.purchase') }}" class="sidebar-nav-link {{ request()->routeIs('dashboard.purchase') ? 'active' : '' }}">
@@ -323,6 +400,12 @@
             </a>
         </li>
         @endcanany
+        <li class="sidebar-nav-item">
+            <a href="{{ route('procurement.my-queue') }}" class="sidebar-nav-link {{ request()->routeIs('procurement.my-queue') ? 'active' : '' }}">
+                <i class="fa-solid fa-tasks text-warning"></i>
+                <span>Procurement My Queue</span>
+            </a>
+        </li>
         @canany(['purchases.requests.create', 'purchases.*'])
         <li class="sidebar-nav-item">
             <a href="{{ route('purchase-requests.index') }}" class="sidebar-nav-link {{ request()->routeIs('purchase-requests.*') ? 'active' : '' }}">
@@ -442,6 +525,18 @@
             <a href="{{ route('dashboard.site-engineer') }}" class="sidebar-nav-link {{ request()->routeIs('dashboard.site-engineer') ? 'active' : '' }}">
                 <i class="fa-solid fa-hard-hat text-warning"></i>
                 <span>Site Engineer Dashboard</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('material-requests.create', ['source' => 'Emergency']) }}" class="sidebar-nav-link {{ request()->fullUrlIs('*source=Emergency*') ? 'active' : '' }}">
+                <i class="fa-solid fa-bolt text-danger"></i>
+                <span>Ask Emergency Material Request</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('material-requests.index') }}" class="sidebar-nav-link {{ request()->routeIs('material-requests.*') && !request()->fullUrlIs('*source=Emergency*') ? 'active' : '' }}">
+                <i class="fa-solid fa-cart-flatbed text-warning"></i>
+                <span>Material Requests</span>
             </a>
         </li>
         <li class="sidebar-nav-item">
@@ -628,7 +723,7 @@
         @endif
 
         {{-- Finance --}}
-        @if(auth()->check() && (auth()->user()->hasAnyRole(['Finance head', 'finance_head', 'finance', 'admin', 'global_admin']) || auth()->user()->canAny(['finance.chart_of_accounts.view', 'finance.bank.manage', 'finance.income.view', 'finance.income.*', 'finance.expenses.view', 'finance.expenses.approve', 'finance.expenses.create', 'payments.view', 'payments.create', 'payments.approve', 'payments.*', 'subcon.view', 'subcon.create', 'subcon.edit', 'subcon.approve', 'subcon.*', 'finance.ipcs.manage', 'finance.*'])))
+        @if(auth()->check() && !auth()->user()->hasRole('site_engineer') && (auth()->user()->hasAnyRole(['Finance head', 'finance_head', 'finance', 'admin', 'global_admin']) || auth()->user()->canAny(['finance.chart_of_accounts.view', 'finance.bank.manage', 'finance.income.view', 'finance.income.*', 'finance.expenses.view', 'finance.expenses.approve', 'finance.expenses.create', 'payments.view', 'payments.create', 'payments.approve', 'payments.*', 'subcon.view', 'subcon.create', 'subcon.edit', 'subcon.approve', 'subcon.*', 'finance.ipcs.manage', 'finance.*'])))
 
         <li class="sidebar-nav-item">
             <a href="{{ route('dashboard.finance') }}" class="sidebar-nav-link {{ request()->routeIs('dashboard.finance') ? 'active' : '' }}">
@@ -788,7 +883,13 @@
         <li class="sidebar-nav-item">
             <a href="{{ route('hr-manager.dashboard') }}" class="sidebar-nav-link {{ request()->routeIs('hr-manager.dashboard') ? 'active' : '' }}">
                 <i class="fa-solid fa-gauge-high text-primary"></i>
-                <span>Manager Dashboard</span>
+                <span>HR Dashboard</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('attendance.create') }}" class="sidebar-nav-link {{ request()->routeIs('attendance.create') ? 'active' : '' }}">
+                <i class="fa-solid fa-calendar-check text-success"></i>
+                <span>Record Attendance</span>
             </a>
         </li>
         <li class="sidebar-nav-item">
@@ -816,12 +917,6 @@
             </a>
         </li>
         <li class="sidebar-nav-item">
-            <a href="{{ route('leave-requests.index') }}" class="sidebar-nav-link {{ request()->routeIs('leave-requests.*') ? 'active' : '' }}">
-                <i class="fa-solid fa-calendar-times text-danger"></i>
-                <span>Leave Requests</span>
-            </a>
-        </li>
-        <li class="sidebar-nav-item">
             <a href="{{ route('manpower-forecast.index') }}" class="sidebar-nav-link {{ request()->routeIs('manpower-forecast.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-chart-line text-primary"></i>
                 <span>Manpower Forecast</span>
@@ -837,18 +932,6 @@
             <a href="{{ route('performance-dashboard.index') }}" class="sidebar-nav-link {{ request()->routeIs('performance-dashboard.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-chart-bar text-info"></i>
                 <span>Performance Dashboard</span>
-            </a>
-        </li>
-        <li class="sidebar-nav-item">
-            <a href="{{ route('contracts.index') }}" class="sidebar-nav-link {{ request()->routeIs('contracts.*') ? 'active' : '' }}">
-                <i class="fa-solid fa-file-contract text-secondary"></i>
-                <span>Contract Management</span>
-            </a>
-        </li>
-        <li class="sidebar-nav-item">
-            <a href="{{ route('payroll.dashboard') }}" class="sidebar-nav-link {{ request()->routeIs('payroll.*') ? 'active' : '' }}">
-                <i class="fa-solid fa-money-bill-wave text-success"></i>
-                <span>Payroll Integration</span>
             </a>
         </li>
         <li class="sidebar-nav-item">
@@ -897,16 +980,7 @@
             </a>
         </li>
 
-        {{-- Equipment --}}
-        @canany(['resources.equipment.manage', 'equipment.view', 'equipment.*'])
 
-        <li class="sidebar-nav-item">
-            <a href="{{ route('equipment.index') }}" class="sidebar-nav-link {{ request()->routeIs('equipment.*') ? 'active' : '' }}">
-                <i class="fa-solid fa-tractor"></i>
-                <span>Equipment Log</span>
-            </a>
-        </li>
-        @endcanany
 
         {{-- Admin --}}
         @canany(['users.view', 'users.*', 'settings.view', 'settings.*', 'admin.audit.view', 'finance.audit.view'])

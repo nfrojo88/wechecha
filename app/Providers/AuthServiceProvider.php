@@ -62,6 +62,8 @@ class AuthServiceProvider extends ServiceProvider
         Payment::class         => PaymentPolicy::class,
         // Engineer Work Scheduling
         EngWorkOrder::class    => EngWorkOrderPolicy::class,
+        // Ask Money / Employee Expense Requests
+        \App\Models\ExpenseRequest::class => \App\Policies\ExpenseRequestPolicy::class,
     ];
 
     /**
