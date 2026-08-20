@@ -52,7 +52,7 @@ class Employee extends Model
             try {
                 if ($employee->assignedFixedAssets) {
                     foreach ($employee->assignedFixedAssets as $unit) {
-                        $unit->returnFromEmployee(auth()->id() ?? 1, 'good', 'Auto-returned upon employee profile deletion');
+                        $unit->returnToStore(auth()->id() ?? 1, 'Auto-returned upon employee profile deletion', 'good');
                     }
                 }
             } catch (\Exception $e) {

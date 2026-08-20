@@ -13,30 +13,30 @@ class EmployeePolicy
     public function viewAny(User $user)
     {
         return $user->can('hr.view')
-            || $user->hasAnyRole(['gm', 'hr_manager', 'hr_officer', 'admin', 'global_admin']);
+            || $user->hasAnyRole(['gm', 'hr', 'hr_manager', 'hr_officer', 'admin', 'global_admin', 'coordinator', 'general_service']);
     }
 
     public function view(User $user, Employee $e)
     {
         return $user->can('hr.view')
-            || $user->hasAnyRole(['gm', 'hr_manager', 'hr_officer', 'admin', 'global_admin']);
+            || $user->hasAnyRole(['gm', 'hr', 'hr_manager', 'hr_officer', 'admin', 'global_admin', 'coordinator', 'general_service']);
     }
 
     public function create(User $user)
     {
-        return $user->can('hr.manage')
-            || $user->hasAnyRole(['hr_manager', 'hr_officer', 'admin', 'global_admin']);
+        return $user->can('hr.create')
+            || $user->hasAnyRole(['hr', 'hr_manager', 'hr_officer', 'admin', 'global_admin']);
     }
 
     public function update(User $user, Employee $e)
     {
-        return $user->can('hr.manage')
-            || $user->hasAnyRole(['hr_manager', 'hr_officer', 'admin', 'global_admin']);
+        return $user->can('hr.edit')
+            || $user->hasAnyRole(['hr', 'hr_manager', 'hr_officer', 'admin', 'global_admin', 'gm']);
     }
 
     public function delete(User $user, Employee $e)
     {
-        return $user->can('hr.manage')
-            || $user->hasAnyRole(['admin', 'global_admin']);
+        return $user->can('hr.delete')
+            || $user->hasAnyRole(['hr', 'hr_manager', 'hr_officer', 'admin', 'global_admin', 'gm']);
     }
 }

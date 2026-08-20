@@ -19,7 +19,7 @@
             @endif
         </a>
         @endrole
-        @can('hr.manage')
+        @can('create', App\Models\Employee::class)
         <a href="{{ route('employees.create') }}" class="btn btn-primary shadow-sm">
             <i class="fa-solid fa-user-plus me-1"></i> Add New Employee
         </a>
@@ -181,19 +181,27 @@
                         </td>
                         <td class="text-end pe-3">
                             <div class="btn-group" role="group">
-                                <a href="{{ route('employees.show', $emp) }}" class="btn btn-sm btn-outline-primary">View</a>
-                                @can('hr.manage')
-                                @if($emp->gm_approval_status === 'rejected')
-                                <a href="{{ route('employees.edit', $emp) }}" class="btn btn-sm btn-danger fw-bold">
-                                    <i class="fa-solid fa-wrench me-1"></i>Fix & Resubmit
+                                <a href="{{ route('employees.show', $emp) }}" class="btn btn-sm btn-outline-primary" title="View Profile">
+                                    <i class="fa-solid fa-eye me-1"></i>View
                                 </a>
-                                @else
-                                <a href="{{ route('employees.edit', $emp) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
-                                @endif
-                                <form action="{{ route('employees.destroy', $emp) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this employee?');">
+                                @can('update', $emp)
+                                    @if($emp->gm_approval_status === 'rejected')
+                                    <a href="{{ route('employees.edit', $emp) }}" class="btn btn-sm btn-danger fw-bold" title="Fix & Resubmit">
+                                        <i class="fa-solid fa-wrench me-1"></i>Fix & Resubmit
+                                    </a>
+                                    @else
+                                    <a href="{{ route('employees.edit', $emp) }}" class="btn btn-sm btn-outline-secondary" title="Edit Employee">
+                                        <i class="fa-solid fa-pen-to-square me-1"></i>Edit
+                                    </a>
+                                    @endif
+                                @endcan
+                                @can('delete', $emp)
+                                <form action="{{ route('employees.destroy', $emp) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete employee {{ addslashes($emp->full_name) }} ({{ $emp->employee_code }})?');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Employee">
+                                        <i class="fa-solid fa-trash me-1"></i>Delete
+                                    </button>
                                 </form>
                                 @endcan
                             </div>

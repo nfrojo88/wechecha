@@ -27,7 +27,7 @@
                         on {{ optional($employee->gm_rejected_at)->format('d M Y \a\t h:i A') }}
                     </small>
                 </div>
-                @can('hr.manage')
+                @can('update', $employee)
                 <a href="{{ route('employees.edit', $employee) }}" class="btn btn-danger fw-bold ms-3 flex-shrink-0">
                     <i class="fa-solid fa-wrench me-1"></i> Fix & Resubmit to GM
                 </a>
