@@ -165,22 +165,22 @@ class ExpenseRequest extends Model
     /**
      * Scopes for query scoping
      */
-    public function scopePendingHr($query)
+    public function scopePendingHr(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
     {
         return $query->where('status', self::STATUS_PENDING_HR);
     }
 
-    public function scopePendingGm($query)
+    public function scopePendingGm(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
     {
         return $query->where('status', self::STATUS_PENDING_GM);
     }
 
-    public function scopePendingFinanceAssignment($query)
+    public function scopePendingFinanceAssignment(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
     {
         return $query->whereIn('status', [self::STATUS_APPROVED_ASSIGNED, self::STATUS_ASSIGNED]);
     }
 
-    public function scopeAssignedToUser($query, $userId)
+    public function scopeAssignedToUser(\Illuminate\Database\Eloquent\Builder $query, int|string $userId): \Illuminate\Database\Eloquent\Builder
     {
         return $query->where(function ($q) use ($userId) {
             $q->where('assigned_finance_staff_id', $userId)
@@ -188,7 +188,7 @@ class ExpenseRequest extends Model
         })->where('status', self::STATUS_ASSIGNED);
     }
 
-    public function scopePaid($query)
+    public function scopePaid(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
     {
         return $query->where('status', self::STATUS_PAID);
     }
@@ -202,7 +202,7 @@ class ExpenseRequest extends Model
      * - Finance Staff: Only requests assigned to them / processed by them (assigned_finance_staff_id == user_id || finance_staff_id == user_id || paid_by == user_id)
      * - Employee: Only requests submitted by them (user_id == user_id)
      */
-    public function scopePaidHistoryForUser($query, User $user)
+    public function scopePaidHistoryForUser(\Illuminate\Database\Eloquent\Builder $query, User $user): \Illuminate\Database\Eloquent\Builder
     {
         $roleNames = strtolower(implode(' ', $user->getRoleNames()->toArray()));
 

@@ -538,7 +538,7 @@
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Select Source Bank / Cash Account (COA) <span class="text-danger">*</span></label>
-                            <select name="coa_id" id="coaSelect{{ $req->id }}" class="form-select" onchange="autoDetectFinanceStaff({{ $req->id }})" required>
+                            <select name="coa_id" id="coaSelect{{ $req->id }}" class="form-select" data-req-id="{{ $req->id }}" onchange="autoDetectFinanceStaff(this)" required>
                                 <option value="">-- Choose Bank / Cash Account from COA --</option>
                                 @foreach($coaBankAccounts as $coaAcc)
                                     @php
@@ -557,7 +557,7 @@
                         </div>
 
                         {{-- Auto-detected Finance Staff (read-only, from COA manager) --}}
-                        <div id="autoAssignBox{{ $req->id }}" class="mb-3" style="{{ ($req->chart_of_account_id ?? $req->coa_id) ? '' : 'display:none;' }}">
+                        <div id="autoAssignBox{{ $req->id }}" class="mb-3 {{ ($req->chart_of_account_id ?? $req->coa_id) ? '' : 'd-none' }}">
                             <label class="form-label fw-bold text-muted small text-uppercase">Auto-Assigned Finance Staff (from COA)</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light"><i class="fa-solid fa-user-gear text-primary"></i></span>
@@ -811,8 +811,9 @@ function toggleOtherReason() {
     }
 }
 
-function autoDetectFinanceStaff(reqId) {
-    const coaSelect = document.getElementById('coaSelect' + reqId);
+function autoDetectFinanceStaff(selectEl) {
+    const reqId = selectEl.dataset.reqId;
+    const coaSelect = selectEl;
     const autoBox = document.getElementById('autoAssignBox' + reqId);
     const noMgrWarning = document.getElementById('noManagerWarning' + reqId);
     const displayInput = document.getElementById('assignedStaffDisplay' + reqId);
@@ -823,7 +824,7 @@ function autoDetectFinanceStaff(reqId) {
 
     const opt = coaSelect.options[coaSelect.selectedIndex];
     if (!opt || !opt.value) {
-        if (autoBox) autoBox.style.display = 'none';
+        if (autoBox) autoBox.classList.add('d-none');
         if (noMgrWarning) noMgrWarning.style.display = 'none';
         return;
     }
@@ -832,7 +833,7 @@ function autoDetectFinanceStaff(reqId) {
     const staffName = opt.getAttribute('data-assigned-staff-name');
 
     if (staffId && staffId !== '') {
-        if (autoBox) autoBox.style.display = '';
+        if (autoBox) autoBox.classList.remove('d-none');
         if (noMgrWarning) noMgrWarning.style.display = 'none';
         if (displayInput) displayInput.value = staffName;
         if (hiddenInput) hiddenInput.value = staffId;
@@ -840,7 +841,7 @@ function autoDetectFinanceStaff(reqId) {
             helpText.innerHTML = '<i class="fa-solid fa-circle-check text-success me-1"></i><strong>Auto-assigned:</strong> ' + staffName + ' (COA Manager)';
         }
     } else {
-        if (autoBox) autoBox.style.display = 'none';
+        if (autoBox) autoBox.classList.add('d-none');
         if (noMgrWarning) noMgrWarning.style.display = '';
         if (hiddenInput) hiddenInput.value = '';
     }

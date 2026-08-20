@@ -103,6 +103,7 @@ class ExpenseRequestController extends Controller
     {
         $this->ensureTableExists();
 
+        /** @var \App\Models\User $user */
         $user = auth()->user();
         if (!$user) {
             return redirect()->route('login');
@@ -217,6 +218,7 @@ class ExpenseRequestController extends Controller
             $query->where('category', $request->category);
         }
 
+        /** @var \Illuminate\Pagination\LengthAwarePaginator $requests */
         $requests = $query->latest()->paginate(15)->withQueryString();
 
         // Fetch Bank / Asset Accounts directly from Chart of Accounts
@@ -632,6 +634,7 @@ class ExpenseRequestController extends Controller
             $query->where('category', $request->category);
         }
 
+        /** @var \Illuminate\Pagination\LengthAwarePaginator $paidRequests */
         $paidRequests = $query->latest('paid_at')->paginate(20)->withQueryString();
 
         return view('expense-requests.history', compact('paidRequests'));
