@@ -75,9 +75,9 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        // Grant all permissions to global_admin
+        // Grant all permissions to global_admin, admin, gm
         Gate::before(function (User $user, string $ability) {
-            if ($user->hasRole('global_admin')) {
+            if ($user->hasRole('global_admin') || $user->hasRole('admin') || $user->hasRole('gm')) {
                 return true;
             }
         });

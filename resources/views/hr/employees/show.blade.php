@@ -111,7 +111,7 @@
                     </div>
                     <div class="col-md-6">
                         <small class="text-muted d-block mb-1">Date of Joining</small>
-                        <h6 class="mb-0">{{ $employee->date_of_joining->format('d M Y') }}</h6>
+                        <h6 class="mb-0">{{ optional($employee->date_of_joining)->format('d M Y') ?? 'N/A' }}</h6>
                     </div>
                     <div class="col-md-6">
                         <small class="text-muted d-block mb-1">Status</small>
@@ -215,10 +215,10 @@
                     </div>
                     <p class="text-muted mb-3">
                         <i class="fa-solid fa-calendar me-2"></i>
-                        Joined: {{ $employee->date_of_joining->format('d M Y') }}
+                        Joined: {{ optional($employee->date_of_joining)->format('d M Y') ?? 'N/A' }}
                         <br>
                         <i class="fa-solid fa-clock me-2"></i>
-                        Deadline was: {{ $employee->date_of_joining->addDays(30)->format('d M Y') }}
+                        Deadline was: {{ $employee->date_of_joining ? $employee->date_of_joining->addDays(30)->format('d M Y') : 'N/A' }}
                     </p>
                     <form action="{{ route('employees.upload-guarantee', $employee) }}" method="POST" enctype="multipart/form-data">
                         @csrf
@@ -236,14 +236,14 @@
                     <div class="alert alert-warning mb-3">
                         <i class="fa-solid fa-exclamation-triangle me-2"></i>
                         <strong>Warning!</strong> Guarantee letter must be submitted within {{ $employee->days_until_guarantee_deadline }} days.
-                        <br><small>Login will be blocked after {{ $employee->date_of_joining->addDays(30)->format('d M Y') }}</small>
+                        <br><small>Login will be blocked after {{ $employee->date_of_joining ? $employee->date_of_joining->addDays(30)->format('d M Y') : 'N/A' }}</small>
                     </div>
                     <p class="text-muted mb-3">
                         <i class="fa-solid fa-calendar me-2"></i>
-                        Joined: {{ $employee->date_of_joining->format('d M Y') }}
+                        Joined: {{ optional($employee->date_of_joining)->format('d M Y') ?? 'N/A' }}
                         <br>
                         <i class="fa-solid fa-clock me-2"></i>
-                        Deadline: {{ $employee->date_of_joining->addDays(30)->format('d M Y') }}
+                        Deadline: {{ $employee->date_of_joining ? $employee->date_of_joining->addDays(30)->format('d M Y') : 'N/A' }}
                     </p>
                     <form action="{{ route('employees.upload-guarantee', $employee) }}" method="POST" enctype="multipart/form-data">
                         @csrf
@@ -264,10 +264,10 @@
                     </div>
                     <p class="text-muted mb-3">
                         <i class="fa-solid fa-calendar me-2"></i>
-                        Joined: {{ $employee->date_of_joining->format('d M Y') }}
+                        Joined: {{ optional($employee->date_of_joining)->format('d M Y') ?? 'N/A' }}
                         <br>
                         <i class="fa-solid fa-clock me-2"></i>
-                        Deadline: {{ $employee->date_of_joining->addDays(30)->format('d M Y') }}
+                        Deadline: {{ $employee->date_of_joining ? $employee->date_of_joining->addDays(30)->format('d M Y') : 'N/A' }}
                     </p>
                     <form action="{{ route('employees.upload-guarantee', $employee) }}" method="POST" enctype="multipart/form-data">
                         @csrf
@@ -381,7 +381,7 @@
                                     @endif
                                     @if($exp->license_expiry)
                                         <small>
-                                            <strong>Expiry:</strong> {{ $exp->license_expiry->format('d M Y') }}
+                                            <strong>Expiry:</strong> {{ optional($exp->license_expiry)->format('d M Y') ?? 'N/A' }}
                                             @if($exp->is_license_expired)
                                                 <span class="badge bg-danger ms-2">Expired</span>
                                             @else
@@ -603,8 +603,8 @@
                                     @foreach($returnedAssets as $asset)
                                     <tr>
                                         <td>{{ $asset->product->name ?? 'Unknown' }}</td>
-                                        <td>{{ $asset->assigned_date->format('d M Y') }}</td>
-                                        <td>{{ $asset->returned_date->format('d M Y') }}</td>
+                                        <td>{{ optional($asset->assigned_date)->format('d M Y') ?? 'N/A' }}</td>
+                                        <td>{{ optional($asset->returned_date)->format('d M Y') ?? 'N/A' }}</td>
                                         <td>{{ $asset->notes ?? '-' }}</td>
                                     </tr>
                                     @endforeach
@@ -629,8 +629,8 @@
                                     @foreach($damagedAssets as $asset)
                                     <tr>
                                         <td>{{ $asset->product->name ?? 'Unknown' }}</td>
-                                        <td>{{ $asset->assigned_date->format('d M Y') }}</td>
-                                        <td>{{ $asset->updated_at->format('d M Y') }}</td>
+                                        <td>{{ optional($asset->assigned_date)->format('d M Y') ?? 'N/A' }}</td>
+                                        <td>{{ optional($asset->updated_at)->format('d M Y') ?? 'N/A' }}</td>
                                         <td>{{ $asset->notes ?? '-' }}</td>
                                     </tr>
                                     @endforeach
@@ -708,7 +708,7 @@
                     <div class="col-12 d-flex align-items-center gap-2 py-1">
                         <i class="fa-solid fa-calendar text-warning" style="width:20px;"></i>
                         <span class="text-muted">Joined:</span>
-                        <span>{{ $employee->date_of_joining->format('d M Y') }}</span>
+                        <span>{{ optional($employee->date_of_joining)->format('d M Y') ?? 'N/A' }}</span>
                     </div>
                     @if($employee->department)
                     <div class="col-12 d-flex align-items-center gap-2 py-1">
@@ -1205,7 +1205,7 @@
                             <div class="col-sm-6">
                                 <div class="p-2 border rounded bg-light bg-opacity-50">
                                     <small class="text-muted d-block" style="font-size: 0.72rem;"><i class="fa-solid fa-shield-halved me-1 text-success"></i>Warranty Expiry</small>
-                                    <strong class="text-dark">{{ $fUnit->warranty_expiry->format('d M Y') }}</strong>
+                                    <strong class="text-dark">{{ optional($fUnit->warranty_expiry)->format('d M Y') ?? 'N/A' }}</strong>
                                 </div>
                             </div>
                             @endif

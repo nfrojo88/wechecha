@@ -44,9 +44,9 @@
                             <small class="text-muted d-block mb-1">Unit Price</small>
                             <h6 class="mb-0">Br {{ number_format($asset->product->unit_cost ?? 0, 2) }}</h6>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-6">
                             <small class="text-muted d-block mb-1">Assigned Date</small>
-                            <h6 class="mb-0">{{ $asset->assigned_date->format('d M Y') }}</h6>
+                            <h6 class="mb-0">{{ optional($asset->assigned_date)->format('d M Y') ?? 'N/A' }}</h6>
                         </div>
                         <div class="col-md-6">
                             <small class="text-muted d-block mb-1">Duration in Use</small>

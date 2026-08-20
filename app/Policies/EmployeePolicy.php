@@ -25,13 +25,13 @@ class EmployeePolicy
     public function create(User $user)
     {
         return $user->can('hr.create')
-            || $user->hasAnyRole(['hr', 'hr_manager', 'hr_officer', 'admin', 'global_admin']);
+            || $user->hasAnyRole(['hr', 'hr_manager', 'hr_officer', 'admin', 'global_admin', 'gm', 'general_service', 'coordinator']);
     }
 
     public function update(User $user, Employee $e)
     {
         return $user->can('hr.edit')
-            || $user->hasAnyRole(['hr', 'hr_manager', 'hr_officer', 'admin', 'global_admin', 'gm']);
+            || $user->hasAnyRole(['hr', 'hr_manager', 'hr_officer', 'admin', 'global_admin', 'gm', 'general_service', 'coordinator']);
     }
 
     public function delete(User $user, Employee $e)

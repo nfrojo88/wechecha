@@ -42,7 +42,7 @@
                         </div>
                         <div class="col-6">
                             <small class="text-muted d-block mb-1">Assigned Date</small>
-                            <h6 class="mb-0">{{ $asset->assigned_date->format('d M Y') }}</h6>
+                            <h6 class="mb-0">{{ optional($asset->assigned_date)->format('d M Y') ?? 'N/A' }}</h6>
                         </div>
                     </div>
                 </div>
