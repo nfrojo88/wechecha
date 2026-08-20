@@ -7,7 +7,10 @@
     <a href="{{ route('employees.index') }}" class="btn btn-sm btn-outline-secondary me-3">
         <i class="fa-solid fa-arrow-left"></i>
     </a>
-    <h1 class="h3 mb-0">Add New Employee</h1>
+    <div>
+        <h1 class="h3 mb-0">Add New Employee</h1>
+        <small class="text-muted">Register an employee profile with document and certificate attachments</small>
+    </div>
 </div>
 
 @if(session('success'))
@@ -21,50 +24,50 @@
 </div>
 @endif
 
-<!-- Multi-Step Progress Indicator -->
+<!-- Multi-Step Progress Indicator (Client-Side Wizard) -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
-            <div class="text-center flex-grow-1">
-                <div class="step-indicator {{ request()->get('step', 1) == 1 ? 'active' : (request()->get('step', 1) > 1 ? 'completed' : '') }}">
+            <div class="text-center flex-grow-1 cursor-pointer" onclick="goToStep(1)">
+                <div class="step-indicator active" id="step-ind-1">
                     <span class="step-number">1</span>
                 </div>
-                <small class="text-muted d-block mt-1">Basic Info</small>
+                <small class="text-muted d-block mt-1 fw-semibold">Basic Info</small>
             </div>
-            <div class="flex-grow-1" style="height: 2px; background: #dee2e6; margin: 0 10px; margin-top: -15px;"></div>
-            <div class="text-center flex-grow-1">
-                <div class="step-indicator {{ request()->get('step', 1) == 2 ? 'active' : (request()->get('step', 1) > 2 ? 'completed' : '') }}">
+            <div class="flex-grow-1 step-line" style="height: 2px; background: #dee2e6; margin: 0 10px; margin-top: -15px;"></div>
+            <div class="text-center flex-grow-1 cursor-pointer" onclick="goToStep(2)">
+                <div class="step-indicator" id="step-ind-2">
                     <span class="step-number">2</span>
                 </div>
-                <small class="text-muted d-block mt-1">Employment</small>
+                <small class="text-muted d-block mt-1 fw-semibold">Employment</small>
             </div>
-            <div class="flex-grow-1" style="height: 2px; background: #dee2e6; margin: 0 10px; margin-top: -15px;"></div>
-            <div class="text-center flex-grow-1">
-                <div class="step-indicator {{ request()->get('step', 1) == 3 ? 'active' : (request()->get('step', 1) > 3 ? 'completed' : '') }}">
+            <div class="flex-grow-1 step-line" style="height: 2px; background: #dee2e6; margin: 0 10px; margin-top: -15px;"></div>
+            <div class="text-center flex-grow-1 cursor-pointer" onclick="goToStep(3)">
+                <div class="step-indicator" id="step-ind-3">
                     <span class="step-number">3</span>
                 </div>
-                <small class="text-muted d-block mt-1">Salary</small>
+                <small class="text-muted d-block mt-1 fw-semibold">Salary</small>
             </div>
-            <div class="flex-grow-1" style="height: 2px; background: #dee2e6; margin: 0 10px; margin-top: -15px;"></div>
-            <div class="text-center flex-grow-1">
-                <div class="step-indicator {{ request()->get('step', 1) == 4 ? 'active' : (request()->get('step', 1) > 4 ? 'completed' : '') }}">
+            <div class="flex-grow-1 step-line" style="height: 2px; background: #dee2e6; margin: 0 10px; margin-top: -15px;"></div>
+            <div class="text-center flex-grow-1 cursor-pointer" onclick="goToStep(4)">
+                <div class="step-indicator" id="step-ind-4">
                     <span class="step-number">4</span>
                 </div>
-                <small class="text-muted d-block mt-1">Assets</small>
+                <small class="text-muted d-block mt-1 fw-semibold">Assets</small>
             </div>
-            <div class="flex-grow-1" style="height: 2px; background: #dee2e6; margin: 0 10px; margin-top: -15px;"></div>
-            <div class="text-center flex-grow-1">
-                <div class="step-indicator {{ request()->get('step', 1) == 5 ? 'active' : (request()->get('step', 1) > 5 ? 'completed' : '') }}">
+            <div class="flex-grow-1 step-line" style="height: 2px; background: #dee2e6; margin: 0 10px; margin-top: -15px;"></div>
+            <div class="text-center flex-grow-1 cursor-pointer" onclick="goToStep(5)">
+                <div class="step-indicator" id="step-ind-5">
                     <span class="step-number">5</span>
                 </div>
-                <small class="text-muted d-block mt-1">Education</small>
+                <small class="text-muted d-block mt-1 fw-semibold">Education</small>
             </div>
-            <div class="flex-grow-1" style="height: 2px; background: #dee2e6; margin: 0 10px; margin-top: -15px;"></div>
-            <div class="text-center flex-grow-1">
-                <div class="step-indicator {{ request()->get('step', 1) == 6 ? 'active' : (request()->get('step', 1) > 6 ? 'completed' : '') }}">
+            <div class="flex-grow-1 step-line" style="height: 2px; background: #dee2e6; margin: 0 10px; margin-top: -15px;"></div>
+            <div class="text-center flex-grow-1 cursor-pointer" onclick="goToStep(6)">
+                <div class="step-indicator" id="step-ind-6">
                     <span class="step-number">6</span>
                 </div>
-                <small class="text-muted d-block mt-1">Experience</small>
+                <small class="text-muted d-block mt-1 fw-semibold">Experience</small>
             </div>
         </div>
     </div>
@@ -76,29 +79,40 @@
     height: 40px;
     border-radius: 50%;
     background: #e9ecef;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
     color: #6c757d;
     transition: all 0.3s ease;
+    cursor: pointer;
 }
 .step-indicator.active {
     background: #0d6efd;
     color: white;
+    box-shadow: 0 0 0 4px rgba(13,110,253,0.2);
 }
 .step-indicator.completed {
-    background: #28a745;
+    background: #198754;
     color: white;
+}
+.cursor-pointer { cursor: pointer; }
+.step-panel { display: none; }
+.step-panel.active { display: block; }
+.img-preview-box {
+    max-height: 140px;
+    object-fit: contain;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    padding: 3px;
+    background: #f8f9fa;
 }
 </style>
 
 <div class="card border-0 shadow-sm">
-    <div class="card-body">
-        <form method="POST" action="{{ route('employees.store') }}" id="employeeForm" enctype="multipart/form-data" novalidate>
+    <div class="card-body p-4">
+        <form method="POST" action="{{ route('employees.store') }}" id="employeeForm" enctype="multipart/form-data">
             @csrf
-            <input type="hidden" name="step" value="{{ request()->get('step', 1) }}">
-            <input type="hidden" name="action" id="formAction" value="next">
             
             {{-- Display Validation Errors --}}
             @if($errors->any())
@@ -112,45 +126,25 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
             @endif
-            
-            <!-- Hidden fields to preserve data across steps (session-first fallback) -->
-            <input type="hidden" name="employee_code"       value="{{ old('employee_code',       session('employee_data.employee_code')) }}">
-            <input type="hidden" name="full_name"           value="{{ old('full_name',           session('employee_data.full_name')) }}">
-            <input type="hidden" name="phone"               value="{{ old('phone',               session('employee_data.phone')) }}">
-            <input type="hidden" name="email"               value="{{ old('email',               session('employee_data.email')) }}">
-            <input type="hidden" name="department"          value="{{ old('department',          session('employee_data.department')) }}">
-            <input type="hidden" name="role_title"          value="{{ old('role_title',          session('employee_data.role_title')) }}">
-            <input type="hidden" name="employment_type"     value="{{ old('employment_type',     session('employee_data.employment_type', 'permanent')) }}">
-            <input type="hidden" name="date_of_joining"     value="{{ old('date_of_joining',     session('employee_data.date_of_joining')) }}">
-            <input type="hidden" name="status"              value="{{ old('status',              session('employee_data.status', 'active')) }}">
-            <input type="hidden" name="project_id"          value="{{ old('project_id',          session('employee_data.project_id')) }}">
-            <input type="hidden" name="site_assignment"     value="{{ old('site_assignment',     session('employee_data.site_assignment')) }}">
-            <input type="hidden" name="basic_salary"        value="{{ old('basic_salary',        session('employee_data.basic_salary', 0)) }}">
-            <input type="hidden" name="transport_allowance" value="{{ old('transport_allowance', session('employee_data.transport_allowance', 0)) }}">
-            <input type="hidden" name="house_allowance"     value="{{ old('house_allowance',     session('employee_data.house_allowance', 0)) }}">
-            <input type="hidden" name="position_allowance"  value="{{ old('position_allowance',  session('employee_data.position_allowance', 0)) }}">
-            <input type="hidden" name="contract_type"       value="{{ old('contract_type',       session('employee_data.contract_type', 'Full-Time')) }}">
-            <input type="hidden" name="bank_name"           value="{{ old('bank_name',           session('employee_data.bank_name')) }}">
-            <input type="hidden" name="account_number"      value="{{ old('account_number',      session('employee_data.account_number')) }}">
-            <input type="hidden" name="device_user_id"      value="{{ old('device_user_id',      session('employee_data.device_user_id')) }}">
-            <input type="hidden" name="notes"               value="{{ old('notes',               session('employee_data.notes')) }}">
 
             {{-- STEP 1: Basic Information --}}
-            @if(request()->get('step', 1) == 1)
-            <div class="mb-3" data-step="1">
-                <h5 class="mb-4"><i class="fa-solid fa-user-circle text-primary me-2"></i>Basic Information</h5>
+            <div class="step-panel active" id="step-panel-1">
+                <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                    <h5 class="mb-0"><i class="fa-solid fa-user-circle text-primary me-2"></i>Step 1: Basic Information</h5>
+                    <span class="badge bg-primary">Step 1 of 6</span>
+                </div>
                 
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Employee Code <span class="text-danger">*</span></label>
                         <input type="text" name="employee_code" class="form-control @error('employee_code') is-invalid @enderror"
-                               value="{{ session('employee_data.employee_code') ?? old('employee_code', 'EMP-'.rand(10000,99999)) }}" required>
+                               value="{{ old('employee_code', 'EMP-'.rand(10000,99999)) }}" required>
                         @error('employee_code')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Full Name <span class="text-danger">*</span></label>
                         <input type="text" name="full_name" class="form-control @error('full_name') is-invalid @enderror"
-                               value="{{ session('employee_data.full_name') ?? old('full_name') }}" placeholder="e.g. Abebe Bikila" required>
+                               value="{{ old('full_name') }}" placeholder="e.g. Abebe Bikila" required>
                         @error('full_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-4">
@@ -158,31 +152,28 @@
                             <i class="fa-solid fa-fingerprint text-primary me-1"></i>ZKTeco Device User ID
                         </label>
                         <input type="text" name="device_user_id" class="form-control @error('device_user_id') is-invalid @enderror"
-                               value="{{ session('employee_data.device_user_id') ?? old('device_user_id') }}"
+                               value="{{ old('device_user_id') }}"
                                placeholder="e.g. 1, 2, 17, 50">
-                        <small class="text-muted">
-                            <i class="fa-solid fa-circle-info me-1"></i>
-                            The numeric ID assigned to this employee in the fingerprint machine's user list.
-                        </small>
+                        <small class="text-muted">Numeric ID assigned in biometric device.</small>
                         @error('device_user_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Primary Phone <span class="text-danger">*</span></label>
                         <input type="text" name="phone" class="form-control @error('phone') is-invalid @enderror"
-                               value="{{ session('employee_data.phone') ?? old('phone') }}" placeholder="+251 911 234 567" required>
+                               value="{{ old('phone') }}" placeholder="+251 911 234 567" required>
                         @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Email</label>
-                        <input type="email" name="email" class="form-control" value="{{ session('employee_data.email') ?? old('email') }}" placeholder="employee@company.com">
+                        <input type="email" name="email" class="form-control" value="{{ old('email') }}" placeholder="employee@company.com">
                     </div>
-                    <div class="col-md-12">
+                    <div class="col-md-6">
                         <label class="form-label">Department <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <select name="department" class="form-select @error('department') is-invalid @enderror" required>
                                 <option value="">-- Select Department --</option>
                                 @foreach($departments as $dept)
-                                    <option value="{{ $dept->name }}" {{ (session('employee_data.department') ?? old('department')) == $dept->name ? 'selected' : '' }}>
+                                    <option value="{{ $dept->name }}" {{ old('department') == $dept->name ? 'selected' : '' }}>
                                         {{ $dept->name }}
                                     </option>
                                 @endforeach
@@ -193,193 +184,173 @@
                         </div>
                         @error('department')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                     </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Role / Job Title</label>
+                        <input type="text" name="role_title" class="form-control" 
+                               value="{{ old('role_title') }}" placeholder="e.g. Site Engineer">
+                    </div>
                 </div>
             </div>
-            @endif
 
             {{-- STEP 2: Employment Details --}}
-            @if(request()->get('step', 1) == 2)
-            <div class="mb-3" data-step="2">
-                <h5 class="mb-4"><i class="fa-solid fa-briefcase text-success me-2"></i>Employment Details</h5>
+            <div class="step-panel" id="step-panel-2">
+                <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                    <h5 class="mb-0"><i class="fa-solid fa-briefcase text-success me-2"></i>Step 2: Employment Details</h5>
+                    <span class="badge bg-success">Step 2 of 6</span>
+                </div>
                 
                 <div class="row g-3">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label class="form-label">Employment Type <span class="text-danger">*</span></label>
                         <select name="employment_type" class="form-select" required>
-                            <option value="permanent" @selected((session('employee_data.employment_type') ?? old('employment_type','permanent'))=='permanent')>Permanent</option>
-                            <option value="contract" @selected((session('employee_data.employment_type') ?? old('employment_type'))=='contract')>Contract</option>
-                            <option value="daily" @selected((session('employee_data.employment_type') ?? old('employment_type'))=='daily')>Daily Worker</option>
+                            <option value="permanent" {{ old('employment_type', 'permanent') == 'permanent' ? 'selected' : '' }}>Permanent</option>
+                            <option value="contract"  {{ old('employment_type') == 'contract' ? 'selected' : '' }}>Contract</option>
+                            <option value="daily"     {{ old('employment_type') == 'daily' ? 'selected' : '' }}>Daily Labor</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label class="form-label">Contract Start Date <span class="text-danger">*</span></label>
                         <input type="date" name="date_of_joining" class="form-control @error('date_of_joining') is-invalid @enderror"
-                               value="{{ session('employee_data.date_of_joining') ?? old('date_of_joining', date('Y-m-d')) }}" required>
+                               value="{{ old('date_of_joining', date('Y-m-d')) }}" required>
                         @error('date_of_joining')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label class="form-label">Status <span class="text-danger">*</span></label>
                         <select name="status" class="form-select" required>
-                            <option value="active" @selected((session('employee_data.status') ?? old('status','active'))=='active')>Active</option>
-                            <option value="suspended" @selected((session('employee_data.status') ?? old('status'))=='suspended')>Suspended</option>
-                            <option value="terminated" @selected((session('employee_data.status') ?? old('status'))=='terminated')>Terminated</option>
+                            <option value="active"     {{ old('status', 'active') == 'active' ? 'selected' : '' }}>Active</option>
+                            <option value="suspended"  {{ old('status') == 'suspended' ? 'selected' : '' }}>Suspended</option>
+                            <option value="terminated" {{ old('status') == 'terminated' ? 'selected' : '' }}>Terminated</option>
                         </select>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Assigned Project</label>
                         <select name="project_id" class="form-select">
-                            <option value="">-- HQ / Unassigned --</option>
-                            @foreach($projects as $p)
-                            <option value="{{ $p->id }}" @selected((session('employee_data.project_id') ?? old('project_id'))==$p->id)>{{ $p->name }}</option>
+                            <option value="">-- No Specific Project (HQ) --</option>
+                            @foreach($projects as $project)
+                                <option value="{{ $project->id }}" {{ old('project_id') == $project->id ? 'selected' : '' }}>
+                                    {{ $project->name }} ({{ $project->code }})
+                                </option>
                             @endforeach
                         </select>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Site Assignment</label>
                         <select name="site_assignment" class="form-select">
-                            <option value="">-- No Specific Site --</option>
-                            <option value="HQ" @selected((session('employee_data.site_assignment') ?? old('site_assignment'))=='HQ')>Headquarters</option>
-                            <option value="Site_A" @selected((session('employee_data.site_assignment') ?? old('site_assignment'))=='Site_A')>Site A</option>
-                            <option value="Site_B" @selected((session('employee_data.site_assignment') ?? old('site_assignment'))=='Site_B')>Site B</option>
+                            <option value="Head Office"  {{ old('site_assignment', 'Head Office') == 'Head Office' ? 'selected' : '' }}>Head Office</option>
+                            <option value="Project Site" {{ old('site_assignment') == 'Project Site' ? 'selected' : '' }}>Project Site</option>
+                            <option value="Workshop"     {{ old('site_assignment') == 'Workshop' ? 'selected' : '' }}>Workshop</option>
+                            <option value="Remote"       {{ old('site_assignment') == 'Remote' ? 'selected' : '' }}>Remote</option>
                         </select>
                     </div>
                 </div>
             </div>
-            @endif
 
-            {{-- STEP 3: Salary Information --}}
-            @if(request()->get('step', 1) == 3)
-            <div class="mb-3" data-step="3">
-                <h5 class="mb-4"><i class="fa-solid fa-money-bill text-warning me-2"></i>Salary Information</h5>
+            {{-- STEP 3: Salary & Guarantee Letter --}}
+            <div class="step-panel" id="step-panel-3">
+                <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                    <h5 class="mb-0"><i class="fa-solid fa-money-bill text-warning me-2"></i>Step 3: Salary & Guarantee Letter</h5>
+                    <span class="badge bg-warning text-dark">Step 3 of 6</span>
+                </div>
                 
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label">Monthly Base Salary (ETB) <span class="text-danger">*</span></label>
-                        <input type="number" step="0.01" min="0" name="basic_salary"
-                               class="form-control @error('basic_salary') is-invalid @enderror"
-                               value="{{ session('employee_data.basic_salary') ?? old('basic_salary', 0) }}" required>
-                        <small class="text-muted">Br 0.00</small>
+                        <input type="number" step="0.01" name="basic_salary" class="form-control @error('basic_salary') is-invalid @enderror"
+                               value="{{ old('basic_salary', 0) }}" placeholder="0.00" required>
                         @error('basic_salary')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Contract Type</label>
                         <select name="contract_type" class="form-select">
-                            <option value="Full-Time" @selected((session('employee_data.contract_type') ?? old('contract_type'))=='Full-Time')>Full-Time</option>
-                            <option value="Part-Time" @selected((session('employee_data.contract_type') ?? old('contract_type'))=='Part-Time')>Part-Time</option>
-                            <option value="Temporary" @selected((session('employee_data.contract_type') ?? old('contract_type'))=='Temporary')>Temporary</option>
+                            <option value="Full-Time"  {{ old('contract_type', 'Full-Time') == 'Full-Time' ? 'selected' : '' }}>Full-Time</option>
+                            <option value="Part-Time"  {{ old('contract_type') == 'Part-Time' ? 'selected' : '' }}>Part-Time</option>
+                            <option value="Temporary"  {{ old('contract_type') == 'Temporary' ? 'selected' : '' }}>Temporary</option>
+                            <option value="Internship" {{ old('contract_type') == 'Internship' ? 'selected' : '' }}>Internship</option>
                         </select>
                     </div>
-                    <div class="col-12">
-                        <div class="alert alert-light border">
-                            <h6 class="mb-3"><i class="fa-solid fa-coins text-success me-2"></i>Allowances</h6>
-                            <div class="row g-3">
-                                <div class="col-md-4">
-                                    <label class="form-label">Transport Allowance (ETB)</label>
-                                    <input type="number" step="0.01" min="0" name="transport_allowance" class="form-control" value="{{ session('employee_data.transport_allowance') ?? old('transport_allowance', 0) }}">
-                                    <small class="text-muted"><i class="fa-solid fa-info-circle me-1"></i>&lt; 2200 is not taxable</small>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">House Allowance (ETB)</label>
-                                    <input type="number" step="0.01" min="0" name="house_allowance" class="form-control" value="{{ session('employee_data.house_allowance') ?? old('house_allowance', 0) }}">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Position Allowance (ETB)</label>
-                                    <input type="number" step="0.01" min="0" name="position_allowance" class="form-control" value="{{ session('employee_data.position_allowance') ?? old('position_allowance', 0) }}">
-                                </div>
-                            </div>
-                        </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Transport Allowance (ETB)</label>
+                        <input type="number" step="0.01" name="transport_allowance" class="form-control"
+                               value="{{ old('transport_allowance', 0) }}" placeholder="0.00">
                     </div>
-                    <div class="col-12">
-                        <div class="alert alert-light border">
-                            <h6 class="mb-3"><i class="fa-solid fa-info-circle text-info me-2"></i>Bank Information</h6>
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">Bank Name (e.g. CBE)</label>
-                                    <input type="text" name="bank_name" class="form-control" value="{{ session('employee_data.bank_name') ?? old('bank_name') }}" placeholder="Commercial Bank of Ethiopia">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Account Number</label>
-                                    <input type="text" name="account_number" class="form-control" value="{{ session('employee_data.account_number') ?? old('account_number') }}" placeholder="1000123456789">
-                                </div>
-                            </div>
-                        </div>
+                    <div class="col-md-4">
+                        <label class="form-label">House Allowance (ETB)</label>
+                        <input type="number" step="0.01" name="house_allowance" class="form-control"
+                               value="{{ old('house_allowance', 0) }}" placeholder="0.00">
                     </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Position Allowance (ETB)</label>
+                        <input type="number" step="0.01" name="position_allowance" class="form-control"
+                               value="{{ old('position_allowance', 0) }}" placeholder="0.00">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Bank Name</label>
+                        <input type="text" name="bank_name" class="form-control" value="{{ old('bank_name') }}" placeholder="e.g. Commercial Bank of Ethiopia (CBE)">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Account Number</label>
+                        <input type="text" name="account_number" class="form-control" value="{{ old('account_number') }}" placeholder="1000123456789">
+                    </div>
+
                     <div class="col-12">
-                        <div class="alert alert-warning border-start border-4">
-                            <h6 class="mb-3"><i class="fa-solid fa-shield-halved text-warning me-2"></i>Guarantee Letter (Optional)</h6>
-                            <p class="small text-muted mb-3">
-                                <i class="fa-solid fa-info-circle me-1"></i>
-                                <strong>Important:</strong> If not uploaded now, employee must submit within 30 days of joining date.
+                        <div class="card border-warning bg-light p-3">
+                            <h6 class="fw-bold mb-2 text-dark">
+                                <i class="fa-solid fa-shield-halved text-warning me-2"></i>Guarantee Letter (Optional Attachment)
+                            </h6>
+                            <p class="small text-muted mb-2">
+                                <i class="fa-solid fa-info-circle me-1 text-primary"></i>
+                                Upload signed guarantee letter document or photo. Supports <strong>JPG, PNG, JPEG, WEBP, PDF</strong> (up to 15MB).
                             </p>
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <label class="form-label">Upload Guarantee Letter <small class="text-muted">(PDF or Image - Max 10MB)</small></label>
-                                    <input type="file" name="guarantee_letter" class="form-control" 
-                                           accept="application/pdf,image/jpeg,image/png,image/jpg">
-                                    <small class="text-muted">
-                                        <i class="fa-solid fa-exclamation-triangle text-warning me-1"></i>
-                                        Warning will show after 20 days • Login blocked after 30 days if not submitted
-                                    </small>
-                                </div>
+                            <input type="file" name="guarantee_letter" id="guarantee_letter_input" class="form-control" 
+                                   accept="application/pdf,image/jpeg,image/png,image/jpg,image/webp"
+                                   onchange="previewSingleFile(this, 'guarantee_preview')">
+                            <div id="guarantee_preview" class="mt-2 d-none">
+                                <img src="" alt="Guarantee Preview" class="img-preview-box">
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            @endif
 
-            {{-- STEP 4: Asset Assignment --}}
-            @if(request()->get('step', 1) == 4)
-            <div class="mb-3" data-step="4">
-                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            {{-- STEP 4: Fixed Assets & Equipment --}}
+            <div class="step-panel" id="step-panel-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2 pb-2 border-bottom">
                     <div>
-                        <h5 class="mb-1"><i class="fa-solid fa-truck-monster text-warning me-2"></i>Assign Fixed Assets & Equipment</h5>
-                        <p class="text-muted small mb-0">Select available equipment from centralized Store inventory (computers, vehicles, tools, etc.) to assign to this employee.</p>
+                        <h5 class="mb-1"><i class="fa-solid fa-truck-monster text-warning me-2"></i>Step 4: Assign Fixed Assets & Equipment</h5>
+                        <p class="text-muted small mb-0">Select equipment from centralized Store inventory (computers, vehicles, tools, etc.) to assign to this employee.</p>
                     </div>
-                    <div>
-                        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 fs-6">
-                            <i class="fa-solid fa-warehouse me-1"></i>{{ $fixedAssetUnits->count() }} Units Available In Store
-                        </span>
-                    </div>
+                    <span class="badge bg-primary">Step 4 of 6</span>
                 </div>
 
-                {{-- Global Category Filter Pills --}}
+                {{-- Category quick filter pills --}}
                 @php
-                    $availableCategories = $fixedAssetUnits->map(function($u) {
-                        return $u->parentAsset->category ?? 'General';
-                    })->unique()->values();
+                    $availableCats = $fixedAssetUnits->pluck('parentAsset.category')->filter()->unique()->values();
                 @endphp
-                <div class="card border-0 bg-light p-2 mb-3 shadow-sm">
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                        <small class="text-muted fw-bold me-1"><i class="fa-solid fa-filter me-1"></i>Filter by Category:</small>
-                        <button type="button" class="btn btn-xs btn-dark rounded-pill px-3 py-1 btn-category-filter active" data-category="ALL" onclick="filterByCategory('ALL', this)">
-                            All ({{ $fixedAssetUnits->count() }})
+                @if($availableCats->count() > 1)
+                <div class="d-flex align-items-center gap-1 mb-3 flex-wrap">
+                    <small class="text-muted fw-bold me-1">Filter by Category:</small>
+                    <button type="button" class="btn btn-sm btn-dark btn-category-filter active" onclick="filterByCategory('ALL', this)">All ({{ $fixedAssetUnits->count() }})</button>
+                    @foreach($availableCats as $c)
+                        @php $cCount = $fixedAssetUnits->where('parentAsset.category', $c)->count(); @endphp
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-category-filter" onclick="filterByCategory('{{ $c }}', this)">
+                            {{ $c }} <span class="badge bg-secondary ms-1">{{ $cCount }}</span>
                         </button>
-                        @foreach($availableCategories as $cat)
-                            @php
-                                $catCount = $fixedAssetUnits->filter(fn($u) => ($u->parentAsset->category ?? 'General') === $cat)->count();
-                            @endphp
-                            <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-3 py-1 btn-category-filter" data-category="{{ $cat }}" onclick="filterByCategory('{{ $cat }}', this)">
-                                {{ $cat }} ({{ $catCount }})
-                            </button>
-                        @endforeach
-                    </div>
+                    @endforeach
                 </div>
+                @endif
 
                 <div id="assetsContainer">
-                    @php
-                        $savedUnits = session('employee_data.fixed_asset_units') ?? old('fixed_asset_units', ['']);
-                    @endphp
-                    @foreach($savedUnits as $index => $selectedUnitId)
-                    <div class="asset-entry border rounded p-3 mb-3 bg-light" data-index="{{ $index }}">
+                    <div class="asset-entry border rounded p-3 mb-3 bg-light" data-index="0">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="mb-0 fw-bold"><i class="fa-solid fa-barcode text-primary me-2"></i>Assigned Asset Unit #{{ $index + 1 }}</h6>
-                            <button type="button" class="btn btn-sm btn-outline-danger remove-asset {{ count($savedUnits) > 1 ? '' : 'd-none' }}" onclick="removeAsset({{ $index }})">
+                            <h6 class="mb-0 fw-bold"><i class="fa-solid fa-barcode text-primary me-2"></i>Assigned Asset Unit #1</h6>
+                            <button type="button" class="btn btn-sm btn-outline-danger remove-asset" onclick="removeAsset(0)" style="display: none;">
                                 <i class="fa-solid fa-trash me-1"></i>Remove
                             </button>
                         </div>
 
-                        {{-- Per-Row Live Search Input --}}
+                        {{-- Row search input --}}
                         <div class="mb-2">
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-primary"></i></span>
@@ -398,23 +369,21 @@
                                     Select Available Fixed Asset Unit <span class="badge bg-success ms-1">In Store</span>
                                 </label>
                                 <select name="fixed_asset_units[]" class="form-select asset-select font-monospace" onchange="onAssetUnitSelected(this)">
-                                    <option value="">-- Choose an Available Asset Unit --</option>
+                                    <option value="">-- Choose an Available Asset Unit (Optional) --</option>
                                     @foreach($fixedAssetUnits as $unit)
                                         @php
-                                            $detailStr = $unit->plate_number ? 'Plate: ' . $unit->plate_number : ($unit->serial_number ? 'SN: ' . $unit->serial_number : ($unit->brand ? $unit->brand . ' ' . $unit->model : 'In Store'));
-                                            $pName = $unit->parentAsset->name ?? 'Asset';
-                                            $pCat = $unit->parentAsset->category ?? 'General';
-                                            $searchKeywords = strtolower("{$unit->unit_code} {$pName} {$pCat} {$detailStr} {$unit->brand} {$unit->model} {$unit->serial_number} {$unit->plate_number}");
+                                            $parentName = $unit->parentAsset?->name ?? 'Asset';
+                                            $category = $unit->parentAsset?->category ?? 'General';
+                                            $details = $unit->plate_number ? "Plate: {$unit->plate_number}" : ($unit->serial_number ? "SN: {$unit->serial_number}" : ($unit->brand ? "{$unit->brand} {$unit->model}" : 'In Store'));
+                                            $searchKeywords = strtolower("{$unit->unit_code} {$parentName} {$category} {$details} {$unit->brand} {$unit->model} {$unit->serial_number} {$unit->plate_number}");
                                         @endphp
                                         <option value="{{ $unit->id }}" 
-                                                data-category="{{ $pCat }}" 
+                                                data-category="{{ $category }}"
                                                 data-search="{{ $searchKeywords }}"
                                                 data-unit-code="{{ $unit->unit_code }}"
-                                                data-asset-name="{{ $pName }}"
-                                                data-specs="{{ $detailStr }}"
-                                                data-condition="{{ $unit->condition }}"
-                                                @selected($selectedUnitId == $unit->id)>
-                                            {{ $unit->unit_code }} — {{ $pName }} ({{ $detailStr }}) • [{{ $pCat }}]
+                                                data-asset-name="{{ $parentName }}"
+                                                data-specs="{{ $details }}">
+                                            {{ $unit->unit_code }} — {{ $parentName }} ({{ $details }}) • [{{ $category }}]
                                         </option>
                                     @endforeach
                                 </select>
@@ -422,7 +391,7 @@
                             </div>
                         </div>
 
-                        {{-- Selected Unit Live Details Badge --}}
+                        {{-- Details box --}}
                         <div class="selected-asset-details mt-2 p-2 bg-white rounded border d-none small">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
@@ -436,38 +405,31 @@
                             </div>
                         </div>
                     </div>
-                    @endforeach
                 </div>
 
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" onclick="addAsset()">
-                        <i class="fa-solid fa-plus me-1"></i> Assign Another Asset
-                    </button>
-                </div>
-
-                <div class="alert alert-info mt-3 small">
-                    <i class="fa-solid fa-info-circle me-1"></i>
-                    <strong>Centralized Inventory Rule:</strong> Only assets with status <em>In Store (Available)</em> can be selected. When saved, the asset unit will automatically link to this employee and update its status to <em>Assigned</em>.
-                </div>
+                <button type="button" class="btn btn-outline-warning btn-sm" onclick="addAsset()">
+                    <i class="fa-solid fa-plus me-1"></i>Assign Another Asset Unit
+                </button>
             </div>
-            @endif
 
-            {{-- STEP 5: Educational Background --}}
-            @if(request()->get('step', 1) == 5)
-            <div class="mb-3" data-step="5">
-                <h5 class="mb-4"><i class="fa-solid fa-graduation-cap text-primary me-2"></i>Educational Background</h5>
-                
-                <div class="alert alert-info">
-                    <i class="fa-solid fa-info-circle me-2"></i>
-                    <strong>This step is optional.</strong> You can skip education history by clicking "Next Step" below.
+            {{-- STEP 5: Education & Certificates --}}
+            <div class="step-panel" id="step-panel-5">
+                <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                    <h5 class="mb-0"><i class="fa-solid fa-graduation-cap text-primary me-2"></i>Step 5: Education & Certificates</h5>
+                    <span class="badge bg-primary">Step 5 of 6</span>
                 </div>
                 
+                <div class="alert alert-info py-2 small mb-3">
+                    <i class="fa-solid fa-info-circle me-1"></i>
+                    <strong>Optional:</strong> You can attach photos/scans of diplomas or degree certificates (PNG, JPG, JPEG, WEBP, PDF). Leave blank to skip.
+                </div>
+
                 <div id="educationContainer">
                     <div class="education-entry border rounded p-3 mb-3 bg-light" data-index="0">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="mb-0"><i class="fa-solid fa-book me-2"></i>Education Record #1</h6>
+                            <h6 class="mb-0 fw-bold"><i class="fa-solid fa-book me-2"></i>Education Record #1</h6>
                             <button type="button" class="btn btn-sm btn-outline-danger remove-education" onclick="removeEducation(0)" style="display: none;">
-                                <i class="fa-solid fa-trash"></i> Remove
+                                <i class="fa-solid fa-trash me-1"></i>Remove
                             </button>
                         </div>
                         
@@ -475,10 +437,10 @@
                             <div class="col-md-6">
                                 <label class="form-label">Degree Level</label>
                                 <select name="education[0][degree_level]" class="form-select">
-                                    <option value="">Select Degree</option>
+                                    <option value="">-- Select Degree --</option>
                                     <option value="PhD">PhD / Doctorate</option>
                                     <option value="Master">Master's Degree</option>
-                                    <option value="Bachelor">Bachelor's Degree</option>
+                                    <option value="Bachelor" selected>Bachelor's Degree</option>
                                     <option value="Diploma">Diploma</option>
                                     <option value="Certificate">Certificate</option>
                                     <option value="High School">High School</option>
@@ -504,7 +466,7 @@
                                 <input type="date" name="education[0][start_date]" class="form-control">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">End Date / Expected</label>
+                                <label class="form-label">End Date / Graduation</label>
                                 <input type="date" name="education[0][end_date]" class="form-control">
                             </div>
                             <div class="col-md-4">
@@ -518,44 +480,44 @@
                                           placeholder="Optional: Thesis title, honors, relevant coursework, etc."></textarea>
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Certificate / Degree Photo <small class="text-muted">(Image: JPG, PNG - Max 5MB)</small></label>
+                                <label class="form-label fw-bold">
+                                    <i class="fa-solid fa-image text-primary me-1"></i>Certificate / Degree Photo or PDF
+                                    <small class="text-muted fw-normal">(PNG, JPG, JPEG, WEBP, PDF - Max 15MB)</small>
+                                </label>
                                 <input type="file" name="education[0][certificate_photo]" class="form-control" 
-                                       accept="image/jpeg,image/png,image/jpg">
-                                <small class="text-muted">Upload a photo of your certificate or degree</small>
+                                       accept="application/pdf,image/jpeg,image/png,image/jpg,image/webp"
+                                       onchange="previewArrayFile(this)">
+                                <div class="file-preview-target mt-2 d-none">
+                                    <img src="" alt="Certificate Preview" class="img-preview-box">
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="addEducation()">
-                    <i class="fa-solid fa-plus me-2"></i>Add Another Education
+                    <i class="fa-solid fa-plus me-1"></i>Add Another Education Record
                 </button>
-
-                <div class="alert alert-light mt-3 border-start border-4 border-primary">
-                    <small>
-                        <i class="fa-solid fa-lightbulb me-2"></i>
-                        <strong>Optional:</strong> Leave all fields blank and click "Next Step" to skip education history.
-                    </small>
-                </div>
             </div>
-            @endif
 
             {{-- STEP 6: Work Experience & Professional License --}}
-            @if(request()->get('step', 1) == 6)
-            <div class="mb-3" data-step="6">
-                <h5 class="mb-4"><i class="fa-solid fa-briefcase text-success me-2"></i>Work Experience & Professional License</h5>
+            <div class="step-panel" id="step-panel-6">
+                <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                    <h5 class="mb-0"><i class="fa-solid fa-briefcase text-success me-2"></i>Step 6: Work Experience & Professional License</h5>
+                    <span class="badge bg-success">Step 6 of 6</span>
+                </div>
                 
-                <div class="alert alert-info">
-                    <i class="fa-solid fa-info-circle me-2"></i>
-                    <strong>This step is completely optional.</strong> If this is the employee's first job or you want to skip work history, simply click "Complete Registration" below.
+                <div class="alert alert-info py-2 small mb-3">
+                    <i class="fa-solid fa-info-circle me-1"></i>
+                    <strong>Optional:</strong> Add previous employment history and license documents. If not applicable, click <strong>"Complete Registration"</strong> directly.
                 </div>
 
                 <div id="experienceContainer">
                     <div class="experience-entry border rounded p-3 mb-3 bg-light" data-index="0">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="mb-0"><i class="fa-solid fa-building me-2"></i>Experience Record #1</h6>
+                            <h6 class="mb-0 fw-bold"><i class="fa-solid fa-building me-2"></i>Experience Record #1</h6>
                             <button type="button" class="btn btn-sm btn-outline-danger remove-experience" onclick="removeExperience(0)" style="display: none;">
-                                <i class="fa-solid fa-trash"></i> Remove
+                                <i class="fa-solid fa-trash me-1"></i>Remove
                             </button>
                         </div>
                         
@@ -594,15 +556,11 @@
                             </div>
                             <div class="col-12">
                                 <label class="form-label">Key Responsibilities</label>
-                                <textarea name="experience[0][responsibilities]" class="form-control" rows="3" 
+                                <textarea name="experience[0][responsibilities]" class="form-control" rows="2" 
                                           placeholder="Describe your main duties and achievements..."></textarea>
                             </div>
                             
                             <!-- Reference Section -->
-                            <div class="col-12">
-                                <hr>
-                                <h6 class="text-muted"><i class="fa-solid fa-user-check me-2"></i>Reference (Optional)</h6>
-                            </div>
                             <div class="col-md-6">
                                 <label class="form-label">Reference Name</label>
                                 <input type="text" name="experience[0][reference_name]" class="form-control" 
@@ -615,10 +573,6 @@
                             </div>
 
                             <!-- Professional License Section -->
-                            <div class="col-12">
-                                <hr>
-                                <h6 class="text-muted"><i class="fa-solid fa-certificate me-2"></i>Professional License (Optional)</h6>
-                            </div>
                             <div class="col-md-6">
                                 <label class="form-label">License Number</label>
                                 <input type="text" name="experience[0][license_number]" class="form-control" 
@@ -629,47 +583,40 @@
                                 <input type="date" name="experience[0][license_expiry]" class="form-control">
                             </div>
                             <div class="col-12">
-                                <label class="form-label">License Document <small class="text-muted">(PDF or Image - Max 10MB)</small></label>
+                                <label class="form-label fw-bold">
+                                    <i class="fa-solid fa-file-shield text-success me-1"></i>Professional License Document or Photo
+                                    <small class="text-muted fw-normal">(PNG, JPG, JPEG, WEBP, PDF - Max 15MB)</small>
+                                </label>
                                 <input type="file" name="experience[0][license_document]" class="form-control" 
-                                       accept="application/pdf,image/jpeg,image/png,image/jpg">
-                                <small class="text-muted">Upload professional license, certificate, or qualification document (PDF or Image)</small>
+                                       accept="application/pdf,image/jpeg,image/png,image/jpg,image/webp"
+                                       onchange="previewArrayFile(this)">
+                                <div class="file-preview-target mt-2 d-none">
+                                    <img src="" alt="License Preview" class="img-preview-box">
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <button type="button" class="btn btn-outline-success btn-sm" onclick="addExperience()">
-                    <i class="fa-solid fa-plus me-2"></i>Add Another Experience
+                    <i class="fa-solid fa-plus me-1"></i>Add Another Experience Record
                 </button>
-
-                <div class="alert alert-light mt-3 border-start border-4 border-success">
-                    <small>
-                        <i class="fa-solid fa-lightbulb me-2"></i>
-                        <strong>No experience?</strong> Leave all fields blank and click "Complete Registration" to finish.
-                    </small>
-                </div>
             </div>
-            @endif
 
-            {{-- Navigation Buttons --}}
+            {{-- Wizard Navigation Footer --}}
             <div class="d-flex justify-content-between mt-4 pt-3 border-top">
                 <div>
-                    @if(request()->get('step', 1) > 1)
-                    <button type="submit" name="action" value="previous" class="btn btn-outline-secondary" formnovalidate>
-                        <i class="fa-solid fa-arrow-left me-2"></i>Previous
+                    <button type="button" id="prevStepBtn" class="btn btn-outline-secondary" onclick="prevStep()" style="display: none;">
+                        <i class="fa-solid fa-arrow-left me-2"></i>Previous Step
                     </button>
-                    @endif
                 </div>
-                <div>
-                    @if(request()->get('step', 1) < 6)
-                    <button type="submit" name="action" value="next" class="btn btn-primary fw-semibold px-4">
+                <div class="d-flex gap-2">
+                    <button type="button" id="nextStepBtn" class="btn btn-primary fw-semibold px-4" onclick="nextStep()">
                         Next Step <i class="fa-solid fa-arrow-right ms-2"></i>
                     </button>
-                    @else
-                    <button type="submit" name="action" value="submit" class="btn btn-success fw-bold px-4">
+                    <button type="submit" id="submitBtn" class="btn btn-success fw-bold px-4" style="display: none;">
                         <i class="fa-solid fa-check me-2"></i>Complete Registration
                     </button>
-                    @endif
                 </div>
             </div>
         </form>
@@ -677,39 +624,156 @@
 </div>
 
 <div id="employeeWizardConfig" class="d-none"
-     data-education-count="{{ is_array(session('employee_data.education')) ? count(session('employee_data.education')) : 1 }}"
-     data-experience-count="{{ is_array(session('employee_data.experience')) ? count(session('employee_data.experience')) : 1 }}"
-     data-asset-count="{{ is_array(session('employee_data.fixed_asset_units')) ? count(session('employee_data.fixed_asset_units')) : 1 }}"
      data-fixed-assets="{{ json_encode($fixedAssetUnits ?? []) }}">
 </div>
 
 <script>
+let currentStep = 1;
+const totalSteps = 6;
+
+function goToStep(step) {
+    if (step < 1 || step > totalSteps) return;
+
+    // If advancing, validate current step required fields
+    if (step > currentStep) {
+        if (!validateStep(currentStep)) {
+            return;
+        }
+    }
+
+    // Hide all panels
+    document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+    
+    // Show target panel
+    const targetPanel = document.getElementById(`step-panel-${step}`);
+    if (targetPanel) {
+        targetPanel.classList.add('active');
+    }
+
+    // Update step indicators
+    for (let i = 1; i <= totalSteps; i++) {
+        const ind = document.getElementById(`step-ind-${i}`);
+        if (!ind) continue;
+        ind.classList.remove('active', 'completed');
+        if (i === step) {
+            ind.classList.add('active');
+        } else if (i < step) {
+            ind.classList.add('completed');
+        }
+    }
+
+    currentStep = step;
+
+    // Update button states
+    const prevBtn = document.getElementById('prevStepBtn');
+    const nextBtn = document.getElementById('nextStepBtn');
+    const subBtn  = document.getElementById('submitBtn');
+
+    if (prevBtn) prevBtn.style.display = currentStep > 1 ? 'inline-block' : 'none';
+    if (nextBtn) nextBtn.style.display = currentStep < totalSteps ? 'inline-block' : 'none';
+    if (subBtn)  subBtn.style.display  = currentStep === totalSteps ? 'inline-block' : 'none';
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function nextStep() {
-    const form = document.getElementById('employeeForm');
-    if (form) {
-        document.getElementById('formAction').value = 'next';
-        form.submit();
+    if (currentStep < totalSteps) {
+        goToStep(currentStep + 1);
     }
 }
 
-function previousStep() {
-    const form = document.getElementById('employeeForm');
-    if (form) {
-        document.getElementById('formAction').value = 'previous';
-        form.submit();
+function prevStep() {
+    if (currentStep > 1) {
+        goToStep(currentStep - 1);
     }
 }
 
+function validateStep(step) {
+    const panel = document.getElementById(`step-panel-${step}`);
+    if (!panel) return true;
+
+    let isValid = true;
+    const requiredInputs = panel.querySelectorAll('input[required], select[required], textarea[required]');
+
+    requiredInputs.forEach(input => {
+        if (!input.value || input.value.trim() === '') {
+            input.classList.add('is-invalid');
+            isValid = false;
+        } else {
+            input.classList.remove('is-invalid');
+        }
+    });
+
+    if (!isValid) {
+        const firstInvalid = panel.querySelector('.is-invalid');
+        if (firstInvalid) {
+            firstInvalid.focus();
+        }
+    }
+
+    return isValid;
+}
+
+// Single file preview (e.g. Guarantee Letter)
+function previewSingleFile(input, previewTargetId) {
+    const target = document.getElementById(previewTargetId);
+    if (!target) return;
+
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = target.querySelector('img');
+                if (img) {
+                    img.src = e.target.result;
+                    target.classList.remove('d-none');
+                }
+            };
+            reader.readAsDataURL(file);
+        } else {
+            target.classList.add('d-none');
+        }
+    } else {
+        target.classList.add('d-none');
+    }
+}
+
+// Array file preview (Education & Experience entries)
+function previewArrayFile(input) {
+    const parent = input.closest('.col-12');
+    if (!parent) return;
+    const previewBox = parent.querySelector('.file-preview-target');
+    if (!previewBox) return;
+
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = previewBox.querySelector('img');
+                if (img) {
+                    img.src = e.target.result;
+                    previewBox.classList.remove('d-none');
+                }
+            };
+            reader.readAsDataURL(file);
+        } else {
+            previewBox.classList.add('d-none');
+        }
+    } else {
+        previewBox.classList.add('d-none');
+    }
+}
+
+// Asset Management
 const wizardCfg = document.getElementById('employeeWizardConfig')?.dataset || {};
-let educationCount = parseInt(wizardCfg.educationCount || '1', 10);
-let experienceCount = parseInt(wizardCfg.experienceCount || '1', 10);
-let assetCount = parseInt(wizardCfg.assetCount || '1', 10);
-
-// Provide the fixed asset units array to javascript for dynamic rows
 const fixedAssetUnitsList = JSON.parse(wizardCfg.fixedAssets || '[]');
 let currentActiveCategory = 'ALL';
+let assetCount = 1;
+let educationCount = 1;
+let experienceCount = 1;
 
-// Live Search per row
 function filterAssetOptions(input) {
     const entry = input.closest('.asset-entry');
     if (!entry) return;
@@ -761,11 +825,9 @@ function clearRowSearch(btn) {
     }
 }
 
-// Global Category Filter
 function filterByCategory(cat, btn) {
     currentActiveCategory = cat;
 
-    // Update active button styles
     document.querySelectorAll('.btn-category-filter').forEach(b => {
         b.classList.remove('active', 'btn-dark');
         b.classList.add('btn-outline-secondary');
@@ -775,13 +837,11 @@ function filterByCategory(cat, btn) {
         btn.classList.add('active', 'btn-dark');
     }
 
-    // Re-filter all asset entries
     document.querySelectorAll('.asset-row-search').forEach(input => {
         filterAssetOptions(input);
     });
 }
 
-// Show live details preview when a unit is picked
 function onAssetUnitSelected(select) {
     const entry = select.closest('.asset-entry');
     if (!entry) return;
@@ -807,19 +867,11 @@ function onAssetUnitSelected(select) {
     }
 }
 
-// Initialize on page load for any already-selected units
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.asset-select').forEach(sel => {
-        if (sel.value) onAssetUnitSelected(sel);
-    });
-});
-
-// Asset Functions
 function addAsset() {
     const container = document.getElementById('assetsContainer');
     const index = assetCount;
     
-    let optionsHtml = '<option value="">-- Choose an Available Asset Unit --</option>';
+    let optionsHtml = '<option value="">-- Choose an Available Asset Unit (Optional) --</option>';
     fixedAssetUnitsList.forEach(u => {
         const pName = u.parent_asset ? u.parent_asset.name : 'Asset';
         const pCat = u.parent_asset ? u.parent_asset.category : 'General';
@@ -837,7 +889,6 @@ function addAsset() {
                 </button>
             </div>
 
-            {{-- Per-Row Live Search Input --}}
             <div class="mb-2">
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-primary"></i></span>
@@ -862,7 +913,6 @@ function addAsset() {
                 </div>
             </div>
 
-            {{-- Selected Unit Live Details Badge --}}
             <div class="selected-asset-details mt-2 p-2 bg-white rounded border d-none small">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
@@ -891,7 +941,7 @@ function removeAsset(index) {
     updateRemoveButtons();
 }
 
-// Education Functions
+// Education dynamic rows
 function addEducation() {
     const container = document.getElementById('educationContainer');
     const index = educationCount;
@@ -899,9 +949,9 @@ function addEducation() {
     const html = `
         <div class="education-entry border rounded p-3 mb-3 bg-light" data-index="${index}">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="mb-0"><i class="fa-solid fa-book me-2"></i>Education Record #${index + 1}</h6>
+                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-book me-2"></i>Education Record #${index + 1}</h6>
                 <button type="button" class="btn btn-sm btn-outline-danger remove-education" onclick="removeEducation(${index})">
-                    <i class="fa-solid fa-trash"></i> Remove
+                    <i class="fa-solid fa-trash me-1"></i>Remove
                 </button>
             </div>
             
@@ -909,10 +959,10 @@ function addEducation() {
                 <div class="col-md-6">
                     <label class="form-label">Degree Level</label>
                     <select name="education[${index}][degree_level]" class="form-select">
-                        <option value="">Select Degree</option>
+                        <option value="">-- Select Degree --</option>
                         <option value="PhD">PhD / Doctorate</option>
                         <option value="Master">Master's Degree</option>
-                        <option value="Bachelor">Bachelor's Degree</option>
+                        <option value="Bachelor" selected>Bachelor's Degree</option>
                         <option value="Diploma">Diploma</option>
                         <option value="Certificate">Certificate</option>
                         <option value="High School">High School</option>
@@ -938,7 +988,7 @@ function addEducation() {
                     <input type="date" name="education[${index}][start_date]" class="form-control">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">End Date / Expected</label>
+                    <label class="form-label">End Date / Graduation</label>
                     <input type="date" name="education[${index}][end_date]" class="form-control">
                 </div>
                 <div class="col-md-4">
@@ -952,10 +1002,16 @@ function addEducation() {
                               placeholder="Optional: Thesis title, honors, relevant coursework, etc."></textarea>
                 </div>
                 <div class="col-12">
-                    <label class="form-label">Certificate / Degree Photo <small class="text-muted">(Image: JPG, PNG - Max 5MB)</small></label>
+                    <label class="form-label fw-bold">
+                        <i class="fa-solid fa-image text-primary me-1"></i>Certificate / Degree Photo or PDF
+                        <small class="text-muted fw-normal">(PNG, JPG, JPEG, WEBP, PDF - Max 15MB)</small>
+                    </label>
                     <input type="file" name="education[${index}][certificate_photo]" class="form-control" 
-                           accept="image/jpeg,image/png,image/jpg">
-                    <small class="text-muted">Upload a photo of your certificate or degree</small>
+                           accept="application/pdf,image/jpeg,image/png,image/jpg,image/webp"
+                           onchange="previewArrayFile(this)">
+                    <div class="file-preview-target mt-2 d-none">
+                        <img src="" alt="Certificate Preview" class="img-preview-box">
+                    </div>
                 </div>
             </div>
         </div>
@@ -974,7 +1030,7 @@ function removeEducation(index) {
     updateRemoveButtons();
 }
 
-// Experience Functions
+// Experience dynamic rows
 function addExperience() {
     const container = document.getElementById('experienceContainer');
     const index = experienceCount;
@@ -982,9 +1038,9 @@ function addExperience() {
     const html = `
         <div class="experience-entry border rounded p-3 mb-3 bg-light" data-index="${index}">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="mb-0"><i class="fa-solid fa-building me-2"></i>Experience Record #${index + 1}</h6>
+                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-building me-2"></i>Experience Record #${index + 1}</h6>
                 <button type="button" class="btn btn-sm btn-outline-danger remove-experience" onclick="removeExperience(${index})">
-                    <i class="fa-solid fa-trash"></i> Remove
+                    <i class="fa-solid fa-trash me-1"></i>Remove
                 </button>
             </div>
             
@@ -1023,14 +1079,10 @@ function addExperience() {
                 </div>
                 <div class="col-12">
                     <label class="form-label">Key Responsibilities</label>
-                    <textarea name="experience[${index}][responsibilities]" class="form-control" rows="3" 
+                    <textarea name="experience[${index}][responsibilities]" class="form-control" rows="2" 
                               placeholder="Describe your main duties and achievements..."></textarea>
                 </div>
                 
-                <div class="col-12">
-                    <hr>
-                    <h6 class="text-muted"><i class="fa-solid fa-user-check me-2"></i>Reference (Optional)</h6>
-                </div>
                 <div class="col-md-6">
                     <label class="form-label">Reference Name</label>
                     <input type="text" name="experience[${index}][reference_name]" class="form-control" 
@@ -1042,10 +1094,6 @@ function addExperience() {
                            placeholder="+251 911 234 567">
                 </div>
 
-                <div class="col-12">
-                    <hr>
-                    <h6 class="text-muted"><i class="fa-solid fa-certificate me-2"></i>Professional License (Optional)</h6>
-                </div>
                 <div class="col-md-6">
                     <label class="form-label">License Number</label>
                     <input type="text" name="experience[${index}][license_number]" class="form-control" 
@@ -1056,10 +1104,16 @@ function addExperience() {
                     <input type="date" name="experience[${index}][license_expiry]" class="form-control">
                 </div>
                 <div class="col-12">
-                    <label class="form-label">License Document <small class="text-muted">(PDF or Image - Max 10MB)</small></label>
+                    <label class="form-label fw-bold">
+                        <i class="fa-solid fa-file-shield text-success me-1"></i>Professional License Document or Photo
+                        <small class="text-muted fw-normal">(PNG, JPG, JPEG, WEBP, PDF - Max 15MB)</small>
+                    </label>
                     <input type="file" name="experience[${index}][license_document]" class="form-control" 
-                           accept="application/pdf,image/jpeg,image/png,image/jpg">
-                    <small class="text-muted">Upload professional license, certificate, or qualification document (PDF or Image)</small>
+                           accept="application/pdf,image/jpeg,image/png,image/jpg,image/webp"
+                           onchange="previewArrayFile(this)">
+                    <div class="file-preview-target mt-2 d-none">
+                        <img src="" alt="License Preview" class="img-preview-box">
+                    </div>
                 </div>
             </div>
         </div>
@@ -1091,9 +1145,8 @@ function toggleEndDate(index) {
 }
 
 function updateRemoveButtons() {
-    // Show remove buttons only if there's more than one entry
     const educationEntries = document.querySelectorAll('.education-entry');
-    educationEntries.forEach((entry, idx) => {
+    educationEntries.forEach((entry) => {
         const removeBtn = entry.querySelector('.remove-education');
         if (removeBtn) {
             removeBtn.style.display = educationEntries.length > 1 ? 'inline-block' : 'none';
@@ -1101,7 +1154,7 @@ function updateRemoveButtons() {
     });
     
     const experienceEntries = document.querySelectorAll('.experience-entry');
-    experienceEntries.forEach((entry, idx) => {
+    experienceEntries.forEach((entry) => {
         const removeBtn = entry.querySelector('.remove-experience');
         if (removeBtn) {
             removeBtn.style.display = experienceEntries.length > 1 ? 'inline-block' : 'none';
@@ -1109,7 +1162,7 @@ function updateRemoveButtons() {
     });
     
     const assetEntries = document.querySelectorAll('.asset-entry');
-    assetEntries.forEach((entry, idx) => {
+    assetEntries.forEach((entry) => {
         const removeBtn = entry.querySelector('.remove-asset');
         if (removeBtn) {
             removeBtn.style.display = assetEntries.length > 1 ? 'inline-block' : 'none';
@@ -1117,5 +1170,4 @@ function updateRemoveButtons() {
     });
 }
 </script>
-
 @endsection
