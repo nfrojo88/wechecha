@@ -45,10 +45,7 @@ class EmployeeEducation extends Model
      */
     public function getCertificateUrlAttribute()
     {
-        if ($this->certificate_photo) {
-            return Storage::url($this->certificate_photo);
-        }
-        return null;
+        return \App\Services\FileUploadService::url($this->certificate_photo);
     }
 
     /**

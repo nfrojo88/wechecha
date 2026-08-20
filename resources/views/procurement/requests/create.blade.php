@@ -56,7 +56,9 @@
                     <select name="destination_store_id" id="storeSelect" class="form-select @error('destination_store_id') is-invalid @enderror" required>
                         <option value="">— Select Receiving Store —</option>
                         @foreach($stores as $store)
-                        <option value="{{ $store->id }}" @selected(old('destination_store_id') == $store->id)>
+                        <option value="{{ $store->id }}" 
+                                data-project-id="{{ $store->project_id }}"
+                                @selected(old('destination_store_id', $selectedStoreId ?? '') == $store->id)>
                             {{ $store->name }} ({{ $store->code }})
                         </option>
                         @endforeach
@@ -103,20 +105,45 @@ document.addEventListener('DOMContentLoaded', function() {
     const projectSelect = document.getElementById('projectSelect');
     const storeSelect = document.getElementById('storeSelect');
 
-    function autoSelectStore() {
-        const selectedOption = projectSelect.options[projectSelect.selectedIndex];
-        if (selectedOption && selectedOption.dataset.storeId) {
-            const storeId = selectedOption.dataset.storeId;
-            if (storeId) {
-                storeSelect.value = storeId;
+    function syncProjectAndStore() {
+        if (!projectSelect || !storeSelect) return;
+
+        // If no project selected yet, try selecting the first available project option if present
+        if (!projectSelect.value && projectSelect.options.length > 1) {
+            projectSelect.selectedIndex = 1;
+        }
+
+        const selectedProjectId = projectSelect.value;
+        if (!selectedProjectId) return;
+
+        // Find store option matching data-project-id
+        let matchedStoreId = '';
+        for (let i = 0; i < storeSelect.options.length; i++) {
+            const opt = storeSelect.options[i];
+            if (opt.getAttribute('data-project-id') == selectedProjectId) {
+                matchedStoreId = opt.value;
+                break;
             }
+        }
+
+        // Fallback to data-store-id on the selected project option
+        if (!matchedStoreId) {
+            const selectedProjOpt = projectSelect.options[projectSelect.selectedIndex];
+            if (selectedProjOpt && selectedProjOpt.dataset.storeId) {
+                matchedStoreId = selectedProjOpt.dataset.storeId;
+            }
+        }
+
+        if (matchedStoreId) {
+            storeSelect.value = matchedStoreId;
+        } else if (!storeSelect.value && storeSelect.options.length > 1) {
+            storeSelect.selectedIndex = 1;
         }
     }
 
-    projectSelect.addEventListener('change', autoSelectStore);
-
-    if (projectSelect.value) {
-        autoSelectStore();
+    if (projectSelect && storeSelect) {
+        projectSelect.addEventListener('change', syncProjectAndStore);
+        syncProjectAndStore();
     }
 });
 </script>

@@ -159,24 +159,30 @@ class ExpenseRequestController extends Controller
 
         switch ($tab) {
             case 'hr_queue':
-                if (!$isHr) {
-                    abort(403, 'Unauthorized access to HR review queue.');
+                if ($isHr) {
+                    $query->where('status', ExpenseRequest::STATUS_PENDING_HR);
+                } else {
+                    $tab = 'my_requests';
+                    $query->where('user_id', $user->id);
                 }
-                $query->where('status', ExpenseRequest::STATUS_PENDING_HR);
                 break;
 
             case 'gm_queue':
-                if (!$isGm) {
-                    abort(403, 'Unauthorized access to GM review queue.');
+                if ($isGm) {
+                    $query->where('status', ExpenseRequest::STATUS_PENDING_GM);
+                } else {
+                    $tab = 'my_requests';
+                    $query->where('user_id', $user->id);
                 }
-                $query->where('status', ExpenseRequest::STATUS_PENDING_GM);
                 break;
 
             case 'finance_queue':
-                if (!$isFinanceHead) {
-                    abort(403, 'Unauthorized access to Finance assignment queue.');
+                if ($isFinanceHead) {
+                    $query->whereIn('status', [ExpenseRequest::STATUS_APPROVED_ASSIGNED, ExpenseRequest::STATUS_ASSIGNED]);
+                } else {
+                    $tab = 'my_requests';
+                    $query->where('user_id', $user->id);
                 }
-                $query->whereIn('status', [ExpenseRequest::STATUS_APPROVED_ASSIGNED, ExpenseRequest::STATUS_ASSIGNED]);
                 break;
 
             case 'my_assigned_payments':
@@ -269,7 +275,60 @@ class ExpenseRequestController extends Controller
             'chartOfAccount'
         ]);
 
-        return redirect()->route('expense-requests.index', ['search' => $expenseRequest->request_number]);
+        return redirect('/expense-requests?search=' . urlencode($expenseRequest->request_number));
+    }
+
+    /**
+     * Preview or stream expense request attachment safely without 404 domain mismatch.
+     */
+    public function viewAttachment(ExpenseRequest $expenseRequest)
+    {
+        $attachment = $expenseRequest->attachment;
+        if (empty($attachment)) {
+            return response()->make('<div style="font-family:sans-serif;text-align:center;padding:50px;"><h3>No attachment file associated with this request.</h3><p><a href="javascript:window.close()">Close window</a></p></div>', 404, ['Content-Type' => 'text/html']);
+        }
+
+        // If Cloudinary / remote URL
+        if (Str::startsWith($attachment, ['http://', 'https://', '//'])) {
+            return redirect()->away($attachment);
+        }
+
+        // Clean local path
+        $clean = ltrim($attachment, '/');
+        $candidates = [
+            public_path($clean),
+            public_path('uploads/' . str_replace('uploads/', '', $clean)),
+            public_path('storage/' . str_replace('storage/', '', $clean)),
+            storage_path('app/public/' . str_replace(['storage/', 'public/'], '', $clean)),
+            storage_path('app/' . $clean),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (file_exists($candidate) && is_file($candidate)) {
+                $ext = strtolower(pathinfo($candidate, PATHINFO_EXTENSION));
+                $mime = match ($ext) {
+                    'pdf'         => 'application/pdf',
+                    'jpg', 'jpeg' => 'image/jpeg',
+                    'png'         => 'image/png',
+                    'webp'        => 'image/webp',
+                    'gif'         => 'image/gif',
+                    default       => mime_content_type($candidate) ?: 'application/octet-stream',
+                };
+
+                return response()->file($candidate, [
+                    'Content-Type'        => $mime,
+                    'Content-Disposition' => 'inline; filename="' . basename($candidate) . '"',
+                ]);
+            }
+        }
+
+        // Fallback to FileUploadService URL
+        $fallbackUrl = \App\Services\FileUploadService::url($attachment);
+        if ($fallbackUrl && Str::startsWith($fallbackUrl, ['http://', 'https://', '//'])) {
+            return redirect()->away($fallbackUrl);
+        }
+
+        return response()->make('<div style="font-family:sans-serif;text-align:center;padding:50px;color:#333;"><h3>Attachment file not found on local disk</h3><p class="text-muted">' . e($attachment) . '</p><p><a href="javascript:window.close()">Close window</a></p></div>', 404, ['Content-Type' => 'text/html']);
     }
 
     /**
@@ -314,7 +373,7 @@ class ExpenseRequestController extends Controller
             'status' => ExpenseRequest::STATUS_PENDING_HR,
         ]);
 
-        return redirect()->route('expense-requests.index', ['tab' => 'my_requests'])
+        return redirect('/expense-requests?tab=my_requests')
             ->with('success', "Expense Request #{$expenseRequest->request_number} for ETB " . number_format($expenseRequest->amount, 2) . " submitted successfully!");
     }
 

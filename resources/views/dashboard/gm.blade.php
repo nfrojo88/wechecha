@@ -176,7 +176,7 @@
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 fw-bold"><i class="fas fa-user-clock me-2 text-warning"></i>Employees Awaiting GM Approval</h6>
-                    <a href="{{ route('employees.index') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                    <a href="{{ route('employees.pending-approval') }}" class="btn btn-sm btn-outline-primary fw-semibold px-3 rounded-pill">View All</a>
                 </div>
                 <div class="card-body p-0">
                     @if($pendingEmployees->isEmpty())

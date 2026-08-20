@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', 'Daily Report Details')
+@php use Illuminate\Support\Str; @endphp
 
 @section('content')
 <div class="container-fluid">
@@ -71,6 +72,29 @@
                     <p class="text-muted small">{{ $dailyReport->safety_incidents ?? 'None reported.' }}</p>
                 </div>
             </div>
+        </div>
+
+            {{-- Site Book Photo --}}
+            @if($dailyReport->site_book_pic)
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-camera me-1"></i> Site Book / Photo Evidence</h6>
+                </div>
+                <div class="card-body text-center">
+                    @php
+                        $picSrc = uploaded_asset($dailyReport->site_book_pic);
+                    @endphp
+                    <a href="{{ $picSrc }}" target="_blank">
+                        <img src="{{ $picSrc }}"
+                             alt="Site Book Photo"
+                             class="img-fluid rounded shadow"
+                             style="max-height: 420px; object-fit: contain; width: 100%; cursor: zoom-in;"
+                             onerror="this.parentElement.innerHTML='<div class=\'alert alert-warning\'>⚠️ Image not found.</div>';">
+                    </a>
+                    <p class="text-muted small mt-2 mb-0">Click image to view full-size</p>
+                </div>
+            </div>
+            @endif
         </div>
 
         <!-- Task Details -->

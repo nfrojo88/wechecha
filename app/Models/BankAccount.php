@@ -12,11 +12,17 @@ class BankAccount extends Model
     protected $fillable = [
         'account_name', 'account_number', 'bank_name', 'branch',
         'account_type', 'currency', 'current_balance', 'coa_id',
-        'is_active', 'is_default', 'notes',
+        'is_active', 'is_default', 'notes', 'assigned_to',
     ];
 
     protected $casts = ['is_active' => 'boolean', 'is_default' => 'boolean'];
 
     public function coa()         { return $this->belongsTo(ChartOfAccount::class, 'coa_id'); }
     public function transactions() { return $this->hasMany(BankTransaction::class); }
+    public function assignedStaff() { return $this->belongsTo(User::class, 'assigned_to'); }
+
+    public function getAssignedUserAttribute()
+    {
+        return $this->assignedStaff ?? ($this->coa ? $this->coa->manager : null);
+    }
 }

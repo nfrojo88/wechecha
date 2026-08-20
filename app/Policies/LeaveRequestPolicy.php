@@ -42,7 +42,7 @@ class LeaveRequestPolicy
      */
     public function approve(User $user): bool
     {
-        return $user->hasRole(['hr_manager', 'admin']);
+        return $user->hasRole(['hr_manager', 'hr_officer', 'admin']);
     }
 
     /**
@@ -50,6 +50,6 @@ class LeaveRequestPolicy
      */
     public function reject(User $user): bool
     {
-        return $user->hasRole(['hr_manager', 'admin']);
+        return $user->hasRole(['hr_manager', 'hr_officer', 'admin']);
     }
 }

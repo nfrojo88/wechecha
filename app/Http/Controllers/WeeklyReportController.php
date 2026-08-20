@@ -9,13 +9,37 @@ class WeeklyReportController extends Controller
 {
     public function index()
     {
-        $reports = WeeklyReport::with(['project', 'createdBy'])->latest()->get();
+        $query = WeeklyReport::with(['project', 'createdBy'])->latest();
+
+        /** @var \App\Models\User|null $user */
+        $user = auth()->user();
+        if ($user && $user->hasRole('site_engineer') && !$user->hasAnyRole(['admin', 'global_admin', 'gm', 'planning_manager'])) {
+            $assignedProjectIds = $user->projects()->pluck('projects.id');
+            if ($user->store && $user->store->project_id) {
+                $assignedProjectIds->push($user->store->project_id);
+            }
+            $query->whereIn('project_id', $assignedProjectIds->unique());
+        }
+
+        $reports = $query->get();
         return view('operational.weekly-reports.index', compact('reports'));
     }
 
     public function create()
     {
-        $projects = \App\Models\Project::where('status', 'active')->get();
+        $query = \App\Models\Project::where('status', 'active');
+
+        /** @var \App\Models\User|null $user */
+        $user = auth()->user();
+        if ($user && $user->hasRole('site_engineer') && !$user->hasAnyRole(['admin', 'global_admin', 'gm', 'planning_manager'])) {
+            $assignedProjectIds = $user->projects()->pluck('projects.id');
+            if ($user->store && $user->store->project_id) {
+                $assignedProjectIds->push($user->store->project_id);
+            }
+            $query->whereIn('id', $assignedProjectIds->unique());
+        }
+
+        $projects = $query->get();
         return view('operational.weekly-reports.create', compact('projects'));
     }
 

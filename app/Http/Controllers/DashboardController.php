@@ -144,14 +144,46 @@ class DashboardController extends Controller
     // ─── Site Engineer ──────────────────────────────────────────────────────────
     public function siteEngineer()
     {
+        /** @var \App\Models\User|null $user */
+        $user = auth()->user();
+        $assignedProjectIds = $user ? $user->projects()->pluck('projects.id') : collect();
+        if ($user && $user->store && $user->store->project_id) {
+            $assignedProjectIds->push($user->store->project_id);
+        }
+        $assignedProjectIds = $assignedProjectIds->unique();
+
         $kpi = [
-            'my_material_requests' => $this->safe(fn() => \App\Models\MaterialRequest::where('requested_by', auth()->id())->count()),
-            'issues_reported'      => $this->safe(fn() => \App\Models\Issue::where('reported_by', auth()->id())->count()),
-            'attendance_today'     => $this->safe(fn() => \App\Models\Attendance::whereDate('attendance_date', now())->where('status', 'present')->count()),
-            'waste_recorded'       => $this->safe(fn() => \App\Models\Waste::whereMonth('waste_date', now()->month)->count()),
+            'my_material_requests' => $this->safe(function() use ($user, $assignedProjectIds) {
+                return \App\Models\MaterialRequest::where('requested_by', auth()->id())
+                    ->when($assignedProjectIds->isNotEmpty(), fn($q) => $q->whereIn('project_id', $assignedProjectIds))
+                    ->count();
+            }),
+            'issues_reported' => $this->safe(function() use ($user, $assignedProjectIds) {
+                return \App\Models\Issue::where('reported_by', auth()->id())
+                    ->when($assignedProjectIds->isNotEmpty(), fn($q) => $q->whereIn('project_id', $assignedProjectIds))
+                    ->count();
+            }),
+            'attendance_today' => $this->safe(function() use ($user) {
+                return \App\Models\Attendance::whereDate('attendance_date', now())
+                    ->where('status', 'present')
+                    ->when($user && $user->store_id, fn($q) => $q->where('store_id', $user->store_id))
+                    ->count();
+            }),
+            'waste_recorded' => $this->safe(function() use ($user, $assignedProjectIds) {
+                return \App\Models\Waste::whereMonth('waste_date', now()->month)
+                    ->when($assignedProjectIds->isNotEmpty(), fn($q) => $q->whereIn('project_id', $assignedProjectIds))
+                    ->count();
+            }),
         ];
 
-        $recentMR = $this->safe(fn() => \App\Models\MaterialRequest::where('requested_by', auth()->id())->with('project')->latest()->take(5)->get(), collect());
+        $recentMR = $this->safe(function() use ($user, $assignedProjectIds) {
+            return \App\Models\MaterialRequest::where('requested_by', auth()->id())
+                ->when($assignedProjectIds->isNotEmpty(), fn($q) => $q->whereIn('project_id', $assignedProjectIds))
+                ->with('project')
+                ->latest()
+                ->take(5)
+                ->get();
+        }, collect());
 
         return view('dashboard.site-engineer', compact('kpi', 'recentMR'));
     }

@@ -146,7 +146,7 @@ class LeaveRequestController extends Controller
         // Handle attachment
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store('leave-attachments');
+            $attachmentPath = \App\Services\FileUploadService::upload($request->file('attachment'), 'leave_attachments');
         }
 
         // Create leave request

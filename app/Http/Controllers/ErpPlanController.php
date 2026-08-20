@@ -65,9 +65,9 @@ class ErpPlanController extends Controller
                             $rate = $latestMarket ? (float)$latestMarket->price : (float)$product->unit_price;
                         }
                     } elseif ($rtype === 'equipment') {
-                        $eq = \App\Models\EquipmentMaster::where('name', $res->resource_name)->first();
+                        $eq = \App\Models\Product::where('category', 'Fixed Asset')->where('name', $res->resource_name)->first();
                         if ($eq) {
-                            $rate = (float)($eq->daily_rate ?: $eq->hourly_rate);
+                            $rate = (float)($eq->unit_price ?? $eq->selling_price ?? 0);
                         }
                     } elseif ($rtype === 'manpower') {
                         $role = \App\Models\Designation::where('title', $res->resource_name)->first();

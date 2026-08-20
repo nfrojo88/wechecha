@@ -10,6 +10,8 @@ use App\Models\Attendance;
 use App\Models\ManpowerRequest;
 use App\Models\SubconAgreement;
 use App\Models\ActivityTimeLog;
+use App\Models\Payroll;
+use App\Models\LeaveRequest;
 use Carbon\Carbon;
 
 class HRManagerController extends Controller
@@ -94,14 +96,41 @@ class HRManagerController extends Controller
             collect()
         );
 
+        // Get pending leave requests for approval
+        $pendingLeaveRequests = $this->safe(
+            fn() => LeaveRequest::with(['employee', 'leaveType'])
+                ->where('status', 'pending')
+                ->latest('created_at')
+                ->take(10)
+                ->get(),
+            collect()
+        );
+
+        // KPI data (from the former HR Officer dashboard)
+        $kpi = [
+            'total_employees'       => $statistics['total_active_employees'] ?? 0,
+            'present_today'         => $statistics['present_today'] ?? 0,
+            'pending_payroll'       => $this->safe(fn() => Payroll::where('status', 'pending')->count()),
+            'open_requests'         => $statistics['pending_manpower_requests'] ?? 0,
+            'pending_leave_count'   => $this->safe(fn() => LeaveRequest::where('status', 'pending')->count()),
+        ];
+
+        $recentPayrolls = $this->safe(
+            fn() => Payroll::with('employee')->latest()->take(5)->get(),
+            collect()
+        );
+
         return view('dashboard.hr-manager', compact(
             'statistics',
+            'kpi',
+            'recentPayrolls',
             'pendingDailyReports',
             'pendingAttendance',
             'currentWeekManpower',
             'subconAgreements',
             'recentActivities',
-            'pendingManpowerRequests'
+            'pendingManpowerRequests',
+            'pendingLeaveRequests'
         ));
     }
 

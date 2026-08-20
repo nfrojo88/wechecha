@@ -34,7 +34,7 @@ class ToolTransaction extends Model
 
     public function equipment()
     {
-        return $this->belongsTo(EquipmentMaster::class, 'equipment_id');
+        return $this->belongsTo(Product::class, 'equipment_id');
     }
 
     public function foreman()

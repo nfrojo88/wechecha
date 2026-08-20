@@ -426,8 +426,12 @@ textarea.form-control { resize: vertical; min-height: 80px; }
                     <button class="header-icon-btn d-md-none" id="mobileSidebarToggle">
                         <i class="fa-solid fa-bars"></i>
                     </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 shadow-sm px-2.5 py-1 rounded-3" id="dynamicGlobalBackBtn" onclick="dynamicGoBack()" title="Go Back">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        <span class="d-none d-sm-inline fs-7 fw-medium">Back</span>
+                    </button>
                     <nav aria-label="breadcrumb" class="d-none d-sm-block">
-                        <ol class="breadcrumb">
+                        <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="{{ url('/') }}">Dashboard</a></li>
                             <li class="breadcrumb-item active" aria-current="page">@yield('title', 'Overview')</li>
                         </ol>
@@ -459,7 +463,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
                             <i class="fa-solid fa-chevron-down ms-1 small text-muted d-none d-md-block"></i>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-user"></i> Profile</a></li>
+                            <li><a class="dropdown-item" href="{{ route('profile.edit') }}"><i class="fa-solid fa-user me-2"></i> My Profile</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form method="POST" action="{{ route('logout') }}">
@@ -531,6 +535,14 @@ textarea.form-control { resize: vertical; min-height: 80px; }
                 $('#sidebar').toggleClass('mobile-open');
             });
         });
+
+        function dynamicGoBack() {
+            if (document.referrer && document.referrer.indexOf(window.location.host) !== -1 && document.referrer !== window.location.href) {
+                window.history.back();
+            } else {
+                window.location.href = "{{ url('/dashboard') }}";
+            }
+        }
     </script>
     @stack('scripts')
 </body>

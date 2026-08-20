@@ -10,6 +10,17 @@
     <h1 class="h3 mb-0">Add New Employee</h1>
 </div>
 
+@if(session('success'))
+<div class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-3 shadow-sm mb-4" role="alert">
+    <i class="fa-solid fa-circle-check fa-2x text-success"></i>
+    <div>
+        <strong class="d-block fs-6">Registration Successful!</strong>
+        {{ session('success') }}
+    </div>
+    <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+@endif
+
 <!-- Multi-Step Progress Indicator -->
 <div class="row mb-4">
     <div class="col-12">
@@ -102,25 +113,27 @@
             </div>
             @endif
             
-            <!-- Hidden fields to preserve data across steps -->
-            <input type="hidden" name="employee_code" value="{{ old('employee_code') }}">
-            <input type="hidden" name="full_name" value="{{ old('full_name') }}">
-            <input type="hidden" name="phone" value="{{ old('phone') }}">
-            <input type="hidden" name="email" value="{{ old('email') }}">
-            <input type="hidden" name="department" value="{{ old('department') }}">
-            <input type="hidden" name="role_title" value="{{ old('role_title') }}">
-            <input type="hidden" name="employment_type" value="{{ old('employment_type') }}">
-            <input type="hidden" name="date_of_joining" value="{{ old('date_of_joining') }}">
-            <input type="hidden" name="status" value="{{ old('status') }}">
-            <input type="hidden" name="project_id" value="{{ old('project_id') }}">
-            <input type="hidden" name="site_assignment" value="{{ old('site_assignment') }}">
-            <input type="hidden" name="basic_salary" value="{{ old('basic_salary') }}">
-            <input type="hidden" name="transport_allowance" value="{{ old('transport_allowance') }}">
-            <input type="hidden" name="house_allowance" value="{{ old('house_allowance') }}">
-            <input type="hidden" name="position_allowance" value="{{ old('position_allowance') }}">
-            <input type="hidden" name="contract_type" value="{{ old('contract_type') }}">
-            <input type="hidden" name="bank_name" value="{{ old('bank_name') }}">
-            <input type="hidden" name="account_number" value="{{ old('account_number') }}">
+            <!-- Hidden fields to preserve data across steps (session-first fallback) -->
+            <input type="hidden" name="employee_code"       value="{{ old('employee_code',       session('employee_data.employee_code')) }}">
+            <input type="hidden" name="full_name"           value="{{ old('full_name',           session('employee_data.full_name')) }}">
+            <input type="hidden" name="phone"               value="{{ old('phone',               session('employee_data.phone')) }}">
+            <input type="hidden" name="email"               value="{{ old('email',               session('employee_data.email')) }}">
+            <input type="hidden" name="department"          value="{{ old('department',          session('employee_data.department')) }}">
+            <input type="hidden" name="role_title"          value="{{ old('role_title',          session('employee_data.role_title')) }}">
+            <input type="hidden" name="employment_type"     value="{{ old('employment_type',     session('employee_data.employment_type', 'permanent')) }}">
+            <input type="hidden" name="date_of_joining"     value="{{ old('date_of_joining',     session('employee_data.date_of_joining')) }}">
+            <input type="hidden" name="status"              value="{{ old('status',              session('employee_data.status', 'active')) }}">
+            <input type="hidden" name="project_id"          value="{{ old('project_id',          session('employee_data.project_id')) }}">
+            <input type="hidden" name="site_assignment"     value="{{ old('site_assignment',     session('employee_data.site_assignment')) }}">
+            <input type="hidden" name="basic_salary"        value="{{ old('basic_salary',        session('employee_data.basic_salary', 0)) }}">
+            <input type="hidden" name="transport_allowance" value="{{ old('transport_allowance', session('employee_data.transport_allowance', 0)) }}">
+            <input type="hidden" name="house_allowance"     value="{{ old('house_allowance',     session('employee_data.house_allowance', 0)) }}">
+            <input type="hidden" name="position_allowance"  value="{{ old('position_allowance',  session('employee_data.position_allowance', 0)) }}">
+            <input type="hidden" name="contract_type"       value="{{ old('contract_type',       session('employee_data.contract_type', 'Full-Time')) }}">
+            <input type="hidden" name="bank_name"           value="{{ old('bank_name',           session('employee_data.bank_name')) }}">
+            <input type="hidden" name="account_number"      value="{{ old('account_number',      session('employee_data.account_number')) }}">
+            <input type="hidden" name="device_user_id"      value="{{ old('device_user_id',      session('employee_data.device_user_id')) }}">
+            <input type="hidden" name="notes"               value="{{ old('notes',               session('employee_data.notes')) }}">
 
             {{-- STEP 1: Basic Information --}}
             @if(request()->get('step', 1) == 1)
@@ -169,7 +182,7 @@
                             <select name="department" class="form-select @error('department') is-invalid @enderror" required>
                                 <option value="">-- Select Department --</option>
                                 @foreach($departments as $dept)
-                                    <option value="{{ $dept->name }}" @selected((session('employee_data.department') ?? old('department')) == $dept->name)>
+                                    <option value="{{ $dept->name }}" {{ (session('employee_data.department') ?? old('department')) == $dept->name ? 'selected' : '' }}>
                                         {{ $dept->name }}
                                     </option>
                                 @endforeach
@@ -318,52 +331,123 @@
             {{-- STEP 4: Asset Assignment --}}
             @if(request()->get('step', 1) == 4)
             <div class="mb-3" data-step="4">
-                <h5 class="mb-4"><i class="fa-solid fa-computer text-info me-2"></i>Assign Assets & Equipment</h5>
-                
-                <p class="text-muted mb-4">Link materials and equipment (computers, tools, etc.) to this employee</p>
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                    <div>
+                        <h5 class="mb-1"><i class="fa-solid fa-truck-monster text-warning me-2"></i>Assign Fixed Assets & Equipment</h5>
+                        <p class="text-muted small mb-0">Select available equipment from centralized Store inventory (computers, vehicles, tools, etc.) to assign to this employee.</p>
+                    </div>
+                    <div>
+                        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 fs-6">
+                            <i class="fa-solid fa-warehouse me-1"></i>{{ $fixedAssetUnits->count() }} Units Available In Store
+                        </span>
+                    </div>
+                </div>
+
+                {{-- Global Category Filter Pills --}}
+                @php
+                    $availableCategories = $fixedAssetUnits->map(function($u) {
+                        return $u->parentAsset->category ?? 'General';
+                    })->unique()->values();
+                @endphp
+                <div class="card border-0 bg-light p-2 mb-3 shadow-sm">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <small class="text-muted fw-bold me-1"><i class="fa-solid fa-filter me-1"></i>Filter by Category:</small>
+                        <button type="button" class="btn btn-xs btn-dark rounded-pill px-3 py-1 btn-category-filter active" data-category="ALL" onclick="filterByCategory('ALL', this)">
+                            All ({{ $fixedAssetUnits->count() }})
+                        </button>
+                        @foreach($availableCategories as $cat)
+                            @php
+                                $catCount = $fixedAssetUnits->filter(fn($u) => ($u->parentAsset->category ?? 'General') === $cat)->count();
+                            @endphp
+                            <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-3 py-1 btn-category-filter" data-category="{{ $cat }}" onclick="filterByCategory('{{ $cat }}', this)">
+                                {{ $cat }} ({{ $catCount }})
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
 
                 <div id="assetsContainer">
                     @php
-                        $savedAssets = session('employee_data.assets') ?? old('assets', [['product_id' => '', 'quantity' => 1]]);
+                        $savedUnits = session('employee_data.fixed_asset_units') ?? old('fixed_asset_units', ['']);
                     @endphp
-                    @foreach($savedAssets as $index => $asset)
+                    @foreach($savedUnits as $index => $selectedUnitId)
                     <div class="asset-entry border rounded p-3 mb-3 bg-light" data-index="{{ $index }}">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="mb-0"><i class="fa-solid fa-box me-2"></i>Asset #{{ $index + 1 }}</h6>
-                            <button type="button" class="btn btn-sm btn-outline-danger remove-asset" onclick="removeAsset({{ $index }})" style="display: {{ count($savedAssets) > 1 ? 'inline-block' : 'none' }};">
-                                <i class="fa-solid fa-trash"></i> Remove
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0 fw-bold"><i class="fa-solid fa-barcode text-primary me-2"></i>Assigned Asset Unit #{{ $index + 1 }}</h6>
+                            <button type="button" class="btn btn-sm btn-outline-danger remove-asset {{ count($savedUnits) > 1 ? '' : 'd-none' }}" onclick="removeAsset({{ $index }})">
+                                <i class="fa-solid fa-trash me-1"></i>Remove
                             </button>
                         </div>
-                        <div class="row g-3">
-                            <div class="col-md-8">
-                                <label class="form-label">Select Asset</label>
-                                <select name="assets[{{ $index }}][product_id]" class="form-select asset-select">
-                                    <option value="">-- Choose an Asset --</option>
-                                    @foreach($products as $product)
-                                        <option value="{{ $product->id }}" @selected(($asset['product_id'] ?? '') == $product->id)>
-                                            {{ $product->name }} ({{ $product->category }}) - Br {{ number_format($product->unit_cost ?? 0, 2) }}
+
+                        {{-- Per-Row Live Search Input --}}
+                        <div class="mb-2">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-primary"></i></span>
+                                <input type="text" class="form-control form-control-sm border-start-0 asset-row-search" 
+                                       placeholder="🔍 Type unit code (e.g. COMP-1), serial, plate, or brand to search..." 
+                                       oninput="filterAssetOptions(this)">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearRowSearch(this)" title="Clear Search">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <label class="form-label small fw-bold mb-1">
+                                    Select Available Fixed Asset Unit <span class="badge bg-success ms-1">In Store</span>
+                                </label>
+                                <select name="fixed_asset_units[]" class="form-select asset-select font-monospace" onchange="onAssetUnitSelected(this)">
+                                    <option value="">-- Choose an Available Asset Unit --</option>
+                                    @foreach($fixedAssetUnits as $unit)
+                                        @php
+                                            $detailStr = $unit->plate_number ? 'Plate: ' . $unit->plate_number : ($unit->serial_number ? 'SN: ' . $unit->serial_number : ($unit->brand ? $unit->brand . ' ' . $unit->model : 'In Store'));
+                                            $pName = $unit->parentAsset->name ?? 'Asset';
+                                            $pCat = $unit->parentAsset->category ?? 'General';
+                                            $searchKeywords = strtolower("{$unit->unit_code} {$pName} {$pCat} {$detailStr} {$unit->brand} {$unit->model} {$unit->serial_number} {$unit->plate_number}");
+                                        @endphp
+                                        <option value="{{ $unit->id }}" 
+                                                data-category="{{ $pCat }}" 
+                                                data-search="{{ $searchKeywords }}"
+                                                data-unit-code="{{ $unit->unit_code }}"
+                                                data-asset-name="{{ $pName }}"
+                                                data-specs="{{ $detailStr }}"
+                                                data-condition="{{ $unit->condition }}"
+                                                @selected($selectedUnitId == $unit->id)>
+                                            {{ $unit->unit_code }} — {{ $pName }} ({{ $detailStr }}) • [{{ $pCat }}]
                                         </option>
                                     @endforeach
                                 </select>
+                                <div class="asset-match-count small text-muted mt-1" style="font-size: 0.75rem;"></div>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Quantity</label>
-                                <input type="number" name="assets[{{ $index }}][quantity]" class="form-control" value="{{ $asset['quantity'] ?? 1 }}" min="1">
+                        </div>
+
+                        {{-- Selected Unit Live Details Badge --}}
+                        <div class="selected-asset-details mt-2 p-2 bg-white rounded border d-none small">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <span class="badge bg-dark font-monospace fs-6 me-2 selected-unit-code"></span>
+                                    <strong class="text-dark selected-asset-name"></strong>
+                                    <span class="text-muted ms-2 selected-asset-specs"></span>
+                                </div>
+                                <div>
+                                    <span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Ready for Assignment</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                     @endforeach
                 </div>
 
-                <button type="button" class="btn btn-outline-info btn-sm" onclick="addAsset()">
-                    <i class="fa-solid fa-plus me-2"></i>Add Another Asset
-                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" onclick="addAsset()">
+                        <i class="fa-solid fa-plus me-1"></i> Assign Another Asset
+                    </button>
+                </div>
 
-                <div class="alert alert-info mt-3">
-                    <small>
-                        <i class="fa-solid fa-lightbulb me-2"></i>
-                        Select items to assign to this employee. You can search within the dropdown. Skip or leave blank if no assets are assigned.
-                    </small>
+                <div class="alert alert-info mt-3 small">
+                    <i class="fa-solid fa-info-circle me-1"></i>
+                    <strong>Centralized Inventory Rule:</strong> Only assets with status <em>In Store (Available)</em> can be selected. When saved, the asset unit will automatically link to this employee and update its status to <em>Assigned</em>.
                 </div>
             </div>
             @endif
@@ -571,18 +655,18 @@
             <div class="d-flex justify-content-between mt-4 pt-3 border-top">
                 <div>
                     @if(request()->get('step', 1) > 1)
-                    <button type="button" class="btn btn-outline-secondary" onclick="previousStep()">
+                    <button type="submit" name="action" value="previous" class="btn btn-outline-secondary" formnovalidate>
                         <i class="fa-solid fa-arrow-left me-2"></i>Previous
                     </button>
                     @endif
                 </div>
                 <div>
                     @if(request()->get('step', 1) < 6)
-                    <button type="button" class="btn btn-primary" onclick="nextStep(); return false;">
-                        Next Step<i class="fa-solid fa-arrow-right ms-2"></i>
+                    <button type="submit" name="action" value="next" class="btn btn-primary fw-semibold px-4">
+                        Next Step <i class="fa-solid fa-arrow-right ms-2"></i>
                     </button>
                     @else
-                    <button type="submit" class="btn btn-success">
+                    <button type="submit" name="action" value="submit" class="btn btn-success fw-bold px-4">
                         <i class="fa-solid fa-check me-2"></i>Complete Registration
                     </button>
                     @endif
@@ -592,86 +676,203 @@
     </div>
 </div>
 
+<div id="employeeWizardConfig" class="d-none"
+     data-education-count="{{ is_array(session('employee_data.education')) ? count(session('employee_data.education')) : 1 }}"
+     data-experience-count="{{ is_array(session('employee_data.experience')) ? count(session('employee_data.experience')) : 1 }}"
+     data-asset-count="{{ is_array(session('employee_data.fixed_asset_units')) ? count(session('employee_data.fixed_asset_units')) : 1 }}"
+     data-fixed-assets="{{ json_encode($fixedAssetUnits ?? []) }}">
+</div>
+
 <script>
-let educationCount = {{ is_array(session('employee_data.education')) ? count(session('employee_data.education')) : 1 }};
-let experienceCount = {{ is_array(session('employee_data.experience')) ? count(session('employee_data.experience')) : 1 }};
-let assetCount = {{ is_array(session('employee_data.assets')) ? count(session('employee_data.assets')) : 1 }};
-
-// Provide the products array to javascript for dynamic rows
-const productsList = @json($products);
-
 function nextStep() {
     const form = document.getElementById('employeeForm');
-    const currentStepInput = document.querySelector('input[name="step"]');
-    const currentStep = parseInt(currentStepInput.value);
-    
-    // For step 5 and 6, check if any data was entered
-    if (currentStep === 5) {
-        // Education step - check if any fields have values
-        const educationInputs = document.querySelectorAll('[name^="education[0]"]');
-        let hasAnyValue = false;
-        
-        educationInputs.forEach(input => {
-            if (input.type !== 'file' && input.value && input.value.trim() !== '') {
-                hasAnyValue = true;
-            }
-        });
+    if (form) {
+        document.getElementById('formAction').value = 'next';
+        form.submit();
     }
-    
-    // Set action to next
-    document.getElementById('formAction').value = 'next';
-    
-    // Show loading indicator
-    const btn = event.target;
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Loading...';
-    }
-    
-    form.submit();
 }
 
 function previousStep() {
     const form = document.getElementById('employeeForm');
-    const currentStepInput = document.querySelector('input[name="step"]');
-    const currentStep = parseInt(currentStepInput.value);
-    
-    if(currentStep > 1) {
-        // Set action to previous
+    if (form) {
         document.getElementById('formAction').value = 'previous';
         form.submit();
     }
 }
+
+const wizardCfg = document.getElementById('employeeWizardConfig')?.dataset || {};
+let educationCount = parseInt(wizardCfg.educationCount || '1', 10);
+let experienceCount = parseInt(wizardCfg.experienceCount || '1', 10);
+let assetCount = parseInt(wizardCfg.assetCount || '1', 10);
+
+// Provide the fixed asset units array to javascript for dynamic rows
+const fixedAssetUnitsList = JSON.parse(wizardCfg.fixedAssets || '[]');
+let currentActiveCategory = 'ALL';
+
+// Live Search per row
+function filterAssetOptions(input) {
+    const entry = input.closest('.asset-entry');
+    if (!entry) return;
+
+    const query = (input.value || '').trim().toLowerCase();
+    const select = entry.querySelector('.asset-select');
+    const countBadge = entry.querySelector('.asset-match-count');
+    if (!select) return;
+
+    let matchCount = 0;
+    const options = select.querySelectorAll('option');
+
+    options.forEach(opt => {
+        if (!opt.value) {
+            opt.hidden = false;
+            return;
+        }
+
+        const searchKeywords = opt.dataset.search || opt.textContent.toLowerCase();
+        const optCat = opt.dataset.category || 'General';
+
+        const matchesQuery = query === '' || searchKeywords.includes(query);
+        const matchesCategory = currentActiveCategory === 'ALL' || optCat === currentActiveCategory;
+
+        if (matchesQuery && matchesCategory) {
+            opt.hidden = false;
+            matchCount++;
+        } else {
+            opt.hidden = true;
+        }
+    });
+
+    if (countBadge) {
+        if (query || currentActiveCategory !== 'ALL') {
+            countBadge.innerHTML = `<i class="fa-solid fa-filter me-1"></i>Found <strong>${matchCount}</strong> matching units`;
+        } else {
+            countBadge.innerHTML = '';
+        }
+    }
+}
+
+function clearRowSearch(btn) {
+    const entry = btn.closest('.asset-entry');
+    if (!entry) return;
+    const input = entry.querySelector('.asset-row-search');
+    if (input) {
+        input.value = '';
+        filterAssetOptions(input);
+    }
+}
+
+// Global Category Filter
+function filterByCategory(cat, btn) {
+    currentActiveCategory = cat;
+
+    // Update active button styles
+    document.querySelectorAll('.btn-category-filter').forEach(b => {
+        b.classList.remove('active', 'btn-dark');
+        b.classList.add('btn-outline-secondary');
+    });
+    if (btn) {
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('active', 'btn-dark');
+    }
+
+    // Re-filter all asset entries
+    document.querySelectorAll('.asset-row-search').forEach(input => {
+        filterAssetOptions(input);
+    });
+}
+
+// Show live details preview when a unit is picked
+function onAssetUnitSelected(select) {
+    const entry = select.closest('.asset-entry');
+    if (!entry) return;
+
+    const detailsBox = entry.querySelector('.selected-asset-details');
+    const selectedOpt = select.options[select.selectedIndex];
+
+    if (!select.value || !selectedOpt) {
+        if (detailsBox) detailsBox.classList.add('d-none');
+        return;
+    }
+
+    if (detailsBox) {
+        const codeEl = detailsBox.querySelector('.selected-unit-code');
+        const nameEl = detailsBox.querySelector('.selected-asset-name');
+        const specsEl = detailsBox.querySelector('.selected-asset-specs');
+
+        if (codeEl) codeEl.textContent = selectedOpt.dataset.unitCode || selectedOpt.textContent.split('—')[0].trim();
+        if (nameEl) nameEl.textContent = selectedOpt.dataset.assetName || '';
+        if (specsEl) specsEl.textContent = selectedOpt.dataset.specs ? `(${selectedOpt.dataset.specs})` : '';
+
+        detailsBox.classList.remove('d-none');
+    }
+}
+
+// Initialize on page load for any already-selected units
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.asset-select').forEach(sel => {
+        if (sel.value) onAssetUnitSelected(sel);
+    });
+});
 
 // Asset Functions
 function addAsset() {
     const container = document.getElementById('assetsContainer');
     const index = assetCount;
     
-    let optionsHtml = '<option value="">-- Choose an Asset --</option>';
-    productsList.forEach(p => {
-        const cost = p.unit_cost ? parseFloat(p.unit_cost).toFixed(2) : '0.00';
-        optionsHtml += `<option value="${p.id}">${p.name} (${p.category || 'N/A'}) - Br ${cost}</option>`;
+    let optionsHtml = '<option value="">-- Choose an Available Asset Unit --</option>';
+    fixedAssetUnitsList.forEach(u => {
+        const pName = u.parent_asset ? u.parent_asset.name : 'Asset';
+        const pCat = u.parent_asset ? u.parent_asset.category : 'General';
+        const detailStr = u.plate_number ? `Plate: ${u.plate_number}` : (u.serial_number ? `SN: ${u.serial_number}` : (u.brand ? `${u.brand} ${u.model || ''}` : 'In Store'));
+        const searchKeywords = `${u.unit_code} ${pName} ${pCat} ${detailStr} ${u.brand || ''} ${u.model || ''} ${u.serial_number || ''} ${u.plate_number || ''}`.toLowerCase();
+        optionsHtml += `<option value="${u.id}" data-category="${pCat}" data-search="${searchKeywords}" data-unit-code="${u.unit_code}" data-asset-name="${pName}" data-specs="${detailStr}">${u.unit_code} — ${pName} (${detailStr}) • [${pCat}]</option>`;
     });
 
     const html = `
         <div class="asset-entry border rounded p-3 mb-3 bg-light" data-index="${index}">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="mb-0"><i class="fa-solid fa-box me-2"></i>Asset #${index + 1}</h6>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-barcode text-primary me-2"></i>Assigned Asset Unit #${index + 1}</h6>
                 <button type="button" class="btn btn-sm btn-outline-danger remove-asset" onclick="removeAsset(${index})">
-                    <i class="fa-solid fa-trash"></i> Remove
+                    <i class="fa-solid fa-trash me-1"></i>Remove
                 </button>
             </div>
-            <div class="row g-3">
-                <div class="col-md-8">
-                    <label class="form-label">Select Asset</label>
-                    <select name="assets[${index}][product_id]" class="form-select asset-select">
+
+            {{-- Per-Row Live Search Input --}}
+            <div class="mb-2">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-primary"></i></span>
+                    <input type="text" class="form-control form-control-sm border-start-0 asset-row-search" 
+                           placeholder="🔍 Type unit code (e.g. COMP-1), serial, plate, or brand to search..." 
+                           oninput="filterAssetOptions(this)">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearRowSearch(this)" title="Clear Search">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="row g-2">
+                <div class="col-12">
+                    <label class="form-label small fw-bold mb-1">
+                        Select Available Fixed Asset Unit <span class="badge bg-success ms-1">In Store</span>
+                    </label>
+                    <select name="fixed_asset_units[]" class="form-select asset-select font-monospace" onchange="onAssetUnitSelected(this)">
                         ${optionsHtml}
                     </select>
+                    <div class="asset-match-count small text-muted mt-1" style="font-size: 0.75rem;"></div>
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label">Quantity</label>
-                    <input type="number" name="assets[${index}][quantity]" class="form-control" value="1" min="1">
+            </div>
+
+            {{-- Selected Unit Live Details Badge --}}
+            <div class="selected-asset-details mt-2 p-2 bg-white rounded border d-none small">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="badge bg-dark font-monospace fs-6 me-2 selected-unit-code"></span>
+                        <strong class="text-dark selected-asset-name"></strong>
+                        <span class="text-muted ms-2 selected-asset-specs"></span>
+                    </div>
+                    <div>
+                        <span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Ready for Assignment</span>
+                    </div>
                 </div>
             </div>
         </div>

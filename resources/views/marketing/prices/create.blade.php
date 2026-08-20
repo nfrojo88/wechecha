@@ -264,15 +264,6 @@
                         <div class="mb-4 res-field d-none" id="field_equipment">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <label class="form-label fw-semibold text-dark mb-0">Search Equipment / Fixed Asset <span class="text-danger">*</span></label>
-                                <div class="d-flex gap-2">
-                                    <a href="{{ route('equipment.index') }}" target="_blank" class="btn btn-link btn-sm p-0 text-decoration-none text-muted fw-semibold">
-                                        <i class="fa-solid fa-gear me-1"></i>Manage Assets
-                                    </a>
-                                    <span class="text-muted">|</span>
-                                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-warning text-dark fw-bold" data-bs-toggle="modal" data-bs-target="#addEquipmentModal">
-                                        <i class="fa-solid fa-plus-circle me-1"></i>+ Add Asset
-                                    </button>
-                                </div>
                             </div>
                             <select name="equipment_id" id="equipmentSelect" class="form-select @error('equipment_id') is-invalid @enderror" placeholder="Type to search equipment or asset code...">
                                 <option value="">— Search & Select Equipment —</option>
@@ -459,7 +450,7 @@
 <div class="modal fade" id="addEquipmentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
-            <form method="POST" action="{{ route('equipment.store') }}">
+            <form method="POST" action="{{ route('marketing.equipment.store') }}">
                 @csrf
                 <div class="modal-header bg-light">
                     <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-truck-monster text-warning me-2"></i>Add Fixed Asset Equipment</h5>

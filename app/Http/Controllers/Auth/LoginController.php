@@ -80,8 +80,8 @@ class LoginController extends Controller
                 ])->onlyInput('email');
             }
 
-            // Check GM approval restriction
-            if ($authUser->employee && !$authUser->employee->is_approved_by_gm && $authUser->employee->created_at) {
+            // Check GM approval restriction (only for unapproved employees without assigned system roles)
+            if ($authUser->employee && !$authUser->employee->is_approved_by_gm && $authUser->roles()->count() === 0 && $authUser->employee->created_at) {
                 // Check if 1 week has passed since registration
                 if ($authUser->employee->created_at->diffInDays(now()) >= 7) {
                     Auth::logout();

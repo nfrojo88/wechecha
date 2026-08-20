@@ -16,12 +16,19 @@
                 @csrf
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label class="form-label">Product Name *</label>
-                        <input type="text" name="name" class="form-control" required>
+                        <label class="form-label fw-semibold">Product Name *</label>
+                        <input type="text" name="name" id="product_name_input" class="form-control" placeholder="e.g., Reinforcing Steel Bar 12mm, Cement 50kg" required oninput="generateProductCode(this.value)">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Product Code *</label>
-                        <input type="text" name="code" class="form-control" required>
+                        <label class="form-label fw-semibold">Product Code (Auto-Generated) *</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="fas fa-barcode text-primary"></i></span>
+                            <input type="text" name="code" id="product_code_input" class="form-control bg-light fw-bold text-uppercase" placeholder="Auto-generated (e.g. MAT-001)" readonly required>
+                            <button type="button" class="btn btn-outline-secondary" onclick="generateProductCode(document.getElementById('product_name_input').value)" title="Regenerate Code">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">Unique product code auto-generated from product name.</small>
                     </div>
                 </div>
                 <div class="row mb-3">
@@ -86,4 +93,41 @@
         </div>
     </div>
 </div>
+
+<script>
+function generateProductCode(name) {
+    const codeInput = document.getElementById('product_code_input');
+    if (!codeInput) return;
+
+    const trimmed = (name || '').trim();
+    if (!trimmed) {
+        codeInput.value = '';
+        return;
+    }
+
+    // Extract uppercase alphanumeric words
+    const words = trimmed.split(/\s+/).filter(w => w.length > 0);
+    let prefix = '';
+
+    if (words.length >= 2) {
+        // Take first 2-3 letters of first word + first 2-3 letters of second word
+        prefix = (words[0].substring(0, 3) + '-' + words[1].substring(0, 3)).toUpperCase();
+    } else {
+        prefix = words[0].substring(0, 4).toUpperCase();
+    }
+
+    prefix = prefix.replace(/[^A-Z0-9\-]/g, '');
+    if (prefix.length < 2) prefix = 'PRD';
+
+    // Append a 3-digit hash or random counter for collision avoidance
+    let hash = 0;
+    for (let i = 0; i < trimmed.length; i++) {
+        hash = ((hash << 5) - hash) + trimmed.charCodeAt(i);
+        hash |= 0;
+    }
+    const num = Math.abs(hash % 900) + 100;
+
+    codeInput.value = prefix + '-' + num;
+}
+</script>
 @endsection

@@ -92,16 +92,54 @@ class Payroll extends Model
         return date('F Y', strtotime($this->year . '-' . $this->month . '-01'));
     }
 
-    /** Ethiopian income tax on (gross - pension) */
+    /** Calculate taxable income: basic + house + position + max(0, transport - 2200) - pension */
+    public static function calculateTaxableIncome(float $basic, float $house, float $position, float $transport, float $pension = 0): float
+    {
+        $taxableTransport = max(0, $transport - 2200);
+        $taxable = $basic + $house + $position + $taxableTransport - $pension;
+        return max(0, $taxable);
+    }
+
+    /** Ethiopian income tax calculation */
     public static function calculateIncomeTax(float $taxableIncome): float
     {
-        if ($taxableIncome <= 600)  return 0;
-        if ($taxableIncome <= 1650) return ($taxableIncome - 600)  * 0.10;
-        if ($taxableIncome <= 3200) return ($taxableIncome - 1650) * 0.15 + 105;
-        if ($taxableIncome <= 5250) return ($taxableIncome - 3200) * 0.20 + 332.50;
-        if ($taxableIncome <= 7800) return ($taxableIncome - 5250) * 0.25 + 742.50;
-        if ($taxableIncome <= 10900)return ($taxableIncome - 7800) * 0.30 + 1380;
-        return ($taxableIncome - 10900) * 0.35 + 2310;
+        if ($taxableIncome <= 2000)  return 0;
+        if ($taxableIncome <= 4000)  return ($taxableIncome * 0.15) - 300;
+        if ($taxableIncome <= 7000)  return ($taxableIncome * 0.20) - 500;
+        if ($taxableIncome <= 10000) return ($taxableIncome * 0.25) - 850;
+        if ($taxableIncome <= 14000) return ($taxableIncome * 0.30) - 1350;
+        return ($taxableIncome * 0.35) - 2050;
+    }
+
+    /**
+     * Calculate overtime pay.
+     *
+     * OT types & coefficients:
+     *   holiday   → × 2.5  (public holiday)
+     *   rest_day  → × 2.0  (Sunday full day OR Saturday after normal hours)
+     *   night_12_4→ × 1.5  (00:00 – 04:00)
+     *   night_4_12→ × 1.75 (16:00 – 00:00)
+     *
+     * Formula: basic / 30 / 8 × coefficient × hours
+     */
+    public static function calculateOvertimePay(float $basic, float $hours, string $type): float
+    {
+        if ($hours <= 0) return 0;
+
+        $coefficients = [
+            'holiday'    => 2.5,
+            'rest_day'   => 2.0,
+            'night_12_4' => 1.5,
+            'night_4_12' => 1.75,
+            'none'       => 0,
+        ];
+
+        $coefficient = $coefficients[$type] ?? 0;
+        if ($coefficient <= 0) return 0;
+
+        $hourlyRate = $basic / 30 / 8;
+        return round($hourlyRate * $coefficient * $hours, 2);
     }
 }
+
 

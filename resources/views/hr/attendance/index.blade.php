@@ -126,6 +126,8 @@
                             <th>Check Out</th>
                             <th class="text-center">Hours</th>
                             <th>Status</th>
+                            <th class="text-center">OT Hrs</th>
+                            <th class="text-end">OT Pay</th>
                             <th>Source</th>
                             <th class="text-center">Approved</th>
                         </tr>
@@ -174,6 +176,26 @@
                                     {{ ucfirst(str_replace('_', ' ', $a->status)) }}
                                 </span>
                             </td>
+                            <td class="text-center">
+                                @if(($a->overtime_hours ?? 0) > 0)
+                                    <span class="badge bg-warning text-dark">{{ $a->overtime_hours }}h</span>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
+                            <td class="text-end">
+                                @if(($a->overtime_pay ?? 0) > 0)
+                                    @php
+                                        $otLabels = ['holiday'=>'Holiday×2.5','rest_day'=>'Rest×2.0','night_12_4'=>'Night×1.5','night_4_12'=>'Night×1.75'];
+                                    @endphp
+                                    <span class="fw-bold text-warning" title="{{ $otLabels[$a->overtime_type] ?? '' }}">
+                                        {{ number_format($a->overtime_pay, 2) }}
+                                    </span>
+                                    <br><small class="text-muted">{{ $otLabels[$a->overtime_type] ?? '' }}</small>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td>
                                 <small class="text-muted">{{ ucfirst($a->source) }}</small>
                             </td>
@@ -191,7 +213,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8" class="text-center py-5 text-muted">
+                            <td colspan="10" class="text-center py-5 text-muted">
                                 <i class="fas fa-inbox fa-3x mb-3 opacity-50"></i>
                                 <p class="mb-0">No attendance records found.</p>
                             </td>

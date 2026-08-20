@@ -49,10 +49,7 @@ class EmployeeExperience extends Model
      */
     public function getLicenseUrlAttribute()
     {
-        if ($this->license_document) {
-            return Storage::url($this->license_document);
-        }
-        return null;
+        return \App\Services\FileUploadService::url($this->license_document);
     }
 
     /**

@@ -19,6 +19,16 @@ class DailyReportController extends Controller
 
         $query = DailyReport::with(['project', 'createdBy', 'approvedBy']);
 
+        /** @var \App\Models\User|null $user */
+        $user = auth()->user();
+        if ($user && $user->hasRole('site_engineer') && !$user->hasAnyRole(['admin', 'global_admin', 'gm', 'planning_manager', 'hr_manager'])) {
+            $assignedProjectIds = $user->projects()->pluck('projects.id');
+            if ($user->store && $user->store->project_id) {
+                $assignedProjectIds->push($user->store->project_id);
+            }
+            $query->whereIn('project_id', $assignedProjectIds->unique());
+        }
+
         // Filter by status
         if ($status !== 'all') {
             $query->where('status', $status);
@@ -127,7 +137,7 @@ class DailyReportController extends Controller
 
         $picPath = null;
         if ($request->hasFile('site_book_pic')) {
-            $picPath = $request->file('site_book_pic')->store('daily_reports', 'public');
+            $picPath = \App\Services\FileUploadService::upload($request->file('site_book_pic'), 'daily_reports');
         }
 
         DB::transaction(function () use ($request, $picPath) {

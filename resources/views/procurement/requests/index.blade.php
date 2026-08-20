@@ -48,14 +48,23 @@
                             @php
                                 $badge = match($req->status) {
                                     'draft' => 'secondary',
-                                    'submitted' => 'info',
-                                    'approved' => 'primary',
-                                    'fulfilled' => 'success',
+                                    'pending_planning', 'submitted' => 'warning',
+                                    'planning_approved' => 'info',
+                                    'sent_to_store_manager' => 'primary',
+                                    'sent_to_pr', 'transfer_created', 'fulfilled', 'approved' => 'success',
                                     'rejected' => 'danger',
                                     default => 'secondary'
                                 };
+                                $statusText = match($req->status) {
+                                    'pending_planning', 'submitted' => 'PENDING PLANNING',
+                                    'planning_approved' => 'PLANNING APPROVED',
+                                    'sent_to_store_manager' => 'SENT TO STORE MANAGER',
+                                    'sent_to_pr' => 'SENT TO PR',
+                                    'transfer_created' => 'TRANSFER CREATED',
+                                    default => strtoupper($req->status)
+                                };
                             @endphp
-                            <span class="badge bg-{{ $badge }}">{{ strtoupper($req->status) }}</span>
+                            <span class="badge bg-{{ $badge }}">{{ $statusText }}</span>
                         </td>
                         <td class="small text-muted">{{ $req->creator->name }}</td>
                         <td class="text-end">

@@ -12,14 +12,38 @@ class DispatchController extends Controller
 {
     public function index()
     {
-        $dispatches = WeeklyPlanDispatch::with(['project', 'dispatchedTo'])->latest()->get();
+        $query = WeeklyPlanDispatch::with(['project', 'dispatchedTo'])->latest();
+
+        /** @var \App\Models\User|null $user */
+        $user = auth()->user();
+        if ($user && $user->hasRole('site_engineer') && !$user->hasAnyRole(['admin', 'global_admin', 'planning_manager', 'planning'])) {
+            $assignedProjectIds = $user->projects()->pluck('projects.id');
+            if ($user->store && $user->store->project_id) {
+                $assignedProjectIds->push($user->store->project_id);
+            }
+            $query->whereIn('project_id', $assignedProjectIds->unique());
+        }
+
+        $dispatches = $query->get();
         return view('planning.dispatches.index', compact('dispatches'));
     }
 
     public function create()
     {
         // Show all projects that might have a plan, or at least ones not cancelled/completed
-        $projects = Project::whereNotIn('status', ['cancelled', 'completed'])->get();
+        $query = Project::whereNotIn('status', ['cancelled', 'completed']);
+
+        /** @var \App\Models\User|null $user */
+        $user = auth()->user();
+        if ($user && $user->hasRole('site_engineer') && !$user->hasAnyRole(['admin', 'global_admin', 'planning_manager', 'planning'])) {
+            $assignedProjectIds = $user->projects()->pluck('projects.id');
+            if ($user->store && $user->store->project_id) {
+                $assignedProjectIds->push($user->store->project_id);
+            }
+            $query->whereIn('id', $assignedProjectIds->unique());
+        }
+
+        $projects = $query->get();
         return view('planning.dispatches.create', compact('projects'));
     }
 

@@ -106,8 +106,8 @@
                                 </span>
                             </td>
                             <td class="pe-3 text-end">
-                                @if($req->attachment_url)
-                                    <a href="{{ $req->attachment_url }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2">
+                                @if($req->attachment)
+                                    <a href="{{ route('expense-requests.attachment', $req->id) }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2 shadow-sm" title="View receipt">
                                         <i class="fa-solid fa-paperclip me-1"></i>View
                                     </a>
                                 @else

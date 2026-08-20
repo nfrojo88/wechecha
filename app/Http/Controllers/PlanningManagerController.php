@@ -10,7 +10,6 @@ use App\Models\TakeoffSheet;
 use App\Models\Schedule;
 use App\Models\Inventory;
 use App\Models\Employee;
-use App\Models\EquipmentMaster;
 use App\Models\WeeklyPlanDispatch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;

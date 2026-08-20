@@ -21,14 +21,19 @@
 
                 <div class="col-md-6">
                     <label class="form-label">Name <span class="text-danger">*</span></label>
-                    <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
-                           value="{{ old('name') }}" required placeholder="e.g. Reinforcing Steel Bar 12mm">
+                    <input type="text" name="name" id="product_name_main" class="form-control @error('name') is-invalid @enderror"
+                           value="{{ old('name') }}" required placeholder="e.g. Reinforcing Steel Bar 12mm" oninput="generateMainSku(this.value)">
                     @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">SKU / Code <span class="text-danger">*</span></label>
-                    <input type="text" name="sku" class="form-control @error('sku') is-invalid @enderror"
-                           value="{{ old('sku') }}" required placeholder="e.g. STL-RBR-12">
+                    <label class="form-label">SKU / Code (Auto) <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input type="text" name="sku" id="product_sku_main" class="form-control bg-light @error('sku') is-invalid @enderror"
+                               value="{{ old('sku') }}" required placeholder="Auto-generated" readonly>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="generateMainSku(document.getElementById('product_name_main').value)" title="Regenerate">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
                     @error('sku')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-md-3">
@@ -161,4 +166,38 @@
         </form>
     </div>
 </div>
+
+<script>
+function generateMainSku(name) {
+    const skuInput = document.getElementById('product_sku_main');
+    if (!skuInput) return;
+
+    const trimmed = (name || '').trim();
+    if (!trimmed) {
+        skuInput.value = '';
+        return;
+    }
+
+    const words = trimmed.split(/\s+/).filter(w => w.length > 0);
+    let prefix = '';
+
+    if (words.length >= 2) {
+        prefix = (words[0].substring(0, 3) + '-' + words[1].substring(0, 3)).toUpperCase();
+    } else {
+        prefix = words[0].substring(0, 4).toUpperCase();
+    }
+
+    prefix = prefix.replace(/[^A-Z0-9\-]/g, '');
+    if (prefix.length < 2) prefix = 'PRD';
+
+    let hash = 0;
+    for (let i = 0; i < trimmed.length; i++) {
+        hash = ((hash << 5) - hash) + trimmed.charCodeAt(i);
+        hash |= 0;
+    }
+    const num = Math.abs(hash % 900) + 100;
+
+    skuInput.value = prefix + '-' + num;
+}
+</script>
 @endsection

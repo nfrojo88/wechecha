@@ -111,7 +111,7 @@ class EmployeeContractManagementController extends Controller
         $validated['contract_number'] = $contractNumber;
 
         if ($request->hasFile('contract_file')) {
-            $validated['contract_file'] = $request->file('contract_file')->store('contracts');
+            $validated['contract_file'] = \App\Services\FileUploadService::upload($request->file('contract_file'), 'contracts');
         }
 
         $validated['created_by'] = Auth::id();

@@ -293,8 +293,8 @@
                                 @endif
                             </td>
                             <td>
-                                @if($req->attachment_url)
-                                    <a href="{{ $req->attachment_url }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2">
+                                @if($req->attachment)
+                                    <a href="{{ route('expense-requests.attachment', $req->id) }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2 shadow-sm" title="View attached receipt / document">
                                         <i class="fa-solid fa-paperclip me-1"></i>View
                                     </a>
                                 @else
@@ -395,6 +395,14 @@
                                     <div class="fw-normal text-dark text-break">{{ $req->description }}</div>
                                 </div>
                             </div>
+                            @if($req->attachment)
+                                <div class="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small"><i class="fa-solid fa-paperclip text-primary me-1"></i> Attached Receipt / Proof:</span>
+                                    <a href="{{ route('expense-requests.attachment', $req->id) }}" target="_blank" class="btn btn-sm btn-primary py-1 px-2">
+                                        <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Open Attachment
+                                    </a>
+                                </div>
+                            @endif
                         </div>
 
                         @if($req->amount <= 5000)
@@ -462,6 +470,14 @@
                             @if($req->hrReviewer)
                                 <div class="mt-2 pt-2 border-top text-muted small"><i class="fa-solid fa-user-check text-success me-1"></i>Reviewed by HR: {{ $req->hrReviewer->name }} on {{ $req->hr_reviewed_at ? $req->hr_reviewed_at->format('M d, H:i') : 'N/A' }}</div>
                             @endif
+                            @if($req->attachment)
+                                <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small"><i class="fa-solid fa-paperclip text-primary me-1"></i> Attached Receipt / Proof:</span>
+                                    <a href="{{ route('expense-requests.attachment', $req->id) }}" target="_blank" class="btn btn-sm btn-primary py-1 px-2">
+                                        <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Open Attachment
+                                    </a>
+                                </div>
+                            @endif
                         </div>
 
                         <div class="mb-3">
@@ -510,6 +526,14 @@
                                     <div class="fs-4 fw-bold text-success">ETB {{ number_format($req->amount, 2) }}</div>
                                 </div>
                             </div>
+                            @if($req->attachment)
+                                <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small"><i class="fa-solid fa-paperclip text-primary me-1"></i> Attached Receipt / Proof:</span>
+                                    <a href="{{ route('expense-requests.attachment', $req->id) }}" target="_blank" class="btn btn-sm btn-primary py-1 px-2">
+                                        <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Open Attachment
+                                    </a>
+                                </div>
+                            @endif
                         </div>
 
                         <div class="mb-3">

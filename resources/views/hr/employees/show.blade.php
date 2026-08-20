@@ -3,6 +3,41 @@
 @section('title', 'Employee Profile - ' . $employee->full_name)
 
 @section('content')
+
+{{-- GM Rejection Alert for HR Officer --}}
+@if($employee->gm_approval_status === 'rejected')
+<div class="alert alert-danger border-start border-4 border-danger shadow mb-4 fade show" role="alert">
+    <div class="d-flex align-items-start gap-3">
+        <div class="rounded-circle bg-danger bg-opacity-15 p-3 flex-shrink-0">
+            <i class="fa-solid fa-triangle-exclamation fa-xl text-danger"></i>
+        </div>
+        <div class="flex-grow-1">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong class="fs-6 text-danger d-block mb-1">
+                        ⚠️ Returned by General Manager — Correction Required
+                    </strong>
+                    <p class="mb-2 text-dark">
+                        <i class="fa-solid fa-comment-dots me-1 text-danger"></i>
+                        <strong>GM's Instructions:</strong> {{ $employee->gm_rejection_reason }}
+                    </p>
+                    <small class="text-muted">
+                        Rejected by
+                        <strong>{{ $employee->gmRejectedBy->name ?? 'GM' }}</strong>
+                        on {{ optional($employee->gm_rejected_at)->format('d M Y \a\t h:i A') }}
+                    </small>
+                </div>
+                @can('hr.manage')
+                <a href="{{ route('employees.edit', $employee) }}" class="btn btn-danger fw-bold ms-3 flex-shrink-0">
+                    <i class="fa-solid fa-wrench me-1"></i> Fix & Resubmit to GM
+                </a>
+                @endcan
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div class="d-flex align-items-center">
         <a href="{{ route('employees.index') }}" class="btn btn-sm btn-outline-secondary me-3">
@@ -10,19 +45,39 @@
         </a>
         <div>
             <h1 class="h3 mb-0">{{ $employee->full_name }}</h1>
-            <small class="text-muted">{{ $employee->employee_code }} • {{ $employee->role_title }}</small>
+            <div class="d-flex align-items-center gap-2 mt-1">
+                <small class="text-muted">{{ $employee->employee_code }} • {{ $employee->role_title }}</small>
+                @if($employee->is_approved_by_gm)
+                    <span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>GM Approved</span>
+                @elseif($employee->gm_approval_status === 'rejected')
+                    <span class="badge bg-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>Returned by GM</span>
+                @else
+                    <span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>Awaiting GM Approval</span>
+                @endif
+            </div>
         </div>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
         @role('gm')
-            @if(!$employee->is_approved_by_gm)
+            @if(!$employee->is_approved_by_gm && $employee->gm_approval_status !== 'rejected')
                 <form action="{{ route('employees.approve', $employee) }}" method="POST" class="d-inline">
                     @csrf
                     @method('PUT')
-                    <button type="submit" class="btn btn-sm btn-success">
-                        <i class="fa-solid fa-check me-2"></i>Approve Employee
+                    <button type="submit" class="btn btn-sm btn-success fw-bold shadow-sm" onclick="return confirm('Approve {{ addslashes($employee->full_name) }}?')">
+                        <i class="fa-solid fa-check me-1"></i>Approve Employee
                     </button>
                 </form>
+                <button type="button" class="btn btn-sm btn-outline-danger fw-bold" onclick="openRejectModal()">
+                    <i class="fa-solid fa-rotate-left me-1"></i>Reject & Return to HR
+                </button>
+            @elseif($employee->is_approved_by_gm)
+                <span class="btn btn-sm btn-success disabled">
+                    <i class="fa-solid fa-circle-check me-1"></i>Approved by GM
+                </span>
+            @elseif($employee->gm_approval_status === 'rejected')
+                <span class="btn btn-sm btn-outline-danger disabled">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i>Returned to HR
+                </span>
             @endif
         @endrole
         <a href="{{ route('employees.edit', $employee) }}" class="btn btn-sm btn-primary">
@@ -366,49 +421,126 @@
         </div>
         @endif
 
-        {{-- Assigned Assets Card --}}
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fa-solid fa-computer text-info me-2"></i>Assigned Assets & Equipment</h5>
-                <span class="badge bg-info">{{ $employee->activeAssets()->count() }} Active</span>
+        {{-- Assigned Fixed Assets & Equipment Card --}}
+        @php
+            $activeFixedUnits = $employee->assignedFixedAssets ?? collect();
+            $legacyActiveAssets = $employee->activeAssets() ?? collect();
+            $totalActiveCount = $activeFixedUnits->count() + $legacyActiveAssets->count();
+        @endphp
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <h5 class="mb-0 fw-bold text-dark">
+                        <i class="fa-solid fa-truck-monster text-warning me-2"></i>Assigned Fixed Assets & Equipment
+                    </h5>
+                    <span class="badge bg-primary fs-6">{{ $totalActiveCount }} Active Assigned</span>
+                </div>
+                @if($totalActiveCount > 5)
+                <div class="d-flex align-items-center">
+                    <div class="input-group input-group-sm" style="max-width: 220px;">
+                        <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                        <input type="text" id="assetSearchInput" class="form-control border-start-0 ps-0" placeholder="Search assets..." onkeyup="filterEmployeeAssets()">
+                    </div>
+                </div>
+                @endif
             </div>
-            <div class="card-body">
-                @if($employee->activeAssets()->count() > 0)
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
+            <div class="card-body p-0">
+                @if($totalActiveCount > 0)
+                <div style="max-height: 480px; overflow-y: auto; overflow-x: hidden;">
+                    <table class="table table-hover align-middle mb-0" id="employeeAssetsTable" style="width: 100%; font-size: 0.88rem;">
+                        <thead class="table-light text-muted small text-uppercase" style="position: sticky; top: 0; z-index: 2; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                             <tr>
-                                <th>Asset Name</th>
-                                <th>Type</th>
-                                <th>Assigned Date</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                                <th class="ps-3 py-2 bg-light">Asset / Code</th>
+                                <th class="py-2 bg-light">Price / Value</th>
+                                <th class="py-2 bg-light">Condition</th>
+                                <th class="py-2 bg-light">Assigned Date</th>
+                                <th class="text-end pe-3 py-2 bg-light" style="width: 85px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($employee->activeAssets() as $asset)
-                            <tr>
-                                <td>
-                                    <strong>{{ $asset->product->name ?? 'Unknown' }}</strong>
-                                    @if($asset->notes)
-                                    <br><small class="text-muted">{{ $asset->notes }}</small>
-                                    @endif
+                            {{-- Centralized Fixed Asset Units --}}
+                            @foreach($activeFixedUnits as $fUnit)
+                            @php
+                                $condBadge = $fUnit->condition_badge;
+                                $unitPrice = $fUnit->purchase_price ?? $fUnit->parentAsset->unit_cost ?? 0;
+                            @endphp
+                            <tr class="asset-row" data-search="{{ strtolower(($fUnit->unit_code ?? '') . ' ' . ($fUnit->parentAsset->name ?? '') . ' ' . ($fUnit->parentAsset->category ?? '') . ' ' . ($fUnit->plate_number ?? '') . ' ' . ($fUnit->serial_number ?? '')) }}">
+                                <td class="ps-3 py-2">
+                                    <div class="d-flex align-items-start gap-2">
+                                        <span class="badge bg-dark font-monospace px-2 py-1 flex-shrink-0" style="margin-top: 2px;">{{ $fUnit->unit_code }}</span>
+                                        <div class="min-w-0">
+                                            <strong class="text-dark d-block text-truncate" style="max-width: 260px;" title="{{ $fUnit->parentAsset->name ?? 'Fixed Asset' }}">
+                                                {{ $fUnit->parentAsset->name ?? 'Fixed Asset' }}
+                                            </strong>
+                                            <div class="d-flex flex-wrap align-items-center gap-1 mt-1">
+                                                <span class="badge bg-light text-secondary border px-1 py-0" style="font-size: 0.72rem;">{{ $fUnit->parentAsset->category ?? 'General' }}</span>
+                                                @if($fUnit->plate_number)
+                                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-1 py-0" style="font-size: 0.72rem;">
+                                                        <i class="fa-solid fa-car-side me-1"></i>{{ $fUnit->plate_number }}
+                                                    </span>
+                                                @endif
+                                                @if($fUnit->serial_number)
+                                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border px-1 py-0 font-monospace" style="font-size: 0.72rem;">
+                                                        S/N: {{ $fUnit->serial_number }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
                                 </td>
-                                <td>{{ $asset->product->type ?? 'General' }}</td>
-                                <td>{{ $asset->assigned_date->format('d M Y') }}</td>
-                                <td>
-                                    @if($asset->status === 'assigned')
-                                        <span class="badge bg-primary">Assigned</span>
-                                    @elseif($asset->status === 'in_use')
-                                        <span class="badge bg-success">In Use</span>
-                                    @endif
+                                <td class="py-2 text-nowrap">
+                                    <strong class="text-success small">Br {{ number_format($unitPrice, 2) }}</strong>
                                 </td>
-                                <td>
-                                    <div class="btn-group btn-group-sm" role="group">
-                                        <a href="{{ route('employee-assets.return', $asset) }}" class="btn btn-outline-warning" title="Return Asset">
+                                <td class="py-2 text-nowrap">
+                                    <span class="badge {{ $condBadge['class'] }}">{{ $condBadge['label'] }}</span>
+                                </td>
+                                <td class="py-2 text-nowrap">
+                                    <div class="small fw-semibold">{{ $fUnit->assigned_date ? $fUnit->assigned_date->format('d M Y') : 'N/A' }}</div>
+                                    <div class="text-muted" style="font-size:0.72rem;">{{ $fUnit->assigned_date ? $fUnit->assigned_date->diffForHumans() : '' }}</div>
+                                </td>
+                                <td class="text-end pe-3 py-2 text-nowrap">
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-info px-2" data-bs-toggle="modal" data-bs-target="#viewAssetUnitModal_{{ $fUnit->id }}" title="View Full Specifications">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-warning px-2" data-bs-toggle="modal" data-bs-target="#returnFixedUnitModal_{{ $fUnit->id }}" title="Return Asset">
+                                            <i class="fa-solid fa-arrow-rotate-left"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            @endforeach
+
+                            {{-- Legacy Assigned Assets (if any exist) --}}
+                            @foreach($legacyActiveAssets as $asset)
+                            @php
+                                $legacyPrice = $asset->product->unit_price ?? $asset->product->purchase_price ?? 0;
+                            @endphp
+                            <tr class="asset-row" data-search="{{ strtolower(($asset->product->name ?? '') . ' ' . ($asset->product->type ?? '') . ' ' . ($asset->notes ?? '')) }}">
+                                <td class="ps-3 py-2">
+                                    <strong class="text-dark d-block">{{ $asset->product->name ?? 'Unknown Asset' }}</strong>
+                                    <div class="d-flex align-items-center gap-1 mt-1">
+                                        <span class="badge bg-light text-secondary border px-1 py-0" style="font-size: 0.72rem;">{{ $asset->product->type ?? 'General' }}</span>
+                                        @if($asset->notes)
+                                            <small class="text-muted text-truncate" style="max-width: 200px;">{{ $asset->notes }}</small>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="py-2 text-nowrap">
+                                    <strong class="text-success small">Br {{ number_format($legacyPrice, 2) }}</strong>
+                                </td>
+                                <td class="py-2 text-nowrap">
+                                    <span class="badge bg-success">In Use</span>
+                                </td>
+                                <td class="py-2 text-nowrap">
+                                    <div class="small fw-semibold">{{ $asset->assigned_date ? $asset->assigned_date->format('d M Y') : 'N/A' }}</div>
+                                </td>
+                                <td class="text-end pe-3 py-2 text-nowrap">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ route('employee-assets.return', $asset) }}" class="btn btn-outline-warning px-2" title="Return Asset">
                                             <i class="fa-solid fa-arrow-rotate-left"></i>
                                         </a>
-                                        <a href="{{ route('employee-assets.damage', $asset) }}" class="btn btn-outline-danger" title="Report Damage">
+                                        <a href="{{ route('employee-assets.damage', $asset) }}" class="btn btn-outline-danger px-2" title="Report Damage">
                                             <i class="fa-solid fa-exclamation-triangle"></i>
                                         </a>
                                     </div>
@@ -419,13 +551,16 @@
                     </table>
                 </div>
                 @else
-                <div class="text-center py-4 text-muted">
-                    <i class="fa-solid fa-inbox fa-2x mb-3 text-muted opacity-50"></i>
-                    <p class="mb-0">No assets currently assigned to this employee</p>
+                <div class="text-center py-5 text-muted">
+                    <i class="fa-solid fa-box-open fa-3x mb-3 opacity-25 d-block"></i>
+                    <p class="mb-0 fw-semibold">No assets currently assigned</p>
+                    <small>Assets will appear here once assigned from the inventory.</small>
                 </div>
                 @endif
             </div>
         </div>
+
+
 
         {{-- Recently Returned Assets --}}
         @php
@@ -510,137 +645,225 @@
         @endif
     </div>
 
-    {{-- Right Column: Quick Stats --}}
+    {{-- ============================
+         Right Column: Profile Sidebar
+    ============================= --}}
     <div class="col-lg-4">
-        {{-- Assets Summary --}}
-        <div class="card border-0 shadow-sm mb-3">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    <i class="fa-solid fa-computer fa-3x text-info opacity-50"></i>
+
+        {{-- Employee Photo & Identity Card --}}
+        <div class="card border-0 shadow-sm mb-3 overflow-hidden">
+            <div style="background: linear-gradient(135deg, #1e40af 0%, #0ea5e9 100%); height: 80px;"></div>
+            <div class="card-body pt-0 text-center">
+                <div class="mb-2" style="margin-top:-45px;">
+                    @if($employee->photo)
+                        <img src="{{ uploaded_asset($employee->photo) }}" alt="{{ $employee->full_name }}"
+                             class="rounded-circle border border-4 border-white shadow"
+                             style="width:90px;height:90px;object-fit:cover;">
+                    @else
+                        <div class="rounded-circle border border-4 border-white shadow d-inline-flex align-items-center justify-content-center bg-primary text-white fw-bold"
+                             style="width:90px;height:90px;font-size:2rem;">
+                            {{ strtoupper(substr($employee->first_name, 0, 1)) }}{{ strtoupper(substr($employee->last_name ?? '', 0, 1)) }}
+                        </div>
+                    @endif
                 </div>
-                <h6 class="text-muted mb-1">Active Assets</h6>
-                <h2 class="mb-0">{{ $employee->activeAssets()->count() }}</h2>
+                <h6 class="mb-0 fw-bold">{{ $employee->full_name }}</h6>
+                <small class="text-muted">{{ $employee->role_title }}</small>
+                <div class="mt-2">
+                    @if($employee->is_approved_by_gm)
+                        <span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>GM Approved</span>
+                    @elseif($employee->gm_approval_status === 'rejected')
+                        <span class="badge bg-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>Returned by GM</span>
+                    @else
+                        <span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>Pending GM</span>
+                    @endif
+                    @if($employee->status === 'active')
+                        <span class="badge bg-success">Active</span>
+                    @elseif($employee->status === 'suspended')
+                        <span class="badge bg-warning text-dark">Suspended</span>
+                    @else
+                        <span class="badge bg-danger">Terminated</span>
+                    @endif
+                </div>
+                <hr class="my-3">
+                <div class="row g-2 text-start small">
+                    <div class="col-12 d-flex align-items-center gap-2 py-1">
+                        <i class="fa-solid fa-id-card text-primary" style="width:20px;"></i>
+                        <span class="text-muted">ID:</span>
+                        <span class="font-monospace fw-bold">{{ $employee->employee_code }}</span>
+                    </div>
+                    @if($employee->phone)
+                    <div class="col-12 d-flex align-items-center gap-2 py-1">
+                        <i class="fa-solid fa-phone text-success" style="width:20px;"></i>
+                        <span class="text-muted">Phone:</span>
+                        <span>{{ $employee->phone }}</span>
+                    </div>
+                    @endif
+                    @if($employee->email)
+                    <div class="col-12 d-flex align-items-center gap-2 py-1">
+                        <i class="fa-solid fa-envelope text-info" style="width:20px;"></i>
+                        <span class="text-muted">Email:</span>
+                        <span class="text-truncate">{{ $employee->email }}</span>
+                    </div>
+                    @endif
+                    <div class="col-12 d-flex align-items-center gap-2 py-1">
+                        <i class="fa-solid fa-calendar text-warning" style="width:20px;"></i>
+                        <span class="text-muted">Joined:</span>
+                        <span>{{ $employee->date_of_joining->format('d M Y') }}</span>
+                    </div>
+                    @if($employee->department)
+                    <div class="col-12 d-flex align-items-center gap-2 py-1">
+                        <i class="fa-solid fa-building text-secondary" style="width:20px;"></i>
+                        <span class="text-muted">Dept:</span>
+                        <span>{{ $employee->department }}</span>
+                    </div>
+                    @endif
+                </div>
             </div>
         </div>
 
-        {{-- Education & Experience Summary --}}
-        <div class="card border-0 shadow-sm mb-3">
-            <div class="card-header bg-light">
-                <h6 class="mb-0"><i class="fa-solid fa-chart-simple me-2"></i>Qualifications</h6>
-            </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
-                    <div>
-                        <i class="fa-solid fa-graduation-cap text-primary fa-2x"></i>
+        {{-- Quick Stats Tiles --}}
+        <div class="row g-2 mb-3">
+            <div class="col-6">
+                <div class="card border-0 shadow-sm text-center h-100" style="background:linear-gradient(135deg,#dbeafe,#eff6ff);">
+                    <div class="card-body py-3">
+                        <i class="fa-solid fa-computer fa-2x text-blue-600 mb-2" style="color:#2563eb;"></i>
+                        <div class="h4 fw-bold mb-0" style="color:#1e40af;">{{ $totalActiveCount }}</div>
+                        <small class="text-muted">Assets Assigned</small>
                     </div>
-                    <div class="text-end">
-                        <h6 class="mb-0">{{ $employee->education()->count() }}</h6>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card border-0 shadow-sm text-center h-100" style="background:linear-gradient(135deg,#dcfce7,#f0fdf4);">
+                    <div class="card-body py-3">
+                        <i class="fa-solid fa-graduation-cap fa-2x mb-2" style="color:#16a34a;"></i>
+                        <div class="h4 fw-bold mb-0" style="color:#15803d;">{{ $employee->education()->count() }}</div>
                         <small class="text-muted">Education Records</small>
                     </div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
-                    <div>
-                        <i class="fa-solid fa-briefcase text-success fa-2x"></i>
-                    </div>
-                    <div class="text-end">
-                        <h6 class="mb-0">{{ $employee->experience()->count() }}</h6>
-                        <small class="text-muted">Work Experience</small>
+            </div>
+            <div class="col-6">
+                <div class="card border-0 shadow-sm text-center h-100" style="background:linear-gradient(135deg,#fef9c3,#fefce8);">
+                    <div class="card-body py-3">
+                        <i class="fa-solid fa-briefcase fa-2x mb-2" style="color:#ca8a04;"></i>
+                        <div class="h4 fw-bold mb-0" style="color:#a16207;">{{ $employee->experience()->count() }}</div>
+                        <small class="text-muted">Work Positions</small>
                     </div>
                 </div>
+            </div>
+            <div class="col-6">
                 @php
-                    $totalExperienceMonths = 0;
+                    $totalExpMonths = 0;
                     foreach($employee->experience as $exp) {
                         if ($exp->is_current) {
-                            $totalExperienceMonths += $exp->start_date->diffInMonths(now());
+                            $totalExpMonths += $exp->start_date->diffInMonths(now());
                         } elseif ($exp->end_date) {
-                            $totalExperienceMonths += $exp->start_date->diffInMonths($exp->end_date);
+                            $totalExpMonths += $exp->start_date->diffInMonths($exp->end_date);
                         }
                     }
-                    $totalYears = floor($totalExperienceMonths / 12);
-                    $totalMonths = $totalExperienceMonths % 12;
+                    $totalYears  = floor($totalExpMonths / 12);
+                    $totalMonths = $totalExpMonths % 12;
                 @endphp
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <i class="fa-solid fa-clock text-warning fa-2x"></i>
-                    </div>
-                    <div class="text-end">
-                        <h6 class="mb-0">
-                            {{ $totalYears }}y {{ $totalMonths }}m
-                        </h6>
+                <div class="card border-0 shadow-sm text-center h-100" style="background:linear-gradient(135deg,#fce7f3,#fdf2f8);">
+                    <div class="card-body py-3">
+                        <i class="fa-solid fa-clock fa-2x mb-2" style="color:#db2777;"></i>
+                        <div class="h5 fw-bold mb-0" style="color:#be185d;">{{ $totalYears }}y {{ $totalMonths }}m</div>
                         <small class="text-muted">Total Experience</small>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Payroll Info --}}
-        @if($employee->payrolls()->count() > 0)
+        {{-- Salary Card --}}
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-body">
-                <small class="text-muted d-block mb-3">Latest Payroll</small>
-                @php
-                    $latestPayroll = $employee->payrolls()->latest()->first();
-                @endphp
-                <h6 class="mb-2">{{ $latestPayroll->payroll_month ?? 'N/A' }}</h6>
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h6 class="mb-0 fw-bold"><i class="fa-solid fa-money-bill-wave text-success me-2"></i>Compensation</h6>
+                    @if($employee->bank_name)
+                    <span class="badge bg-light text-dark border">{{ $employee->bank_name }}</span>
+                    @endif
+                </div>
+                <div class="p-3 rounded-3" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);">
+                    <small class="text-muted d-block">Monthly Base Salary</small>
+                    <div class="h4 fw-bold text-success mb-0">Br {{ number_format($employee->basic_salary, 2) }}</div>
+                    @if($employee->account_number)
+                    <small class="text-muted">Account: {{ $employee->account_number }}</small>
+                    @endif
+                </div>
+                @if($employee->payrolls()->count() > 0)
+                @php $latestPayroll = $employee->payrolls()->latest()->first(); @endphp
+                <hr class="my-3">
+                <small class="text-muted d-block mb-2 fw-semibold">Latest Payroll — {{ $latestPayroll->payroll_month ?? '' }}</small>
                 <div class="row g-2 text-center">
                     <div class="col-6">
-                        <small class="text-muted d-block mb-1">Gross</small>
-                        <strong>Br {{ number_format($latestPayroll->gross_salary ?? 0, 2) }}</strong>
+                        <div class="p-2 rounded bg-light">
+                            <small class="text-muted d-block">Gross</small>
+                            <strong class="text-success">Br {{ number_format($latestPayroll->gross_salary ?? 0, 2) }}</strong>
+                        </div>
                     </div>
                     <div class="col-6">
-                        <small class="text-muted d-block mb-1">Deduction</small>
-                        <strong>Br {{ number_format($latestPayroll->total_deduction ?? 0, 2) }}</strong>
-                    </div>
-                </div>
-            </div>
-        </div>
-        @endif
-
-        {{-- Leave Balance --}}
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-light">
-                <h6 class="mb-0">Leave Balance</h6>
-            </div>
-            <div class="card-body">
-                @php
-                    $leaveBalance = $employee->leaveBalances()
-                        ->where('year', date('Y'))
-                        ->latest()
-                        ->first();
-                @endphp
-                
-                @if($leaveBalance)
-                <div class="mb-3">
-                    <small class="text-muted d-block mb-1">Casual Leave</small>
-                    <div class="progress" style="height: 20px;">
-                        @php
-                            $used = $leaveBalance->casual_used ?? 0;
-                            $total = $leaveBalance->casual_allotted ?? 0;
-                            $percentage = $total > 0 ? ($used / $total) * 100 : 0;
-                        @endphp
-                        <div class="progress-bar bg-success" style="width: {{ $percentage }}%">
-                            {{ $used }}/{{ $total }}
+                        <div class="p-2 rounded bg-light">
+                            <small class="text-muted d-block">Deduction</small>
+                            <strong class="text-danger">Br {{ number_format($latestPayroll->total_deduction ?? 0, 2) }}</strong>
                         </div>
                     </div>
                 </div>
-                <div>
-                    <small class="text-muted d-block mb-1">Annual Leave</small>
-                    <div class="progress" style="height: 20px;">
-                        @php
-                            $usedAnnual = $leaveBalance->annual_used ?? 0;
-                            $totalAnnual = $leaveBalance->annual_allotted ?? 0;
-                            $percentageAnnual = $totalAnnual > 0 ? ($usedAnnual / $totalAnnual) * 100 : 0;
-                        @endphp
-                        <div class="progress-bar bg-info" style="width: {{ $percentageAnnual }}%">
-                            {{ $usedAnnual }}/{{ $totalAnnual }}
-                        </div>
-                    </div>
-                </div>
-                @else
-                <p class="text-muted mb-0">No leave balance data available</p>
                 @endif
             </div>
         </div>
+
+        {{-- Leave Balance Card --}}
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-umbrella-beach text-info me-2"></i>Leave Balance {{ date('Y') }}</h6>
+            </div>
+            <div class="card-body">
+                @php
+                    $leaveBalance = $employee->leaveBalances()->where('year', date('Y'))->latest()->first();
+                @endphp
+                @if($leaveBalance)
+                @php
+                    $casualUsed  = $leaveBalance->casual_used ?? 0;
+                    $casualTotal = $leaveBalance->casual_allotted ?? 0;
+                    $casualPct   = $casualTotal > 0 ? round(($casualUsed / $casualTotal) * 100) : 0;
+                    $annualUsed  = $leaveBalance->annual_used ?? 0;
+                    $annualTotal = $leaveBalance->annual_allotted ?? 0;
+                    $annualPct   = $annualTotal > 0 ? round(($annualUsed / $annualTotal) * 100) : 0;
+                @endphp
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small fw-semibold"><i class="fa-solid fa-mug-hot text-success me-1"></i>Casual Leave</span>
+                        <span class="small text-muted">{{ $casualUsed }} used / {{ $casualTotal }} total</span>
+                    </div>
+                    <div class="progress rounded-pill" style="height:10px;">
+                        <div class="progress-bar bg-success" style="width:{{ $casualPct }}%;"></div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <small class="text-muted">{{ $casualTotal - $casualUsed }} days remaining</small>
+                        <small class="{{ $casualPct > 80 ? 'text-danger' : 'text-muted' }}">{{ $casualPct }}%</small>
+                    </div>
+                </div>
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small fw-semibold"><i class="fa-solid fa-plane-departure text-info me-1"></i>Annual Leave</span>
+                        <span class="small text-muted">{{ $annualUsed }} used / {{ $annualTotal }} total</span>
+                    </div>
+                    <div class="progress rounded-pill" style="height:10px;">
+                        <div class="progress-bar bg-info" style="width:{{ $annualPct }}%;"></div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <small class="text-muted">{{ $annualTotal - $annualUsed }} days remaining</small>
+                        <small class="{{ $annualPct > 80 ? 'text-danger' : 'text-muted' }}">{{ $annualPct }}%</small>
+                    </div>
+                </div>
+                @else
+                <div class="text-center py-4 text-muted">
+                    <i class="fa-solid fa-calendar-xmark fa-2x mb-2 d-block opacity-25"></i>
+                    <p class="mb-0 small">No leave balance for {{ date('Y') }}</p>
+                </div>
+                @endif
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -774,6 +997,343 @@
             </div>
         </div>
     </div>
+
+{{-- =========================================================================
+     MODALS SECTION (Placed at bottom outside all grid containers)
+========================================================================= --}}
+
+{{-- GM Rejection Modal (Only for GM Role) --}}
+@role('gm')
+@if(!$employee->is_approved_by_gm)
+<div class="modal fade" id="rejectEmployeeModal" tabindex="-1" aria-labelledby="rejectEmployeeModalLabel" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+            <form method="POST" action="{{ route('employees.reject', $employee) }}">
+                @csrf
+                @method('PUT')
+                <div class="modal-header bg-danger text-white py-3">
+                    <h5 class="modal-title fs-6 fw-bold" id="rejectEmployeeModalLabel">
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i>Reject & Return to HR Officer
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-light border mb-3">
+                        <div class="small text-muted">Employee Under Review:</div>
+                        <strong class="fs-6 text-dark">{{ $employee->full_name }}</strong>
+                        <div class="small text-muted font-monospace">{{ $employee->employee_code }} • {{ $employee->role_title }}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Correction Instructions for HR Officer <span class="text-danger">*</span></label>
+                        <textarea name="rejection_reason" class="form-control" rows="4" required
+                                  placeholder="State clearly what the HR Officer needs to fix before resubmitting (e.g. salary exceeds scale, guarantee letter missing, wrong project assignment)..."></textarea>
+                        <div class="form-text">This message will be shown to the HR Officer on their employee dashboard and profile.</div>
+                    </div>
+
+                    {{-- Quick Reason Templates --}}
+                    <div>
+                        <small class="text-muted d-block fw-semibold mb-2"><i class="fa-solid fa-tags me-1"></i>Quick Templates:</small>
+                        <div class="d-flex flex-wrap gap-1">
+                            <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2 rounded"
+                                    onclick="setRejectReason('Basic salary or allowances exceed the approved compensation scale. Please revise accordingly.')">
+                                Salary Exceeds Scale
+                            </button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2 rounded"
+                                    onclick="setRejectReason('A valid guarantee letter is required for this position before approval can be granted.')">
+                                Guarantee Letter Required
+                            </button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2 rounded"
+                                    onclick="setRejectReason('The department or project site assignment is incorrect. Please verify and re-assign.')">
+                                Wrong Site / Dept
+                            </button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2 rounded"
+                                    onclick="setRejectReason('Educational certificates or professional license documents are missing or unreadable. Please upload valid documents.')">
+                                Documents Incomplete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-3">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger btn-sm fw-bold px-4">
+                        <i class="fa-solid fa-paper-plane me-1"></i> Send Back to HR Officer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+@endif
+@endrole
+
+{{-- Fixed Asset Modals (Specs & Return) --}}
+@php
+    $modalAssetUnits = $employee->assignedFixedAssets ?? collect();
+@endphp
+
+@foreach($modalAssetUnits as $fUnit)
+@php
+    $condBadge = $fUnit->condition_badge;
+@endphp
+
+{{-- 1. Asset Specifications Modal --}}
+@php
+    $unitPrice = $fUnit->purchase_price ?? $fUnit->parentAsset->unit_cost ?? 0;
+@endphp
+<div class="modal fade" id="viewAssetUnitModal_{{ $fUnit->id }}" tabindex="-1" aria-labelledby="viewAssetUnitModalLabel_{{ $fUnit->id }}" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 640px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            {{-- Modal Header --}}
+            <div class="modal-header py-3 px-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #fff;">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-3 p-2 text-warning d-flex align-items-center justify-content-center" style="background: rgba(245, 158, 11, 0.15); width: 44px; height: 44px;">
+                        <i class="fa-solid fa-truck-monster fa-xl"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0 text-white" id="viewAssetUnitModalLabel_{{ $fUnit->id }}">
+                            {{ $fUnit->parentAsset->name ?? 'Fixed Asset' }}
+                        </h5>
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <span class="badge bg-warning text-dark font-monospace fw-bold px-2 py-1">{{ $fUnit->unit_code }}</span>
+                            <span class="badge bg-secondary text-light">{{ $fUnit->parentAsset->category ?? 'Fixed Asset' }}</span>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            {{-- Modal Body --}}
+            <div class="modal-body p-4" style="background: #fafafa;">
+                {{-- Quick Summary Row --}}
+                <div class="row g-2 mb-3">
+                    <div class="col-6 col-sm-3">
+                        <div class="p-3 bg-white border rounded-3 text-center shadow-xs h-100">
+                            <small class="text-muted d-block fw-semibold" style="font-size: 0.7rem; letter-spacing: 0.5px;">UNIT PRICE / VALUE</small>
+                            <span class="fw-bold text-success fs-6">Br {{ number_format($unitPrice, 2) }}</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-sm-3">
+                        <div class="p-3 bg-white border rounded-3 text-center shadow-xs h-100">
+                            <small class="text-muted d-block fw-semibold" style="font-size: 0.7rem; letter-spacing: 0.5px;">CONDITION</small>
+                            <span class="badge {{ $condBadge['class'] }} mt-1">{{ $condBadge['label'] }}</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-sm-3">
+                        <div class="p-3 bg-white border rounded-3 text-center shadow-xs h-100">
+                            <small class="text-muted d-block fw-semibold" style="font-size: 0.7rem; letter-spacing: 0.5px;">ASSIGNED SINCE</small>
+                            <span class="fw-bold text-dark small mt-1 d-block">{{ $fUnit->assigned_date ? $fUnit->assigned_date->format('M d, Y') : 'N/A' }}</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-sm-3">
+                        <div class="p-3 bg-white border rounded-3 text-center shadow-xs h-100">
+                            <small class="text-muted d-block fw-semibold" style="font-size: 0.7rem; letter-spacing: 0.5px;">STORE LOCATION</small>
+                            <span class="fw-semibold text-secondary small text-truncate d-block mt-1">{{ $fUnit->parentAsset->store->name ?? 'Main Central Store' }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Full Technical & Physical Specs Grid (Only shown if unit has physical specs) --}}
+                @php
+                    $hasPhysicalSpecs = $fUnit->plate_number || $fUnit->serial_number || $fUnit->brand || $fUnit->model || $fUnit->year || $fUnit->chassis_number || $fUnit->engine_number || $fUnit->warranty_expiry;
+                @endphp
+
+                @if($hasPhysicalSpecs)
+                <div class="card border-0 shadow-xs mb-3 bg-white" style="border-radius: 10px; border: 1px solid #e5e7eb !important;">
+                    <div class="card-header bg-light py-2 px-3 border-bottom">
+                        <h6 class="mb-0 small fw-bold text-uppercase text-secondary">
+                            <i class="fa-solid fa-list-check me-2 text-primary"></i>Equipment Identification & Details
+                        </h6>
+                    </div>
+                    <div class="card-body p-3">
+                        <div class="row g-2">
+                            @if($fUnit->plate_number)
+                            <div class="col-sm-6">
+                                <div class="p-2 border rounded bg-light bg-opacity-50">
+                                    <small class="text-muted d-block" style="font-size: 0.72rem;"><i class="fa-solid fa-car-side me-1 text-primary"></i>Plate Number</small>
+                                    <strong class="text-primary font-monospace fs-6">{{ $fUnit->plate_number }}</strong>
+                                </div>
+                            </div>
+                            @endif
+
+                            @if($fUnit->serial_number)
+                            <div class="col-sm-6">
+                                <div class="p-2 border rounded bg-light bg-opacity-50">
+                                    <small class="text-muted d-block" style="font-size: 0.72rem;"><i class="fa-solid fa-barcode me-1 text-dark"></i>Serial Number</small>
+                                    <strong class="text-dark font-monospace fs-6">{{ $fUnit->serial_number }}</strong>
+                                </div>
+                            </div>
+                            @endif
+
+                            @if($fUnit->brand || $fUnit->model)
+                            <div class="col-sm-6">
+                                <div class="p-2 border rounded bg-light bg-opacity-50">
+                                    <small class="text-muted d-block" style="font-size: 0.72rem;"><i class="fa-solid fa-tag me-1 text-secondary"></i>Brand & Model</small>
+                                    <strong class="text-dark">{{ trim("{$fUnit->brand} {$fUnit->model}") }}</strong>
+                                </div>
+                            </div>
+                            @endif
+
+                            @if($fUnit->year)
+                            <div class="col-sm-6">
+                                <div class="p-2 border rounded bg-light bg-opacity-50">
+                                    <small class="text-muted d-block" style="font-size: 0.72rem;"><i class="fa-solid fa-calendar me-1 text-info"></i>Year of Make</small>
+                                    <strong class="text-dark">{{ $fUnit->year }}</strong>
+                                </div>
+                            </div>
+                            @endif
+
+                            @if($fUnit->chassis_number)
+                            <div class="col-sm-6">
+                                <div class="p-2 border rounded bg-light bg-opacity-50">
+                                    <small class="text-muted d-block" style="font-size: 0.72rem;"><i class="fa-solid fa-gears me-1 text-warning"></i>Chassis / VIN</small>
+                                    <strong class="text-dark font-monospace">{{ $fUnit->chassis_number }}</strong>
+                                </div>
+                            </div>
+                            @endif
+
+                            @if($fUnit->engine_number)
+                            <div class="col-sm-6">
+                                <div class="p-2 border rounded bg-light bg-opacity-50">
+                                    <small class="text-muted d-block" style="font-size: 0.72rem;"><i class="fa-solid fa-wrench me-1 text-danger"></i>Engine Number</small>
+                                    <strong class="text-dark font-monospace">{{ $fUnit->engine_number }}</strong>
+                                </div>
+                            </div>
+                            @endif
+
+                            @if($fUnit->warranty_expiry)
+                            <div class="col-sm-6">
+                                <div class="p-2 border rounded bg-light bg-opacity-50">
+                                    <small class="text-muted d-block" style="font-size: 0.72rem;"><i class="fa-solid fa-shield-halved me-1 text-success"></i>Warranty Expiry</small>
+                                    <strong class="text-dark">{{ $fUnit->warranty_expiry->format('d M Y') }}</strong>
+                                </div>
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                {{-- Location & Department Details --}}
+                <div class="card border-0 shadow-xs mb-3 bg-white" style="border-radius: 10px; border: 1px solid #e5e7eb !important;">
+                    <div class="card-header bg-light py-2 px-3 border-bottom">
+                        <h6 class="mb-0 small fw-bold text-uppercase text-secondary">
+                            <i class="fa-solid fa-location-dot me-2 text-danger"></i>Assignment Location & User
+                        </h6>
+                    </div>
+                    <div class="card-body p-3">
+                        <div class="row g-2">
+                            <div class="col-sm-6">
+                                <small class="text-muted d-block" style="font-size: 0.75rem;">Assigned User</small>
+                                <strong class="text-dark">{{ $employee->full_name }}</strong>
+                                <div class="small text-muted">{{ $employee->employee_code }} • {{ $employee->role_title }}</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <small class="text-muted d-block" style="font-size: 0.75rem;">Department & Location</small>
+                                <strong class="text-dark">{{ $fUnit->current_location ?: ($employee->department . ' (' . ($employee->project->name ?? 'Head Office') . ')') }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Technical Specifications --}}
+                @if($fUnit->specifications || $fUnit->parentAsset->description)
+                <div class="card border-0 shadow-xs mb-3 bg-white" style="border-radius: 10px; border: 1px solid #e5e7eb !important;">
+                    <div class="card-header bg-light py-2 px-3 border-bottom">
+                        <h6 class="mb-0 small fw-bold text-uppercase text-secondary">
+                            <i class="fa-solid fa-file-lines me-2 text-primary"></i>Technical Specifications & Description
+                        </h6>
+                    </div>
+                    <div class="card-body p-3">
+                        <p class="mb-0 text-dark small" style="white-space: pre-line;">{{ $fUnit->specifications ?: $fUnit->parentAsset->description }}</p>
+                    </div>
+                </div>
+                @endif
+
+                {{-- Assignment Notes --}}
+                @if($fUnit->notes)
+                <div class="card border-0 shadow-xs bg-white" style="border-radius: 10px; border: 1px solid #e5e7eb !important;">
+                    <div class="card-header bg-light py-2 px-3 border-bottom">
+                        <h6 class="mb-0 small fw-bold text-uppercase text-secondary">
+                            <i class="fa-solid fa-note-sticky me-2 text-warning"></i>Assignment Notes & History
+                        </h6>
+                    </div>
+                    <div class="card-body p-3">
+                        <p class="mb-0 text-dark small">{{ $fUnit->notes }}</p>
+                    </div>
+                </div>
+                @endif
+            </div>
+
+            {{-- Modal Footer --}}
+            <div class="modal-footer bg-light py-2 px-4 d-flex justify-content-between">
+                <span class="small text-muted"><i class="fa-solid fa-user me-1"></i>Assigned to: <strong>{{ $employee->full_name }}</strong></span>
+                <button type="button" class="btn btn-sm btn-secondary px-4 fw-semibold" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- 2. Asset Return Modal --}}
+<div class="modal fade" id="returnFixedUnitModal_{{ $fUnit->id }}" tabindex="-1" aria-labelledby="returnFixedUnitModalLabel_{{ $fUnit->id }}" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+            <form action="{{ route('hr.fixed-assets.return', $fUnit->id) }}" method="POST">
+                @csrf
+                <div class="modal-header bg-warning text-dark py-3">
+                    <h6 class="modal-title fw-bold" id="returnFixedUnitModalLabel_{{ $fUnit->id }}">
+                        <i class="fa-solid fa-arrow-rotate-left me-1"></i> Return {{ $fUnit->unit_code }}
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <p class="small text-muted mb-3">
+                        Returning <strong>{{ $fUnit->unit_code }}</strong> ({{ $fUnit->parentAsset->name ?? 'Asset' }}) back to store. It will immediately become available for other assignments.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Return Condition <span class="text-danger">*</span></label>
+                        <select name="condition" class="form-select form-select-sm" required>
+                            <option value="good" @selected($fUnit->condition==='good')>Good Condition</option>
+                            <option value="fair" @selected($fUnit->condition==='fair')>Fair</option>
+                            <option value="needs_repair" @selected($fUnit->condition==='needs_repair')>Needs Repair / Maintenance</option>
+                            <option value="damaged" @selected($fUnit->condition==='damaged')>Damaged</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label small fw-bold">Return Notes</label>
+                        <input type="text" name="notes" class="form-control form-control-sm" placeholder="Reason for return...">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-warning fw-bold px-3">Confirm Return</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endforeach
+
+<script>
+function openRejectModal() {
+    new bootstrap.Modal(document.getElementById('rejectEmployeeModal')).show();
+}
+function setRejectReason(text) {
+    const textarea = document.querySelector('#rejectEmployeeModal textarea[name="rejection_reason"]');
+    if (textarea) {
+        textarea.value = text;
+    }
+}
+function filterEmployeeAssets() {
+    const input = document.getElementById('assetSearchInput');
+    if (!input) return;
+    const filter = input.value.toLowerCase().trim();
+    const rows = document.querySelectorAll('#employeeAssetsTable .asset-row');
+    rows.forEach(row => {
+        const text = row.getAttribute('data-search') || '';
+        row.style.display = (filter === '' || text.includes(filter)) ? '' : 'none';
+    });
+}
+</script>
 
 @endsection

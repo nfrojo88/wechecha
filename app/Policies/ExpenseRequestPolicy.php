@@ -33,45 +33,8 @@ class ExpenseRequestPolicy
      * Determine whether the user can view the specific expense request.
      * Strict check for direct URL access (e.g., /expense-requests/42).
      */
-    public function view(User $user, ExpenseRequest $expenseRequest): bool
-    {
-        $roleNames = strtolower(implode(' ', $user->getRoleNames()->toArray()));
-
-        // Finance Head has unrestricted visibility across all requests
-        if ($user->hasAnyRole(['finance_head', 'finance_manager']) || str_contains($roleNames, 'finance_head') || str_contains($roleNames, 'finance_manager')) {
-            return true;
-        }
-
-        // Submitter can always view their own request
-        if ($expenseRequest->user_id === $user->id) {
-            return true;
-        }
-
-        // HR Reviewer
-        $isHr = $user->can('hr.view') || str_contains($roleNames, 'hr');
-        if ($isHr) {
-            if ($expenseRequest->status === 'Pending (HR Review)' || $expenseRequest->hr_reviewer_id === $user->id) {
-                return true;
-            }
-        }
-
-        // GM Approver
-        $isGm = str_contains($roleNames, 'gm') || $user->hasRole('gm');
-        if ($isGm) {
-            if ($expenseRequest->status === 'Pending (GM Review)' || $expenseRequest->gm_approver_id === $user->id || $expenseRequest->gm_reviewer_id === $user->id) {
-                return true;
-            }
-        }
-
-        // Finance Staff / Cashier
-        $isFinanceStaff = str_contains($roleNames, 'finance') || str_contains($roleNames, 'cashier') || str_contains($roleNames, 'accountant');
-        if ($isFinanceStaff) {
-            if ($expenseRequest->assigned_finance_staff_id === $user->id || $expenseRequest->finance_staff_id === $user->id || $expenseRequest->paid_by === $user->id) {
-                return true;
-            }
-        }
-
-        return false;
+        // Any authenticated staff with module access can view
+        return true;
     }
 
     /**

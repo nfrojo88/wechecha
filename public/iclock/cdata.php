@@ -46,11 +46,33 @@ $body   = file_get_contents('php://input');
 $sn = '';
 $table = '';
 $options = '';
+
+// Check $_GET
 foreach ($_GET as $k => $v) {
     $lk = strtolower($k);
     if ($lk === 'sn') $sn = trim($v);
     if ($lk === 'table') $table = trim($v);
     if ($lk === 'options') $options = trim($v);
+}
+
+// Fallback: parse raw QUERY_STRING if SN was not found in $_GET
+if (empty($sn) && !empty($_SERVER['QUERY_STRING'])) {
+    parse_str($_SERVER['QUERY_STRING'], $parsedQs);
+    foreach ($parsedQs as $k => $v) {
+        $lk = strtolower($k);
+        if ($lk === 'sn') $sn = trim($v);
+        if ($lk === 'table' && empty($table)) $table = trim($v);
+        if ($lk === 'options' && empty($options)) $options = trim($v);
+    }
+}
+
+// Fallback: check headers or User-Agent for SN
+if (empty($sn)) {
+    if (isset($_SERVER['HTTP_SN'])) {
+        $sn = trim($_SERVER['HTTP_SN']);
+    } elseif (isset($_SERVER['HTTP_USER_AGENT']) && preg_match('/SN=([A-Za-z0-9]+)/i', $_SERVER['HTTP_USER_AGENT'], $m)) {
+        $sn = $m[1];
+    }
 }
 
 adms_log("METHOD: {$method} | SN: {$sn} | TABLE: {$table} | PARAMS: " . json_encode($_GET));
@@ -199,8 +221,35 @@ function _autoSyncPunch(string $sn, string $userId, string $punchTime, string $s
             return; // No employee mapped to this device user ID yet
         }
 
-        $dateStr     = substr($punchTime, 0, 10); // Y-m-d
-        $timeStr     = strlen($punchTime) > 10 ? substr($punchTime, 11, 8) : '00:00:00'; // H:i:s
+        $dateStr = substr($punchTime, 0, 10); // Y-m-d
+        $timeStr = strlen($punchTime) > 10 ? substr($punchTime, 11, 8) : '00:00:00'; // H:i:s
+
+        // ── Determine OT type from day of week & punch time ───────────────────
+        $punchHour  = (int) substr($timeStr, 0, 2);
+        $dayOfWeek  = date('N', strtotime($dateStr)); // 1=Monday … 7=Sunday
+        $isHoliday  = ($status === '4'); // Some devices flag 4 = holiday
+        $isSunday   = ($dayOfWeek === 7);
+        $isSaturday = ($dayOfWeek === 6);
+        $isNight1   = ($punchHour >= 0 && $punchHour < 4);   // 00:00–04:00 → ×1.5
+        $isNight2   = ($punchHour >= 16);                     // 16:00–00:00 → ×1.75
+
+        $otType = 'none';
+        if ($isHoliday) {
+            $otType = 'holiday';
+        } elseif ($isSunday) {
+            $otType = 'rest_day';
+        } elseif ($isSaturday) {
+            $otType = 'rest_day';
+        } elseif ($isNight1) {
+            $otType = 'night_12_4';
+        } elseif ($isNight2) {
+            $otType = 'night_4_12';
+        }
+
+        // ── Calculate OT pay ─────────────────────────────────────────────────
+        // OT hours are only set when check-out is available, so we default to 0 now
+        // The HR manager can update OT hours manually; or it will be recalculated on sync
+        $otPay = 0;
 
         // Get existing attendance record for this employee on this date
         $existing = DB::table('attendance')
@@ -211,34 +260,65 @@ function _autoSyncPunch(string $sn, string $userId, string $punchTime, string $s
         if (!$existing) {
             // First punch of the day → check-in
             DB::table('attendance')->insert([
-                'employee_id'     => $employee->id,
-                'attendance_date' => $dateStr,
-                'check_in'        => $timeStr,
-                'check_out'       => null,
-                'hours_worked'    => null,
-                'status'          => 'present',
-                'source'          => 'device',
+                'employee_id'         => $employee->id,
+                'attendance_date'     => $dateStr,
+                'check_in'            => $timeStr,
+                'check_out'           => null,
+                'hours_worked'        => null,
+                'status'              => 'present',
+                'source'              => 'device',
                 'biometric_device_id' => $sn ?: null,
-                'is_approved'     => false,
-                'created_at'      => now(),
-                'updated_at'      => now(),
+                'is_approved'         => false,
+                'overtime_hours'      => 0,
+                'overtime_type'       => $otType,
+                'overtime_pay'        => 0,
+                'created_at'          => now(),
+                'updated_at'          => now(),
             ]);
         } else {
             // Subsequent punch — update check_out if this punch is later than check_in
             $checkIn = $existing->check_in;
             if ($checkIn && $timeStr > $checkIn) {
-                // Calculate hours worked
                 $inSecs  = strtotime($dateStr . ' ' . $checkIn);
                 $outSecs = strtotime($dateStr . ' ' . $timeStr);
                 $hours   = $outSecs > $inSecs ? round(($outSecs - $inSecs) / 3600, 2) : null;
+
+                // Calculate OT hours = total hours worked beyond 8 standard hours
+                $regularHours = 8;
+                $otHours      = $hours !== null && $hours > $regularHours
+                                ? round($hours - $regularHours, 2)
+                                : ($existing->overtime_hours ?? 0);
+
+                // Calculate OT pay: basic / 30 / 8 × coefficient × OT hours
+                $coefficients = [
+                    'holiday'    => 2.5,
+                    'rest_day'   => 2.0,
+                    'night_12_4' => 1.5,
+                    'night_4_12' => 1.75,
+                    'none'       => 0,
+                ];
+                $coeff = $coefficients[$otType] ?? 0;
+
+                // Use the OT type already saved (check-in) if current punch is normal
+                $finalOtType = $existing->overtime_type ?? $otType;
+                if ($finalOtType === 'none') $finalOtType = $otType;
+                $finalCoeff  = $coefficients[$finalOtType] ?? 0;
+
+                $basicSalary = (float) ($employee->basic_salary ?? 0);
+                $otPay = $basicSalary > 0 && $otHours > 0
+                    ? round(($basicSalary / 30 / 8) * $finalCoeff * $otHours, 2)
+                    : 0;
 
                 DB::table('attendance')
                     ->where('employee_id', $employee->id)
                     ->where('attendance_date', $dateStr)
                     ->update([
-                        'check_out'    => $timeStr,
-                        'hours_worked' => $hours,
-                        'updated_at'   => now(),
+                        'check_out'      => $timeStr,
+                        'hours_worked'   => $hours,
+                        'overtime_hours' => $otHours,
+                        'overtime_type'  => $finalOtType,
+                        'overtime_pay'   => $otPay,
+                        'updated_at'     => now(),
                     ]);
             }
         }
@@ -246,3 +326,4 @@ function _autoSyncPunch(string $sn, string $userId, string $punchTime, string $s
         adms_log("ERROR in auto-sync for user_id={$userId}: " . $e->getMessage());
     }
 }
+

@@ -26,6 +26,15 @@ $sn = '';
 foreach ($_GET as $k => $v) {
     if (strtolower($k) === 'sn') $sn = trim($v);
 }
+if (empty($sn) && !empty($_SERVER['QUERY_STRING'])) {
+    parse_str($_SERVER['QUERY_STRING'], $parsedQs);
+    foreach ($parsedQs as $k => $v) {
+        if (strtolower($k) === 'sn') $sn = trim($v);
+    }
+}
+if (empty($sn) && isset($_SERVER['HTTP_SN'])) {
+    $sn = trim($_SERVER['HTTP_SN']);
+}
 
 $line = '[' . date('Y-m-d H:i:s') . '] HEARTBEAT | SN: ' . $sn . PHP_EOL;
 file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);

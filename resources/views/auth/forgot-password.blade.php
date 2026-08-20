@@ -248,21 +248,21 @@
         @enderror
 
         <p class="text-muted text-center mb-4" style="font-size: 13px;">
-            Enter your registered phone number and we will send you an OTP to reset your password.
+            Enter your registered phone number or email address to receive an OTP verification code.
         </p>
 
         <form method="POST" action="{{ route('password.email') }}">
             @csrf
             
             <div class="mb-3">
-                <label for="phone" class="form-label">Registered Phone Number</label>
+                <label for="phone" class="form-label">Phone Number or Email Address</label>
                 <input
                     type="text"
                     class="form-control"
                     id="phone"
                     name="phone"
                     value="{{ old('phone') }}"
-                    placeholder="+251 911 234 567"
+                    placeholder="+251 911 234 567 or email@domain.com"
                     required
                     autofocus
                 >

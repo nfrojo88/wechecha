@@ -15,12 +15,31 @@ class BoqController extends Controller
         
         $query = Boq::with(['project', 'creator', 'approver'])->latest();
         
+        /** @var \App\Models\User|null $user */
+        $user = auth()->user();
+        if ($user && $user->hasRole('site_engineer') && !$user->hasAnyRole(['admin', 'global_admin', 'planning_manager'])) {
+            $assignedProjectIds = $user->projects()->pluck('projects.id');
+            if ($user->store && $user->store->project_id) {
+                $assignedProjectIds->push($user->store->project_id);
+            }
+            $query->whereIn('project_id', $assignedProjectIds->unique());
+        }
+
         if ($request->has('project_id') && $request->project_id != '') {
             $query->where('project_id', $request->project_id);
         }
         
         $boqs = $query->paginate(15);
-        $projects = Project::where('status', '!=', 'cancelled')->get();
+
+        $projectsQuery = Project::where('status', '!=', 'cancelled');
+        if ($user && $user->hasRole('site_engineer') && !$user->hasAnyRole(['admin', 'global_admin', 'planning_manager'])) {
+            $assignedProjectIds = $user->projects()->pluck('projects.id');
+            if ($user->store && $user->store->project_id) {
+                $assignedProjectIds->push($user->store->project_id);
+            }
+            $projectsQuery->whereIn('id', $assignedProjectIds->unique());
+        }
+        $projects = $projectsQuery->get();
         
         return view('boqs.index', compact('boqs', 'projects'));
     }
@@ -28,7 +47,17 @@ class BoqController extends Controller
     public function create()
     {
         Gate::authorize('create', Boq::class);
-        $projects = Project::where('status', '!=', 'cancelled')->get();
+        $query = Project::where('status', '!=', 'cancelled');
+        /** @var \App\Models\User|null $user */
+        $user = auth()->user();
+        if ($user && $user->hasRole('site_engineer') && !$user->hasAnyRole(['admin', 'global_admin', 'planning_manager'])) {
+            $assignedProjectIds = $user->projects()->pluck('projects.id');
+            if ($user->store && $user->store->project_id) {
+                $assignedProjectIds->push($user->store->project_id);
+            }
+            $query->whereIn('id', $assignedProjectIds->unique());
+        }
+        $projects = $query->get();
         return view('boqs.create', compact('projects'));
     }
 

@@ -12,6 +12,8 @@ use App\Models\Store;
 use App\Models\DeliveryReceipt;
 use App\Models\SlipSequence;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
@@ -177,32 +179,116 @@ class StoreManagerController extends Controller
 
 
     /**
-     * All Inventory from all stores
+     * All Inventory from all stores (Grouped by Product when All Stores is selected)
      */
     public function allInventory(Request $request)
     {
-        $query = Inventory::with('product', 'store')
-            ->whereHas('store', fn($q) => $q->where('is_active', true));
+        $selectedStoreId = $request->input('store_id');
+        $search = $request->input('search');
+        $lowStockOnly = $request->boolean('low_stock');
 
-        if ($request->filled('store_id')) {
-            $query->where('store_id', $request->store_id);
-        }
-
-        if ($request->filled('search')) {
-            $query->whereHas('product', function($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('code', 'like', '%' . $request->search . '%');
-            });
-        }
-
-        if ($request->filled('low_stock')) {
-            $query->whereColumn('quantity_on_hand', '<=', 'min_stock');
-        }
-
-        $inventory = $query->orderBy('quantity_on_hand', 'desc')->paginate(25)->withQueryString();
         $stores = Store::where('is_active', true)->orderBy('name')->get();
+        $products = Product::where('is_active', true)->orderBy('name')->get();
 
-        return view('store-manager.inventory.all', compact('inventory', 'stores'));
+        if ($selectedStoreId) {
+            // Single Store View
+            $query = Inventory::with('product', 'store')
+                ->where('store_id', $selectedStoreId)
+                ->whereHas('store', fn($q) => $q->where('is_active', true));
+
+            if ($search) {
+                $query->whereHas('product', fn($q) => $q->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%"));
+            }
+
+            if ($lowStockOnly) {
+                $query->whereColumn('quantity_on_hand', '<=', 'min_stock');
+            }
+
+            $inventory = $query->orderBy('quantity_on_hand', 'desc')->paginate(25)->withQueryString();
+            $isGrouped = false;
+        } else {
+            // All Stores Grouped View (1 row per product with total on hand & store breakdown)
+            $query = Inventory::with(['product', 'store'])
+                ->whereHas('store', fn($q) => $q->where('is_active', true));
+
+            if ($search) {
+                $query->whereHas('product', fn($q) => $q->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%"));
+            }
+
+            $allRecords = $query->get();
+
+            // Group inventory items by product_id
+            $grouped = $allRecords->groupBy('product_id')->map(function ($items) {
+                $first = $items->first();
+                $totalOnHand = (float) $items->sum('quantity_on_hand');
+                $totalReserved = (float) $items->sum('quantity_reserved');
+                $totalMinStock = (float) $items->sum('min_stock');
+                $product = $first->product;
+
+                $effectiveCost = (float) (
+                    $first->unit_cost ?: (
+                        DB::table('material_prices')->where('product_id', $first->product_id)->orderByDesc('effective_date')->orderByDesc('id')->value('price') ?: (
+                            DB::table('purchase_order_items')->where('product_id', $first->product_id)->orderByDesc('id')->value('unit_price') ?: ($product->unit_price ?? 0)
+                        )
+                    )
+                );
+
+                $storesBreakdown = $items->map(function ($item) use ($effectiveCost) {
+                    $itemReserved = (float) ($item->quantity_reserved ?? 0);
+                    return [
+                        'store_id'     => $item->store_id,
+                        'store_name'   => $item->store->name ?? 'N/A',
+                        'store_type'   => $item->store->type ?? 'Site Store',
+                        'on_hand'      => (float) $item->quantity_on_hand,
+                        'reserved'     => $itemReserved,
+                        'available'    => max(0, (float) $item->quantity_on_hand - $itemReserved),
+                        'min_stock'    => (float) $item->min_stock,
+                        'unit_cost'    => $effectiveCost,
+                        'total_val'    => (float) $item->quantity_on_hand * $effectiveCost,
+                    ];
+                })->values();
+
+                return [
+                    'product_id'       => $first->product_id,
+                    'product_name'     => $product->name ?? 'N/A',
+                    'product_code'     => $product->code ?? '',
+                    'product_category' => $product->category ?? 'General Material',
+                    'product_unit'     => $product->unit ?? 'pcs',
+                    'product_desc'     => $product->description ?? 'No additional specification provided.',
+                    'total_on_hand'    => $totalOnHand,
+                    'total_reserved'   => $totalReserved,
+                    'total_available'  => max(0, $totalOnHand - $totalReserved),
+                    'total_min_stock'  => $totalMinStock,
+                    'effective_cost'   => $effectiveCost,
+                    'total_value'      => $totalOnHand * $effectiveCost,
+                    'store_count'      => $items->count(),
+                    'stores_breakdown' => $storesBreakdown,
+                ];
+            });
+
+            if ($lowStockOnly) {
+                $grouped = $grouped->filter(fn($item) => $item['total_on_hand'] <= $item['total_min_stock']);
+            }
+
+            $sorted = $grouped->sortByDesc('total_on_hand')->values();
+
+            // Paginator for grouped items
+            $page = Paginator::resolveCurrentPage() ?: 1;
+            $perPage = 25;
+            $paginatedItems = $sorted->slice(($page - 1) * $perPage, $perPage)->values();
+
+            $inventory = new LengthAwarePaginator(
+                $paginatedItems,
+                $sorted->count(),
+                $perPage,
+                $page,
+                ['path' => Paginator::resolveCurrentPath(), 'query' => $request->query()]
+            );
+
+            $isGrouped = true;
+        }
+
+        return view('store-manager.inventory.all', compact('inventory', 'stores', 'products', 'isGrouped'));
     }
 
     /**
@@ -404,21 +490,42 @@ class StoreManagerController extends Controller
      */
     public function storeProduct(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name'           => 'required|string|max:255',
-            'code'           => 'required|string|max:100|unique:products,code',
+            'code'           => 'nullable|string|max:100',
             'category'       => 'nullable|string|max:100',
             'unit'           => 'required|string|max:20',
             'description'    => 'nullable|string',
             'specification'  => 'nullable|string',
             'min_stock_level'=> 'nullable|numeric|min:0',
             'standard_cost'  => 'nullable|numeric|min:0',
-            'is_active'      => 'boolean',
+            'is_active'      => 'nullable|boolean',
         ]);
 
-        Product::create($request->all());
+        $name = $validated['name'];
+        $baseCode = !empty($validated['code']) 
+            ? strtoupper(preg_replace('/[^A-Za-z0-9\-]/', '', $validated['code']))
+            : strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $name), 0, 4));
 
-        return redirect()->route('store-manager.products.index')->with('success', 'Product added to catalog.');
+        if (empty($baseCode)) {
+            $baseCode = 'PRD';
+        }
+
+        $code = $baseCode;
+        $counter = 1;
+        while (Product::where('code', $code)->orWhere('sku', $code)->exists()) {
+            $code = $baseCode . '-' . $counter;
+            $counter++;
+        }
+
+        $validated['code'] = $code;
+        $validated['sku']  = $code;
+        $validated['unit_price'] = $validated['standard_cost'] ?? 0;
+        $validated['is_active']  = $request->has('is_active') ? $request->boolean('is_active') : true;
+
+        Product::create($validated);
+
+        return redirect()->route('store-manager.products.index')->with('success', "Product \"{$name}\" (Code: {$code}) added to catalog.");
     }
 
     /**

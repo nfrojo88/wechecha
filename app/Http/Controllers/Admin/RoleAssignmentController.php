@@ -68,4 +68,27 @@ class RoleAssignmentController extends Controller
 
         return back()->with('success', 'All roles removed from ' . $user->name . '.');
     }
+
+    public function storeRole(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:50|unique:roles,name',
+        ]);
+
+        $roleName = strtolower(trim(preg_replace('/[^a-zA-Z0-9_]+/', '_', $request->name), '_'));
+        Role::create(['name' => $roleName, 'guard_name' => 'web']);
+
+        return back()->with('success', 'New role "' . $roleName . '" created successfully.');
+    }
+
+    public function destroyRole(Role $role)
+    {
+        if (in_array($role->name, ['admin', 'global_admin', 'gm', 'secretary'])) {
+            return back()->with('error', 'Core system role "' . $role->name . '" cannot be deleted.');
+        }
+
+        $role->delete();
+
+        return back()->with('success', 'Role deleted successfully.');
+    }
 }

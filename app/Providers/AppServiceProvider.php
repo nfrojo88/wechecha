@@ -17,7 +17,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        if (file_exists(app_path('Helpers/helpers.php'))) {
+            require_once app_path('Helpers/helpers.php');
+        }
     }
 
     /**
@@ -28,6 +30,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         \Illuminate\Pagination\Paginator::useBootstrap();
+
+        // Ensure centralized public/uploads directory exists on server
+        if (!file_exists(public_path('uploads'))) {
+            @mkdir(public_path('uploads'), 0755, true);
+        }
 
         // Auto-run pending migrations on each request in production (cPanel deployment)
         // This ensures the database schema is always up-to-date without manual artisan commands

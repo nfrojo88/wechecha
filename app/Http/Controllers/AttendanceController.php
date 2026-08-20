@@ -44,10 +44,105 @@ class AttendanceController extends Controller
         return view('hr.attendance.index', compact('attendances'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        $selectedDate = $request->input('date', today()->toDateString());
+        $selectedEmployeeId = $request->input('employee_id');
+
         $employees = Employee::where('status', 'active')->orderBy('full_name')->get();
-        return view('hr.attendance.create', compact('employees'));
+
+        // Fetch all existing attendance records for the selected date keyed by employee_id
+        $attendances = Attendance::whereDate('attendance_date', $selectedDate)
+            ->get()
+            ->keyBy('employee_id');
+
+        return view('hr.attendance.create', compact('employees', 'attendances', 'selectedDate', 'selectedEmployeeId'));
+    }
+
+    public function quickClock(Request $request)
+    {
+        $request->validate([
+            'employee_id'     => 'required|exists:employees,id',
+            'attendance_date' => 'required|date',
+            'action'          => 'required|in:morning_in,morning_out,afternoon_in,afternoon_out,clock_in,clock_out,absent',
+        ]);
+
+        $employee = Employee::findOrFail($request->employee_id);
+        $date = $request->attendance_date;
+        $nowTime = now()->format('H:i');
+
+        $attendance = Attendance::firstOrNew([
+            'employee_id'     => $employee->id,
+            'attendance_date' => $date,
+        ]);
+
+        $action = $request->action;
+        if ($action === 'morning_in') {
+            $attendance->morning_in = $nowTime;
+            $attendance->status = 'present';
+        } elseif ($action === 'morning_out') {
+            $attendance->morning_out = $nowTime;
+            $attendance->status = 'present';
+        } elseif ($action === 'afternoon_in') {
+            $attendance->afternoon_in = $nowTime;
+            $attendance->status = 'present';
+        } elseif ($action === 'afternoon_out') {
+            $attendance->afternoon_out = $nowTime;
+            $attendance->status = 'present';
+        } elseif ($action === 'clock_in') {
+            $attendance->morning_in = $attendance->morning_in ?? $nowTime;
+            $attendance->status = 'present';
+        } elseif ($action === 'clock_out') {
+            $attendance->afternoon_out = $nowTime;
+            $attendance->status = 'present';
+        } elseif ($action === 'absent') {
+            $attendance->status = 'absent';
+            $attendance->morning_in = null;
+            $attendance->morning_out = null;
+            $attendance->afternoon_in = null;
+            $attendance->afternoon_out = null;
+            $attendance->check_in = null;
+            $attendance->check_out = null;
+            $attendance->hours_worked = 0;
+        }
+
+        $attendance->check_in = $attendance->morning_in ?? ($attendance->afternoon_in ?? $attendance->check_in);
+        $attendance->check_out = $attendance->afternoon_out ?? ($attendance->morning_out ?? $attendance->check_out);
+
+        // Recalculate total hours worked across both sessions
+        $hours = 0;
+        if ($attendance->morning_in && $attendance->morning_out) {
+            $mIn  = \Carbon\Carbon::createFromFormat('H:i', $attendance->morning_in);
+            $mOut = \Carbon\Carbon::createFromFormat('H:i', $attendance->morning_out);
+            $hours += max(0, round($mOut->diffInMinutes($mIn) / 60, 2));
+        }
+        if ($attendance->afternoon_in && $attendance->afternoon_out) {
+            $aIn  = \Carbon\Carbon::createFromFormat('H:i', $attendance->afternoon_in);
+            $aOut = \Carbon\Carbon::createFromFormat('H:i', $attendance->afternoon_out);
+            $hours += max(0, round($aOut->diffInMinutes($aIn) / 60, 2));
+        }
+        if ($hours == 0 && $attendance->check_in && $attendance->check_out) {
+            $in    = \Carbon\Carbon::createFromFormat('H:i', $attendance->check_in);
+            $out   = \Carbon\Carbon::createFromFormat('H:i', $attendance->check_out);
+            $hours = round($out->diffInMinutes($in) / 60, 2);
+        }
+
+        $attendance->hours_worked = $hours;
+        $attendance->source = 'manual_quick';
+        $attendance->is_approved = true;
+        $attendance->approved_by = Auth::id();
+        $attendance->save();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Attendance updated for {$employee->full_name}",
+                'attendance' => $attendance,
+            ]);
+        }
+
+        return redirect()->route('attendance.create', ['date' => $date, 'employee_id' => $employee->id])
+            ->with('success', "Updated " . str_replace('_', ' ', $action) . " for {$employee->full_name} ({$nowTime}).");
     }
 
     public function store(Request $request)
@@ -56,33 +151,94 @@ class AttendanceController extends Controller
             'employee_id'     => 'required|exists:employees,id',
             'attendance_date' => 'required|date',
             'status'          => 'required|in:present,absent,half_day,leave,holiday,weekend',
+            'morning_in'      => 'nullable|date_format:H:i',
+            'morning_out'     => 'nullable|date_format:H:i',
+            'afternoon_in'    => 'nullable|date_format:H:i',
+            'afternoon_out'   => 'nullable|date_format:H:i',
             'check_in'        => 'nullable|date_format:H:i',
             'check_out'       => 'nullable|date_format:H:i',
+            'overtime_hours'  => 'nullable|numeric|min:0|max:24',
+            'overtime_type'   => 'nullable|in:none,holiday,rest_day,night_12_4,night_4_12',
             'notes'           => 'nullable|string',
         ]);
 
-        $hours = null;
-        if ($request->check_in && $request->check_out) {
-            $in    = \Carbon\Carbon::createFromFormat('H:i', $request->check_in);
-            $out   = \Carbon\Carbon::createFromFormat('H:i', $request->check_out);
+        $morningIn = $request->morning_in ?: null;
+        $morningOut = $request->morning_out ?: null;
+        $afternoonIn = $request->afternoon_in ?: null;
+        $afternoonOut = $request->afternoon_out ?: null;
+
+        $checkIn = $morningIn ?: ($afternoonIn ?: ($request->check_in ?: null));
+        $checkOut = $afternoonOut ?: ($morningOut ?: ($request->check_out ?: null));
+
+        $hours = 0;
+        if ($morningIn && $morningOut) {
+            $mIn  = \Carbon\Carbon::createFromFormat('H:i', $morningIn);
+            $mOut = \Carbon\Carbon::createFromFormat('H:i', $morningOut);
+            $hours += max(0, round($mOut->diffInMinutes($mIn) / 60, 2));
+        }
+        if ($afternoonIn && $afternoonOut) {
+            $aIn  = \Carbon\Carbon::createFromFormat('H:i', $afternoonIn);
+            $aOut = \Carbon\Carbon::createFromFormat('H:i', $afternoonOut);
+            $hours += max(0, round($aOut->diffInMinutes($aIn) / 60, 2));
+        }
+        if ($hours == 0 && $checkIn && $checkOut) {
+            $in    = \Carbon\Carbon::createFromFormat('H:i', $checkIn);
+            $out   = \Carbon\Carbon::createFromFormat('H:i', $checkOut);
             $hours = round($out->diffInMinutes($in) / 60, 2);
         }
+
+        // ── Auto-detect OT type if not explicitly set ────────────────────────
+        $otHours = (float) ($request->overtime_hours ?? 0);
+        $otType  = $request->overtime_type ?? 'none';
+
+        if ($otHours > 0 && $otType === 'none') {
+            $date    = \Carbon\Carbon::parse($request->attendance_date);
+            $cIn = $checkIn ? \Carbon\Carbon::createFromFormat('H:i', $checkIn) : null;
+
+            if ($request->status === 'holiday') {
+                $otType = 'holiday';
+            } elseif ($request->status === 'weekend' || $date->isSunday()) {
+                $otType = 'rest_day';
+            } elseif ($date->isSaturday()) {
+                $otType = 'rest_day';
+            } elseif ($cIn) {
+                $hour = (int) $cIn->format('H');
+                if ($hour >= 0 && $hour < 4) {
+                    $otType = 'night_12_4';
+                } elseif ($hour >= 16) {
+                    $otType = 'night_4_12';
+                }
+            }
+        }
+
+        // ── Calculate OT pay ─────────────────────────────────────────────────
+        $employee = \App\Models\Employee::find($request->employee_id);
+        $basic    = (float) ($employee->basic_salary ?? 0);
+        $otPay    = \App\Models\Payroll::calculateOvertimePay($basic, $otHours, $otType);
 
         Attendance::updateOrCreate(
             ['employee_id' => $request->employee_id, 'attendance_date' => $request->attendance_date],
             [
-                'check_in'    => $request->check_in,
-                'check_out'   => $request->check_out,
-                'hours_worked'=> $hours,
-                'status'      => $request->status,
-                'source'      => 'manual',
-                'notes'       => $request->notes,
-                'is_approved' => true,
-                'approved_by' => Auth::id(),
+                'morning_in'     => $morningIn,
+                'morning_out'    => $morningOut,
+                'afternoon_in'   => $afternoonIn,
+                'afternoon_out'  => $afternoonOut,
+                'check_in'       => $checkIn,
+                'check_out'      => $checkOut,
+                'hours_worked'   => $hours,
+                'status'         => $request->status,
+                'source'         => 'manual',
+                'notes'          => $request->notes,
+                'is_approved'    => true,
+                'approved_by'    => Auth::id(),
+                'overtime_hours' => $otHours,
+                'overtime_type'  => $otType,
+                'overtime_pay'   => $otPay,
             ]
         );
 
-        return redirect()->route('attendance.index')->with('success', 'Attendance recorded.');
+        return redirect()->route('attendance.create', ['date' => $request->attendance_date, 'employee_id' => $request->employee_id])
+                         ->with('success', 'Attendance record saved for ' . ($employee->full_name ?? 'Employee'));
     }
 
     public function bulkStore(Request $request)

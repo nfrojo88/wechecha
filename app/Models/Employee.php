@@ -17,6 +17,7 @@ class Employee extends Model
         'status', 'notes', 'bank_name', 'account_number',
         'guarantee_letter', 'guarantee_letter_submitted_at', 'guarantee_letter_required',
         'device_user_id', 'is_approved_by_gm', 'gm_approved_at', 'gm_approved_by',
+        'gm_approval_status', 'gm_rejection_reason', 'gm_rejected_at', 'gm_rejected_by',
     ];
 
     protected $casts = [
@@ -24,7 +25,51 @@ class Employee extends Model
         'basic_salary'    => 'decimal:2',
         'guarantee_letter_submitted_at' => 'date',
         'guarantee_letter_required' => 'boolean',
+        'is_approved_by_gm' => 'boolean',
+        'gm_approved_at' => 'datetime',
+        'gm_rejected_at' => 'datetime',
     ];
+
+    /**
+     * The "booted" method of the model.
+     * Enforces strict GM approval policy for every newly created or re-added employee.
+     */
+    protected static function booted()
+    {
+        static::creating(function ($employee) {
+            // Strict Rule: Every new or re-added employee MUST strictly start with pending GM approval
+            $employee->is_approved_by_gm = false;
+            $employee->gm_approval_status = 'pending';
+            $employee->gm_approved_at = null;
+            $employee->gm_approved_by = null;
+            $employee->gm_rejection_reason = null;
+            $employee->gm_rejected_at = null;
+            $employee->gm_rejected_by = null;
+        });
+
+        static::deleting(function ($employee) {
+            // Unassign fixed assets upon employee deletion so they return to available inventory
+            try {
+                if ($employee->assignedFixedAssets) {
+                    foreach ($employee->assignedFixedAssets as $unit) {
+                        $unit->returnFromEmployee(auth()->id() ?? 1, 'good', 'Auto-returned upon employee profile deletion');
+                    }
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('Asset unassign on employee delete: ' . $e->getMessage());
+            }
+        });
+    }
+
+    public function gmApprovedBy()
+    {
+        return $this->belongsTo(User::class, 'gm_approved_by');
+    }
+
+    public function gmRejectedBy()
+    {
+        return $this->belongsTo(User::class, 'gm_rejected_by');
+    }
 
     public function user()
     {
@@ -121,6 +166,16 @@ class Employee extends Model
         return $this->assets()->whereIn('status', ['assigned', 'in_use']);
     }
 
+    public function assignedFixedAssets()
+    {
+        return $this->hasMany(FixedAssetUnit::class, 'assigned_to_employee_id')->orderBy('unit_code');
+    }
+
+    public function fixedAssetAssignments()
+    {
+        return $this->hasMany(FixedAssetAssignment::class, 'employee_id')->latest();
+    }
+
     public function education()
     {
         return $this->hasMany(EmployeeEducation::class)->orderBy('end_date', 'desc');
@@ -148,10 +203,7 @@ class Employee extends Model
      */
     public function getGuaranteeLetterUrlAttribute()
     {
-        if ($this->guarantee_letter) {
-            return \Storage::url($this->guarantee_letter);
-        }
-        return null;
+        return \App\Services\FileUploadService::url($this->guarantee_letter);
     }
 
     /**

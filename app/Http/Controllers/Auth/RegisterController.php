@@ -80,19 +80,14 @@ class RegisterController extends Controller
 
         if (!$employee) {
             return back()->withErrors([
-                'phone' => 'Phone number not registered. Please contact HR to register your phone number first.'
+                'phone' => 'Phone number not registered. Please contact HR to register your employee profile first.'
             ])->withInput();
         }
 
-        // Check if user already exists
-        $existingUser = User::where('email', $intlPhone)
-            ->orWhere('email', $localPhone)
-            ->orWhere('name', $employee->full_name)
-            ->first();
-
-        if ($existingUser) {
+        // Check if employee already has an active user account
+        if ($employee->user_id && User::find($employee->user_id)) {
             return back()->withErrors([
-                'phone' => 'This phone number or employee is already registered. Please login instead.'
+                'phone' => 'An active account is already registered for this employee. Please login or use "Forgot Password".'
             ])->withInput();
         }
 

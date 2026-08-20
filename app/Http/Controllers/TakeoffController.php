@@ -13,7 +13,6 @@ use App\Models\ErpPlanTaskResource;
 use App\Models\Store;
 use App\Models\TakeoffEditRequest;
 use App\Models\Product;
-use App\Models\EquipmentMaster;
 use App\Models\Designation;
 use App\Services\TakeoffService;
 use App\Services\RebarCutOptimizationService;
@@ -428,16 +427,17 @@ class TakeoffController extends Controller
                 ];
             })->values();
 
-        // Registered equipment for manual equipment selection
-        $registeredEquipment = EquipmentMaster::where('is_active', true)
+        // Registered equipment from Fixed Asset catalog for manual equipment selection
+        $registeredEquipment = Product::where('category', 'Fixed Asset')
+            ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name', 'unit', 'category', 'hourly_rate', 'daily_rate'])
+            ->get(['id', 'name', 'unit', 'category', 'unit_price'])
             ->map(fn($e) => [
                 'id'       => $e->id,
                 'name'     => $e->name,
-                'unit'     => $e->unit,
+                'unit'     => $e->unit ?: 'day',
                 'category' => $e->category,
-                'rate'     => (float) $e->hourly_rate,
+                'rate'     => (float) ($e->unit_price ?? 0),
             ])->values();
 
         // Registered roles/designations for manual manpower selection

@@ -95,6 +95,52 @@
             </div>
         </div>
 
+        {{-- Role Management Card --}}
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow border-0">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fa-solid fa-tags me-2"></i>System Roles Management ({{ $roles->count() }})
+                    </h6>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="collapse" data-bs-target="#createRoleCollapse">
+                        <i class="fa-solid fa-plus me-1"></i> Create New Role
+                    </button>
+                </div>
+                <div class="collapse p-3 bg-light border-bottom" id="createRoleCollapse">
+                    <form action="{{ route('admin.roles.store') }}" method="POST" class="row g-2 align-items-center">
+                        @csrf
+                        <div class="col-md-6">
+                            <input type="text" name="name" class="form-control form-control-sm" placeholder="Enter new role name (e.g., Secretary, Legal, Audit)..." required>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-sm btn-success fw-bold px-3">
+                                <i class="fa-solid fa-plus me-1"></i> Add Role
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-body p-3">
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach($roles as $r)
+                            <div class="badge bg-white text-dark border p-2 shadow-sm d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-user-tag text-primary"></i>
+                                <span class="fw-bold">{{ ucfirst(str_replace('_', ' ', $r->name)) }}</span>
+                                @if(!in_array($r->name, ['admin', 'global_admin', 'gm', 'secretary']))
+                                    <form action="{{ route('admin.roles.destroy', $r->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this role?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-link text-danger p-0 ms-1" style="font-size: 0.8rem;" title="Delete Role">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {{-- All System Users --}}
         <div class="col-lg-12">
             <div class="card shadow">

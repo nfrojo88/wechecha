@@ -17,6 +17,16 @@ class ProjectController extends Controller
     public function index(Request $request)
     {
         $query = Project::with('defaultStore', 'creator')->latest();
+
+        /** @var \App\Models\User|null $user */
+        $user = auth()->user();
+        if ($user && $user->hasRole('site_engineer') && !$user->hasAnyRole(['admin', 'global_admin', 'gm', 'planning_manager'])) {
+            $assignedProjectIds = $user->projects()->pluck('projects.id');
+            if ($user->store && $user->store->project_id) {
+                $assignedProjectIds->push($user->store->project_id);
+            }
+            $query->whereIn('id', $assignedProjectIds->unique());
+        }
         
         if ($request->filled('search')) {
             $search = $request->input('search');

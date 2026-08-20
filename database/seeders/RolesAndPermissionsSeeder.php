@@ -112,6 +112,19 @@ class RolesAndPermissionsSeeder extends Seeder
             // Budget
             'budget.view',                     // Read-only budget visibility
             'budget.allocate',                 // GM-only: allocate/supplement budget
+
+            // Procurement Lifecycle 14-Stage Permissions
+            'procurement.mr.plan_approve',
+            'procurement.pr.store_manager',
+            'procurement.pr.procurement_manager',
+            'procurement.pr.procurement_team',
+            'procurement.pr.marketing_variance',
+            'procurement.pr.gm_decide',
+            'procurement.pr.finance_head',
+            'procurement.pr.finance_staff',
+            'procurement.pr.driver_booking',
+            'procurement.pr.store_intake',
+            'procurement.lifecycle.view',
         ];
 
         foreach ($permissions as $perm) {

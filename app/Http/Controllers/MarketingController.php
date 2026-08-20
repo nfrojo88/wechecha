@@ -147,9 +147,9 @@ class MarketingController extends Controller
      */
     public function createPrice()
     {
-        $products  = $this->safe(fn() => Product::orderBy('name')->get(), collect());
+        $products  = $this->safe(fn() => Product::where('category', '!=', 'Fixed Asset')->orderBy('name')->get(), collect());
         $roles     = $this->safe(fn() => \App\Models\Designation::orderBy('title')->get(), collect());
-        $equipment = $this->safe(fn() => \App\Models\EquipmentMaster::orderBy('name')->get(), collect());
+        $equipment = $this->safe(fn() => Product::where('category', 'Fixed Asset')->orderBy('name')->get(), collect());
         
         $priceHistory = $this->safe(fn() => MaterialPrice::with('product', 'creator')
             ->orderBy('effective_date', 'desc')
@@ -216,11 +216,11 @@ class MarketingController extends Controller
             $msg = 'Manpower daily rate updated to ETB ' . number_format($request->price, 2) . '/day.';
 
         } elseif ($type === 'equipment') {
-            $eq = \App\Models\EquipmentMaster::find($request->equipment_id);
+            $eq = Product::find($request->equipment_id);
             if ($eq) {
-                $eq->update(['daily_rate' => $request->price, 'hourly_rate' => round($request->price / 8, 2)]);
+                $eq->update(['unit_price' => $request->price, 'selling_price' => $request->price]);
             }
-            $msg = 'Equipment rental rate updated to ETB ' . number_format($request->price, 2) . '/day.';
+            $msg = 'Equipment rate updated to ETB ' . number_format($request->price, 2) . '/day.';
         }
 
         return redirect()->route('marketing.prices.history')
@@ -343,5 +343,32 @@ class MarketingController extends Controller
         }
 
         return view('marketing.reports.planning_vs_actual', compact('plans', 'comparisonData'));
+    }
+    /**
+     * Quick-Add Equipment (Fixed Asset) from price-update page modal
+     */
+    public function storeEquipment(Request $request)
+    {
+        $request->validate([
+            'name'        => 'required|string|max:255',
+            'code'        => 'required|string|max:100',
+            'category'    => 'nullable|string|max:100',
+            'hourly_rate' => 'nullable|numeric|min:0',
+            'daily_rate'  => 'nullable|numeric|min:0',
+        ]);
+
+        // Map to Product::$fillable columns only
+        // 'code' -> 'sku', daily_rate is stored as unit_price/selling_price
+        Product::create([
+            'name'          => $request->name,
+            'sku'           => $request->code,
+            'category'      => $request->category ?? 'Fixed Asset',
+            'unit'          => 'day',
+            'unit_price'    => $request->daily_rate  ?? 0,
+            'selling_price' => $request->daily_rate  ?? 0,
+        ]);
+
+        return redirect()->route('marketing.prices.create')
+            ->with('success', 'Equipment "' . $request->name . '" added successfully.');
     }
 }

@@ -4,7 +4,7 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0"><i class="fas fa-truck me-2"></i>Add Supplier</h1>
-        <a href="{{ route('suppliers.index') }}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Back</a>
+        <a href="{{ route('suppliers.index') }}" onclick="event.preventDefault(); dynamicGoBack();" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Back</a>
     </div>
     <div class="card shadow-sm">
         <div class="card-body">

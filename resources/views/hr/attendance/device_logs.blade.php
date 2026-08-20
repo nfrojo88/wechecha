@@ -48,14 +48,14 @@
                     <div class="bg-dark rounded p-3 mb-3">
                         <code class="text-success d-block mb-1">
                             <span class="text-warning">Server Address:</span>
-                            www.wechechaconstruction.et
+                            wechechaconstruction.com
                         </code>
                         <code class="text-success d-block mb-1">
-                            <span class="text-warning">Port:</span> 80 (HTTP) or 443 (HTTPS)
+                            <span class="text-warning">Port:</span> 80 (HTTP)
                         </code>
                         <code class="text-success d-block">
                             <span class="text-warning">Full URL:</span>
-                            {{ url('/iclock/cdata.php') }} (or https://www.wechechaconstruction.et/iclock/cdata.php)
+                            http://wechechaconstruction.com/iclock/cdata.php
                         </code>
                     </div>
                     <div class="d-flex gap-2 flex-wrap">

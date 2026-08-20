@@ -1597,13 +1597,16 @@ Route::middleware(['auth'])->group(function () {
         // Issued Materials
         Route::get('issued-materials', [App\Http\Controllers\StoreManagerController::class, 'issuedMaterials'])->name('issued.index');
 
-        // Fixed Assets (Centralized Unit Codes & Quantity Lock)
-        Route::resource('fixed-assets', App\Http\Controllers\FixedAssetController::class);
-        Route::post('fixed-assets/{fixedAsset}/extra-unit', [App\Http\Controllers\FixedAssetController::class, 'storeExtraUnit'])->name('fixed-assets.extra-unit');
+        // Fixed Assets — Unit-specific routes MUST come before the resource route
+        // to prevent {fixedAsset} wildcard from matching 'units' as an asset ID.
         Route::put('fixed-assets/units/{unit}', [App\Http\Controllers\FixedAssetController::class, 'updateUnit'])->name('fixed-assets.units.update');
         Route::delete('fixed-assets/units/{unit}', [App\Http\Controllers\FixedAssetController::class, 'destroyUnit'])->name('fixed-assets.units.destroy');
         Route::post('fixed-assets/units/{unit}/assign', [App\Http\Controllers\FixedAssetController::class, 'assignUnit'])->name('fixed-assets.units.assign');
         Route::post('fixed-assets/units/{unit}/return', [App\Http\Controllers\FixedAssetController::class, 'returnUnit'])->name('fixed-assets.units.return');
+
+        // Fixed Assets (Centralized Unit Codes & Quantity Lock)
+        Route::resource('fixed-assets', App\Http\Controllers\FixedAssetController::class);
+        Route::post('fixed-assets/{fixedAsset}/extra-unit', [App\Http\Controllers\FixedAssetController::class, 'storeExtraUnit'])->name('fixed-assets.extra-unit');
     });
 
     // API / AJAX: Available Fixed Asset Units for HR assignment dropdown & return
@@ -1662,6 +1665,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('prices/store', [App\Http\Controllers\MarketingController::class, 'storePrice'])->name('prices.store');
         Route::get('prices/history', [App\Http\Controllers\MarketingController::class, 'priceHistory'])->name('prices.history');
 
+        // Quick-add equipment (Fixed Asset) from price update modal
+        Route::post('equipment/store', [App\Http\Controllers\MarketingController::class, 'storeEquipment'])->name('equipment.store');
+
         // Reports
         Route::get('reports/inflation', [App\Http\Controllers\MarketingController::class, 'inflationReport'])->name('reports.inflation');
         Route::get('reports/planning-vs-actual', [App\Http\Controllers\MarketingController::class, 'planningVsActual'])->name('reports.planning-vs-actual');
@@ -1673,6 +1679,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/',                                [App\Http\Controllers\ExpenseRequestController::class, 'store'])->name('store');
         Route::get('/history',                          [App\Http\Controllers\ExpenseRequestController::class, 'history'])->name('history');
         Route::get('/{expenseRequest}',                 [App\Http\Controllers\ExpenseRequestController::class, 'show'])->name('show');
+        Route::get('/{expenseRequest}/attachment',      [App\Http\Controllers\ExpenseRequestController::class, 'viewAttachment'])->name('attachment');
         Route::post('/{expenseRequest}/hr-review',      [App\Http\Controllers\ExpenseRequestController::class, 'hrReview'])->name('hr-review');
         Route::post('/{expenseRequest}/gm-review',      [App\Http\Controllers\ExpenseRequestController::class, 'gmReview'])->name('gm-review');
         Route::post('/{expenseRequest}/finance-assign', [App\Http\Controllers\ExpenseRequestController::class, 'financeAssign'])->name('finance-assign');

@@ -18,6 +18,17 @@ class StoreController extends Controller
     public function index(Request $request)
     {
         $query = Store::with('project', 'manager')->latest();
+
+        /** @var \App\Models\User|null $user */
+        $user = auth()->user();
+        if ($user && $user->hasRole('site_engineer') && !$user->hasAnyRole(['admin', 'global_admin', 'store_manager'])) {
+            if ($user->store_id) {
+                $query->where('id', $user->store_id);
+            } else {
+                $assignedProjectIds = $user->projects()->pluck('projects.id');
+                $query->whereIn('project_id', $assignedProjectIds);
+            }
+        }
         
         if ($request->filled('search')) {
             $search = $request->input('search');

@@ -39,10 +39,7 @@ class ManpowerRoleController extends Controller
         // Sync with Designation table used across ERP
         \App\Models\Designation::firstOrCreate(
             ['title' => $request->name],
-            [
-                'department' => $request->category ?? 'Operations',
-                'is_active'  => true,
-            ]
+            ['is_active' => true]
         );
 
         if ($request->wantsJson()) {

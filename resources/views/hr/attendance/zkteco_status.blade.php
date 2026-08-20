@@ -11,6 +11,9 @@
             <p class="text-muted mt-1 mb-0">Live connection status and heartbeat monitoring</p>
         </div>
         <div class="d-flex gap-2">
+            <a href="/iclock/debug.php" target="_blank" class="btn btn-warning">
+                <i class="fa-solid fa-bug me-1"></i>Live Connection Debugger
+            </a>
             <a href="{{ route('attendance.deviceLogs') }}" class="btn btn-outline-secondary">
                 <i class="fa-solid fa-list me-1"></i>Device Logs
             </a>
@@ -67,8 +70,8 @@
                 <small>Once you configure your ZKTeco device to point to this server, it will appear here after the first heartbeat.</small>
                 <br><br>
                 <div class="bg-dark rounded p-3 d-inline-block text-start">
-                    <code class="text-success">Server: www.wechechaconstruction.et</code><br>
-                    <code class="text-success">Port: {{ request()->getPort() }}</code><br>
+                    <code class="text-success">Server: wechechaconstruction.com</code><br>
+                    <code class="text-success">Port: 80</code><br>
                     <code class="text-success">Path: /iclock/cdata.php</code>
                 </div>
             </div>
@@ -180,9 +183,9 @@
                     <ol class="small text-muted">
                         <li>Press <kbd>Menu</kbd> on the ZKTeco device</li>
                         <li>Go to <strong>Comm → Cloud Server</strong> or <strong>ADMS Settings</strong></li>
-                        <li>Set <strong>Server Address</strong> to: <code>www.wechechaconstruction.et</code></li>
-                        <li>Set <strong>Port</strong> to: <code>{{ request()->getPort() ?: 80 }}</code></li>
-                        <li>Enable <strong>HTTPS</strong> if your server uses SSL</li>
+                        <li>Set <strong>Server Address</strong> to: <code>wechechaconstruction.com</code></li>
+                        <li>Set <strong>Port</strong> to: <code>80</code></li>
+                        <li>Disable <strong>HTTPS</strong> (use standard HTTP on Port 80)</li>
                         <li>Save and <strong>restart</strong> the device</li>
                     </ol>
                 </div>

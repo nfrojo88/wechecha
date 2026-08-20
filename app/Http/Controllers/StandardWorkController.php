@@ -6,7 +6,6 @@ use App\Models\StandardWorkMaterial;
 use App\Models\StandardWorkManpower;
 use App\Models\StandardWorkEquipment;
 use App\Models\Product;
-use App\Models\EquipmentMaster;
 use App\Models\ManpowerRole;
 use Illuminate\Http\Request;
 
@@ -30,19 +29,12 @@ class StandardWorkController extends Controller
     {
         $products       = Product::where('is_active', true)->orderBy('name')->get(['id','name','unit','category']);
         
-        // Combine EquipmentMaster and Products in "Fixed Asset" category
-        $fixedAssets    = Product::where('is_active', true)
+        // Products in "Fixed Asset" category
+        $equipmentList  = Product::where('is_active', true)
                             ->where('category', 'Fixed Asset')
                             ->orderBy('name')
                             ->get(['id', 'name', 'unit'])
-                            ->map(fn($p) => (object)['id' => $p->id, 'name' => $p->name . ' (Fixed Asset)', 'unit' => $p->unit]);
-
-        $equipmentMasterList = EquipmentMaster::where('is_active', true)
-                                ->orderBy('name')
-                                ->get(['id','name','unit'])
-                                ->map(fn($e) => (object)['id' => $e->id, 'name' => $e->name, 'unit' => $e->unit]);
-
-        $equipmentList = $equipmentMasterList->concat($fixedAssets)->sortBy('name')->values();
+                            ->map(fn($p) => (object)['id' => $p->id, 'name' => $p->name, 'unit' => $p->unit]);
 
         $manpowerRoles  = ManpowerRole::orderBy('name')->get();
         return view('standard_works.create', compact('products', 'equipmentList', 'manpowerRoles'));
@@ -162,18 +154,12 @@ class StandardWorkController extends Controller
     {
         $products       = Product::where('is_active', true)->orderBy('name')->get(['id','name','unit','category']);
         
-        $fixedAssets    = Product::where('is_active', true)
+        // Products in "Fixed Asset" category
+        $equipmentList  = Product::where('is_active', true)
                             ->where('category', 'Fixed Asset')
                             ->orderBy('name')
                             ->get(['id', 'name', 'unit'])
-                            ->map(fn($p) => (object)['id' => $p->id, 'name' => $p->name . ' (Fixed Asset)', 'unit' => $p->unit]);
-
-        $equipmentMasterList = EquipmentMaster::where('is_active', true)
-                                ->orderBy('name')
-                                ->get(['id','name','unit'])
-                                ->map(fn($e) => (object)['id' => $e->id, 'name' => $e->name, 'unit' => $e->unit]);
-
-        $equipmentList = $equipmentMasterList->concat($fixedAssets)->sortBy('name')->values();
+                            ->map(fn($p) => (object)['id' => $p->id, 'name' => $p->name, 'unit' => $p->unit]);
         $manpowerRoles  = ManpowerRole::orderBy('name')->get();
 
         $standardWork->load('materials', 'manpower', 'scientificManpower', 'equipment');

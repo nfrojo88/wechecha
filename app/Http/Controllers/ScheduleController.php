@@ -20,9 +20,12 @@ class ScheduleController extends Controller
         
         /** @var \App\Models\User|null $user */
         $user = auth()->user();
-        if ($user && $user->hasRole('planning') && !$user->hasAnyRole(['planning_manager', 'admin', 'global_admin', 'coordinator', 'Coordinator'])) {
+        if ($user && ($user->hasRole('planning') || $user->hasRole('site_engineer')) && !$user->hasAnyRole(['planning_manager', 'admin', 'global_admin', 'coordinator', 'Coordinator'])) {
             $assignedProjectIds = $user->projects()->pluck('projects.id');
-            $query->whereIn('project_id', $assignedProjectIds);
+            if ($user->store && $user->store->project_id) {
+                $assignedProjectIds->push($user->store->project_id);
+            }
+            $query->whereIn('project_id', $assignedProjectIds->unique());
         }
         
         if ($request->has('project_id') && $request->project_id != '') {
@@ -42,9 +45,12 @@ class ScheduleController extends Controller
         
         /** @var \App\Models\User|null $user */
         $user = auth()->user();
-        if ($user && $user->hasRole('planning') && !$user->hasAnyRole(['planning_manager', 'admin', 'global_admin', 'coordinator', 'Coordinator'])) {
+        if ($user && ($user->hasRole('planning') || $user->hasRole('site_engineer')) && !$user->hasAnyRole(['planning_manager', 'admin', 'global_admin', 'coordinator', 'Coordinator'])) {
             $assignedProjectIds = $user->projects()->pluck('projects.id');
-            $query->whereIn('id', $assignedProjectIds);
+            if ($user->store && $user->store->project_id) {
+                $assignedProjectIds->push($user->store->project_id);
+            }
+            $query->whereIn('id', $assignedProjectIds->unique());
         }
         
         $projects = $query->get();

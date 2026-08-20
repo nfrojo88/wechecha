@@ -103,10 +103,18 @@ class FinancePayrollController extends Controller
                 }
             }
 
-            // Taxable income = basic + allowances - pension(7%)
+            // Taxable income = basic + house + position + max(0, transport - 2200) - pension(7%)
             $pension  = round($basic * 0.07, 2);
-            $taxable  = $basic + $transport + $house + $position - $pension;
+            $taxable  = Payroll::calculateTaxableIncome($basic, $house, $position, $transport, $pension);
             $tax      = Payroll::calculateIncomeTax($taxable);
+
+            // Sum overtime pay from approved attendance records for this month
+            $overtimePay = \App\Models\Attendance::where('employee_id', $emp->id)
+                ->whereYear('attendance_date', $year)
+                ->whereMonth('attendance_date', $month)
+                ->where('is_approved', true)
+                ->sum('overtime_pay');
+            $overtimePay = round((float) $overtimePay, 2);
 
             $payload = [
                 'employee_id'  => $emp->id,
@@ -114,7 +122,7 @@ class FinancePayrollController extends Controller
                 'year'         => $year,
                 'basic_salary' => $basic,
                 'allowances'   => $transport + $house + $position,
-                'overtime_pay' => 0,
+                'overtime_pay' => $overtimePay,
                 'deductions'   => round($loanDeduction, 2),
                 'tax'          => round($tax, 2),
                 'status'       => 'draft',

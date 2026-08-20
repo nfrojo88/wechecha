@@ -60,7 +60,10 @@ class LetterController extends Controller
         // Build query based on active tab
         if ($tab === 'sent') {
             $query = Letter::with(['creator', 'latestRecipient.toUser', 'attachments'])
-                ->where('created_by', $user->id);
+                ->where(function($q) use ($user) {
+                    $q->where('created_by', $user->id)
+                      ->orWhereHas('recipients', fn($rq) => $rq->where('from_user_id', $user->id));
+                });
         } elseif ($tab === 'all' && $isAdminOrSecretary) {
             $query = Letter::with(['creator', 'latestRecipient.toUser', 'attachments']);
         } else {
@@ -106,7 +109,9 @@ class LetterController extends Controller
 
         // Counters for tabs
         $inboxCount = $this->getMyInboxQuery($user)->where('letters.status', '!=', Letter::STATUS_CLOSED)->count();
-        $sentCount = Letter::where('created_by', $user->id)->count();
+        $sentCount = Letter::where('created_by', $user->id)
+            ->orWhereHas('recipients', fn($rq) => $rq->where('from_user_id', $user->id))
+            ->count();
         $allCount = $isAdminOrSecretary ? Letter::count() : 0;
 
         return view('letters.index', compact('letters', 'tab', 'inboxCount', 'sentCount', 'allCount', 'isAdminOrSecretary'));

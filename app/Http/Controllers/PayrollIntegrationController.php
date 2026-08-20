@@ -47,25 +47,14 @@ class PayrollIntegrationController extends Controller
             $empPension = $base * 0.07;
             $compPension = $base * 0.11;
             
-            // Assume transport allowance up to a certain amount is non-taxable, or just use Gross - Pension for now
-            // According to screenshot, taxable is slightly less than Gross - Pension. We'll simplify to Gross - Pension
-            $taxable = max(0, $gross - $empPension);
+            $transport = $emp->transport_allowance ?? 0;
+            $house     = $emp->house_allowance ?? 0;
+            $position  = $emp->position_allowance ?? 0;
 
-            // Ethiopian Tax Calculation (Standard)
-            $tax = 0;
-            if ($taxable > 10900) {
-                $tax = ($taxable * 0.35) - 1500;
-            } elseif ($taxable > 7800) {
-                $tax = ($taxable * 0.30) - 955;
-            } elseif ($taxable > 5250) {
-                $tax = ($taxable * 0.25) - 565;
-            } elseif ($taxable > 3200) {
-                $tax = ($taxable * 0.20) - 302.5;
-            } elseif ($taxable > 1650) {
-                $tax = ($taxable * 0.15) - 142.5;
-            } elseif ($taxable > 600) {
-                $tax = ($taxable * 0.10) - 60;
-            }
+            $taxable = Payroll::calculateTaxableIncome($base, $house, $position, $transport, $empPension);
+
+            // Tax calculation
+            $tax = Payroll::calculateIncomeTax($taxable);
 
             $deductions = 0; // Other deductions
             $net = $gross - $empPension - $tax - $deductions;

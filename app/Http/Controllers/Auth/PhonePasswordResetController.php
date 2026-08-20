@@ -62,50 +62,91 @@ class PhonePasswordResetController extends Controller
     }
 
     /**
-     * Process phone number and send OTP
+     * Process phone number or email and send OTP
      */
     public function sendResetOtp(Request $request)
     {
         $request->validate([
-            'phone' => 'required|string|min:10|max:15',
+            'phone' => 'required|string|min:3|max:100',
+        ], [
+            'phone.required' => 'Please enter your registered phone number or email address.'
         ]);
 
-        $phoneFormats = $this->normalizePhone($request->phone);
-        $intlPhone = $phoneFormats['intl'];
-        $localPhone = $phoneFormats['local'];
+        $input = trim($request->phone);
+        $user = null;
+        $targetPhone = null;
 
-        // Find the user by phone number
-        $employee = Employee::where('phone', $intlPhone)
-            ->orWhere('phone', $localPhone)
-            ->first();
-
-        if (!$employee || !$employee->user_id) {
-            $user = User::where('email', $intlPhone)->orWhere('email', $localPhone)->first();
+        // Check if input is an email address
+        if (filter_var($input, FILTER_VALIDATE_EMAIL)) {
+            $user = User::where('email', $input)->first();
             if (!$user) {
                 return back()->withErrors([
-                    'phone' => 'No active user account found with this phone number.'
+                    'phone' => 'No active user account found with this email address.'
+                ])->withInput();
+            }
+
+            // Get phone from linked employee or user record
+            if ($user->employee && $user->employee->phone) {
+                $targetPhone = $user->employee->phone;
+            } elseif (\Illuminate\Support\Facades\Schema::hasColumn('users', 'phone') && $user->phone) {
+                $targetPhone = $user->phone;
+            } else {
+                return back()->withErrors([
+                    'phone' => 'Your account does not have a registered phone number. Please contact system admin or HR to reset your credentials.'
                 ])->withInput();
             }
         } else {
-            $user = User::find($employee->user_id);
+            // Treat as Phone Number or Username
+            $phoneFormats = $this->normalizePhone($input);
+            $intlPhone = $phoneFormats['intl'];
+            $localPhone = $phoneFormats['local'];
+
+            // 1. Check in employees table
+            $employee = Employee::where('phone', $intlPhone)
+                ->orWhere('phone', $localPhone)
+                ->first();
+
+            if ($employee && $employee->user_id) {
+                $user = User::find($employee->user_id);
+                $targetPhone = $employee->phone;
+            }
+
+            // 2. Check in users table
+            if (!$user) {
+                $user = User::where('email', $intlPhone)
+                    ->orWhere('email', $localPhone)
+                    ->orWhere('name', $input)
+                    ->first();
+
+                if ($user && $user->employee && $user->employee->phone) {
+                    $targetPhone = $user->employee->phone;
+                } else {
+                    $targetPhone = $intlPhone;
+                }
+            }
+
             if (!$user) {
                 return back()->withErrors([
-                    'phone' => 'No user account found linked to this employee record.'
+                    'phone' => 'No active account found with this phone number or credential. Please contact HR.'
                 ])->withInput();
             }
         }
+
+        // Standardize the target phone
+        $phoneFormats = $this->normalizePhone($targetPhone);
+        $standardPhone = $phoneFormats['intl'];
 
         // Generate OTP
         $otp = SmsEthiopiaService::generateOTP();
         
         // Delete old OTPs for this phone
-        OtpVerification::where('phone', $intlPhone)
+        OtpVerification::where('phone', $standardPhone)
             ->where('created_at', '<', now()->subMinutes(10))
             ->delete();
 
         // Create new OTP record
         OtpVerification::create([
-            'phone' => $intlPhone,
+            'phone' => $standardPhone,
             'otp' => $otp,
             'expires_at' => now()->addMinutes(10),
             'attempts' => 0,
@@ -113,23 +154,24 @@ class PhonePasswordResetController extends Controller
         ]);
 
         // Send OTP via SMS
-        $result = $this->smsService->sendOTP($intlPhone, $otp);
+        $result = $this->smsService->sendOTP($standardPhone, $otp);
 
-        session()->put('reset_phone', $intlPhone);
+        session()->put('reset_phone', $standardPhone);
+        session()->put('reset_user_id', $user->id);
 
         if ($result['success']) {
             return redirect()->route('password.verify')
                 ->with('success', 'Password reset code sent to your phone. Please check your messages.');
         } else {
             \Log::warning("SMS Failed - Showing OTP for testing", [
-                'phone' => $intlPhone,
+                'phone' => $standardPhone,
                 'otp' => $otp,
                 'error' => $result['message']
             ]);
             
             return redirect()->route('password.verify')
                 ->with('warning', 'SMS service temporarily unavailable. Please use the code below.')
-                ->with('debug_otp', $otp); // TEMPORARY: For testing only
+                ->with('debug_otp', $otp); // Testing fallback
         }
     }
 
@@ -216,17 +258,23 @@ class PhonePasswordResetController extends Controller
             return redirect()->route('password.request')->withErrors(['phone' => 'Session expired or unauthorized. Please start again.']);
         }
 
-        $phoneFormats = $this->normalizePhone($phone);
-        
-        $employee = Employee::where('phone', $phoneFormats['intl'])
-            ->orWhere('phone', $phoneFormats['local'])
-            ->first();
-
         $user = null;
-        if ($employee && $employee->user_id) {
-            $user = User::find($employee->user_id);
-        } else {
-            $user = User::where('email', $phoneFormats['intl'])->orWhere('email', $phoneFormats['local'])->first();
+        if (session('reset_user_id')) {
+            $user = User::find(session('reset_user_id'));
+        }
+
+        if (!$user) {
+            $phoneFormats = $this->normalizePhone($phone);
+            
+            $employee = Employee::where('phone', $phoneFormats['intl'])
+                ->orWhere('phone', $phoneFormats['local'])
+                ->first();
+
+            if ($employee && $employee->user_id) {
+                $user = User::find($employee->user_id);
+            } else {
+                $user = User::where('email', $phoneFormats['intl'])->orWhere('email', $phoneFormats['local'])->first();
+            }
         }
 
         if (!$user) {
@@ -236,7 +284,15 @@ class PhonePasswordResetController extends Controller
         $user->password = Hash::make($request->password);
         $user->save();
 
-        session()->forget(['reset_phone', 'reset_verified']);
+        // Automatically unlock and approve employee account upon successful OTP password reset
+        if ($user->employee) {
+            $user->employee->update([
+                'is_approved_by_gm' => true,
+                'gm_approved_at'    => now(),
+            ]);
+        }
+
+        session()->forget(['reset_phone', 'reset_verified', 'reset_user_id']);
 
         return redirect()->route('login')
             ->with('success', 'Your password has been reset successfully! Please log in with your new password.');
