@@ -1209,6 +1209,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('procurement/my-queue', [App\Http\Controllers\ProcurementLifecycleController::class, 'myQueue'])->name('procurement.my-queue');
 
     Route::post('purchase-requests/{purchaseRequest}/send-to-pm', [App\Http\Controllers\PurchaseRequestController::class, 'sendToProcurementManager'])->name('purchase-requests.send-to-pm');
+    Route::post('purchase-requests/{purchaseRequest}/selective-transfer', [App\Http\Controllers\PurchaseRequestController::class, 'selectiveTransfer'])->name('purchase-requests.selective-transfer');
+    Route::post('purchase-requests/{purchaseRequest}/selective-send-to-pm', [App\Http\Controllers\PurchaseRequestController::class, 'selectiveSendToPm'])->name('purchase-requests.selective-send-to-pm');
+    Route::post('purchase-requests/{purchaseRequest}/split-and-process', [App\Http\Controllers\PurchaseRequestController::class, 'splitAndProcess'])->name('purchase-requests.split-and-process');
     Route::post('purchase-requests/{purchaseRequest}/send-back-to-store', [App\Http\Controllers\PurchaseRequestController::class, 'sendBackToStoreManager'])->name('purchase-requests.send-back-to-store');
     Route::post('purchase-requests/{purchaseRequest}/send-to-proc-team', [App\Http\Controllers\PurchaseRequestController::class, 'sendToProcurementTeam'])->name('purchase-requests.send-to-proc-team');
     Route::post('purchase-requests/{purchaseRequest}/submit-direct-buy', [App\Http\Controllers\PurchaseRequestController::class, 'submitDirectBuy'])->name('purchase-requests.submit-direct-buy');
