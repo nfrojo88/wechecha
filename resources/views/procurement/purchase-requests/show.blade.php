@@ -593,8 +593,8 @@
                             <label class="form-label fw-bold small text-uppercase text-muted">Destination Store (Project Store) <span class="text-danger">*</span></label>
                             <select name="to_store_id" class="form-select form-select-sm" required>
                                 @foreach($stores as $st)
-                                    <option value="{{ $st->id }}" {{ ($purchaseRequest->store_id == $st->id || $purchaseRequest->project?->stores->contains('id', $st->id)) ? 'selected' : '' }}>
-                                        {{ $st->name }} ({{ $st->code }}) @if($st->project) — Project: {{ $st->project->name }} @endif
+                                    <option value="{{ $st->id }}" {{ $purchaseRequest->store_id == $st->id ? 'selected' : '' }}>
+                                        {{ $st->name }} ({{ $st->code }}) @if(isset($st->project) && $st->project) — Project: {{ $st->project->name }} @endif
                                     </option>
                                 @endforeach
                             </select>
@@ -737,7 +737,7 @@
                             <label class="form-label fw-bold small text-uppercase">To Destination Store <span class="text-danger">*</span></label>
                             <select name="to_store_id" id="selTransferToStore" class="form-select form-select-sm" required>
                                 @foreach($stores as $st)
-                                    <option value="{{ $st->id }}" {{ ($purchaseRequest->store_id == $st->id || $purchaseRequest->project?->stores->contains('id', $st->id)) ? 'selected' : '' }}>
+                                    <option value="{{ $st->id }}" {{ $purchaseRequest->store_id == $st->id ? 'selected' : '' }}>
                                         {{ $st->name }} ({{ $st->code }})
                                     </option>
                                 @endforeach
