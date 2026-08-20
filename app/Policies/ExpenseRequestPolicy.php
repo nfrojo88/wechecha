@@ -31,10 +31,11 @@ class ExpenseRequestPolicy
 
     /**
      * Determine whether the user can view the specific expense request.
-     * Strict check for direct URL access (e.g., /expense-requests/42).
+     * Any authenticated staff with module access can view.
      */
-        // Any authenticated staff with module access can view
-        return true;
+    public function view(User $user, ExpenseRequest $expenseRequest): bool
+    {
+        return true; // Any authenticated user with module access can view
     }
 
     /**

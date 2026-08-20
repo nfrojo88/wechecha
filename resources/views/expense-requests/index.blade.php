@@ -714,12 +714,12 @@
                         </ul>
                     </div>
 
-                    @if($req->attachment_url)
+                    @if($req->attachment)
                     <div class="mb-3">
                         <label class="fw-bold mb-1">Receipt Attachment:</label>
                         <div>
-                            <a href="{{ $req->attachment_url }}" target="_blank" class="btn btn-outline-primary btn-sm">
-                                <i class="fa-solid fa-external-link me-1"></i>Open Receipt Document
+                            <a href="{{ route('expense-requests.attachment', $req->id) }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                <i class="fa-solid fa-paperclip me-1"></i>View Receipt / Document
                             </a>
                         </div>
                     </div>

@@ -275,7 +275,7 @@ class ExpenseRequestController extends Controller
             'chartOfAccount'
         ]);
 
-        return redirect('/expense-requests?search=' . urlencode($expenseRequest->request_number));
+        return redirect('/expense-requests?tab=my_requests');
     }
 
     /**
@@ -511,8 +511,9 @@ class ExpenseRequestController extends Controller
         ]);
 
         $assignedStaff = User::find($assignedStaffId);
+        $staffName = $assignedStaff ? $assignedStaff->name : 'Finance Staff';
 
-        return back()->with('success', "Request #{$expenseRequest->request_number} assigned to finance staff member ({$assignedStaff->name})!");
+        return back()->with('success', "Request #{$expenseRequest->request_number} assigned to finance staff member ({$staffName})!");
     }
 
     /**

@@ -96,12 +96,12 @@ class ExpenseRequest extends Model
      */
     public function gmApprover()
     {
-        return $this->belongsTo(User::class, $this->gm_approver_id ? 'gm_approver_id' : 'gm_reviewer_id');
+        return $this->belongsTo(User::class, 'gm_approver_id');
     }
 
     public function gmReviewer()
     {
-        return $this->belongsTo(User::class, $this->gm_reviewer_id ? 'gm_reviewer_id' : 'gm_approver_id');
+        return $this->belongsTo(User::class, 'gm_reviewer_id');
     }
 
     /**
@@ -117,12 +117,12 @@ class ExpenseRequest extends Model
      */
     public function financeStaff()
     {
-        return $this->belongsTo(User::class, $this->finance_staff_id ? 'finance_staff_id' : 'assigned_finance_staff_id');
+        return $this->belongsTo(User::class, 'finance_staff_id');
     }
 
     public function assignedFinanceStaff()
     {
-        return $this->belongsTo(User::class, $this->assigned_finance_staff_id ? 'assigned_finance_staff_id' : 'finance_staff_id');
+        return $this->belongsTo(User::class, 'assigned_finance_staff_id');
     }
 
     /**
@@ -146,12 +146,20 @@ class ExpenseRequest extends Model
      */
     public function chartOfAccount()
     {
-        return $this->belongsTo(ChartOfAccount::class, $this->chart_of_account_id ? 'chart_of_account_id' : 'coa_id');
+        return $this->belongsTo(ChartOfAccount::class, 'chart_of_account_id');
     }
 
     public function coa()
     {
-        return $this->belongsTo(ChartOfAccount::class, $this->coa_id ? 'coa_id' : 'chart_of_account_id')->with('manager');
+        return $this->belongsTo(ChartOfAccount::class, 'coa_id')->with('manager');
+    }
+
+    /**
+     * Resolve the effective chart of account (whichever FK is populated).
+     */
+    public function getEffectiveCoaAttribute()
+    {
+        return $this->chartOfAccount ?? $this->coa;
     }
 
     /**
