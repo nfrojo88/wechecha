@@ -337,15 +337,18 @@ class EmployeeController extends Controller
                 $certificatePath = \App\Services\FileUploadService::upload($file, 'employee_certificates');
             }
 
+            $startDate = !empty($education['start_date']) ? $education['start_date'] : null;
+            $endDate   = !empty($education['end_date'])   ? $education['end_date']   : null;
+
             \App\Models\EmployeeEducation::create([
                 'employee_id'       => $employee->id,
-                'degree_level'      => $education['degree_level'] ?? 'Bachelor',
-                'field_of_study'    => $education['field_of_study'] ?? '',
-                'institution_name'  => $education['institution_name'] ?? '',
-                'location'          => $education['location'] ?? null,
-                'start_date'        => $education['start_date'] ?? null,
-                'end_date'          => $education['end_date'] ?? null,
-                'grade_gpa'         => $education['grade_gpa'] ?? null,
+                'degree_level'      => !empty($education['degree_level'])     ? $education['degree_level']     : 'Other',
+                'field_of_study'    => !empty($education['field_of_study'])   ? $education['field_of_study']   : 'General',
+                'institution_name'  => !empty($education['institution_name']) ? $education['institution_name'] : 'N/A',
+                'location'          => $education['location']    ?? null,
+                'start_date'        => $startDate,
+                'end_date'          => $endDate,
+                'grade_gpa'         => $education['grade_gpa']   ?? null,
                 'description'       => $education['description'] ?? null,
                 'certificate_photo' => $certificatePath,
                 'is_verified'       => false,
@@ -371,20 +374,24 @@ class EmployeeController extends Controller
 
             $isCurrent = isset($experience['is_current']) && $experience['is_current'] == '1';
 
+            $expStartDate   = !empty($experience['start_date'])    ? $experience['start_date']    : null;
+            $expEndDate     = $isCurrent ? null : (!empty($experience['end_date']) ? $experience['end_date'] : null);
+            $expLicExpiry   = !empty($experience['license_expiry']) ? $experience['license_expiry'] : null;
+
             \App\Models\EmployeeExperience::create([
                 'employee_id'      => $employee->id,
-                'job_title'        => $experience['job_title'] ?? '',
-                'company_name'     => $experience['company_name'] ?? '',
-                'location'         => $experience['location'] ?? null,
-                'start_date'       => $experience['start_date'] ?? now(),
-                'end_date'         => $isCurrent ? null : ($experience['end_date'] ?? null),
+                'job_title'        => !empty($experience['job_title'])    ? $experience['job_title']    : 'N/A',
+                'company_name'     => !empty($experience['company_name']) ? $experience['company_name'] : 'N/A',
+                'location'         => $experience['location']         ?? null,
+                'start_date'       => $expStartDate,
+                'end_date'         => $expEndDate,
                 'is_current'       => $isCurrent,
                 'responsibilities' => $experience['responsibilities'] ?? null,
-                'reference_name'   => $experience['reference_name'] ?? null,
-                'reference_phone'  => $experience['reference_phone'] ?? null,
+                'reference_name'   => $experience['reference_name']   ?? null,
+                'reference_phone'  => $experience['reference_phone']  ?? null,
                 'license_document' => $licensePath,
-                'license_number'   => $experience['license_number'] ?? null,
-                'license_expiry'   => $experience['license_expiry'] ?? null,
+                'license_number'   => $experience['license_number']   ?? null,
+                'license_expiry'   => $expLicExpiry,
             ]);
         }
     }
@@ -523,13 +530,13 @@ class EmployeeController extends Controller
 
                 $eduPayload = [
                     'employee_id'      => $employee->id,
-                    'degree_level'     => $eduData['degree_level'] ?? 'Bachelor',
-                    'field_of_study'   => $eduData['field_of_study'] ?? '',
-                    'institution_name' => $eduData['institution_name'] ?? '',
-                    'location'         => $eduData['location'] ?? null,
-                    'start_date'       => $eduData['start_date'] ?? null,
-                    'end_date'         => $eduData['end_date'] ?? null,
-                    'grade_gpa'        => $eduData['grade_gpa'] ?? null,
+                    'degree_level'     => !empty($eduData['degree_level'])     ? $eduData['degree_level']     : 'Other',
+                    'field_of_study'   => !empty($eduData['field_of_study'])   ? $eduData['field_of_study']   : 'General',
+                    'institution_name' => !empty($eduData['institution_name']) ? $eduData['institution_name'] : 'N/A',
+                    'location'         => $eduData['location']    ?? null,
+                    'start_date'       => !empty($eduData['start_date']) ? $eduData['start_date'] : null,
+                    'end_date'         => !empty($eduData['end_date'])   ? $eduData['end_date']   : null,
+                    'grade_gpa'        => $eduData['grade_gpa']   ?? null,
                     'description'      => $eduData['description'] ?? null,
                 ];
                 if ($certPath) {
@@ -572,17 +579,17 @@ class EmployeeController extends Controller
 
                 $expPayload = [
                     'employee_id'      => $employee->id,
-                    'job_title'        => $expData['job_title'] ?? '',
-                    'company_name'     => $expData['company_name'] ?? '',
-                    'location'         => $expData['location'] ?? null,
-                    'start_date'       => $expData['start_date'] ?? now(),
-                    'end_date'         => $isCurrent ? null : ($expData['end_date'] ?? null),
+                    'job_title'        => !empty($expData['job_title'])    ? $expData['job_title']    : 'N/A',
+                    'company_name'     => !empty($expData['company_name']) ? $expData['company_name'] : 'N/A',
+                    'location'         => $expData['location']         ?? null,
+                    'start_date'       => !empty($expData['start_date'])    ? $expData['start_date']    : null,
+                    'end_date'         => $isCurrent ? null : (!empty($expData['end_date']) ? $expData['end_date'] : null),
                     'is_current'       => $isCurrent,
                     'responsibilities' => $expData['responsibilities'] ?? null,
-                    'reference_name'   => $expData['reference_name'] ?? null,
-                    'reference_phone'  => $expData['reference_phone'] ?? null,
-                    'license_number'   => $expData['license_number'] ?? null,
-                    'license_expiry'   => $expData['license_expiry'] ?? null,
+                    'reference_name'   => $expData['reference_name']   ?? null,
+                    'reference_phone'  => $expData['reference_phone']  ?? null,
+                    'license_number'   => $expData['license_number']   ?? null,
+                    'license_expiry'   => !empty($expData['license_expiry']) ? $expData['license_expiry'] : null,
                 ];
                 if ($licenseDocPath) {
                     $expPayload['license_document'] = $licenseDocPath;

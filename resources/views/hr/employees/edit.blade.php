@@ -110,7 +110,7 @@
 
 <div class="card border-0 shadow-sm">
     <div class="card-body p-4">
-        <form method="POST" action="{{ route('employees.update', $employee) }}" id="editEmployeeForm" enctype="multipart/form-data">
+        <form method="POST" action="{{ route('employees.update', $employee) }}" id="editEmployeeForm" enctype="multipart/form-data" novalidate>
             @csrf
             @method('PUT')
 
@@ -752,6 +752,29 @@ function prevStep() {
     }
 }
 
+function validateStep(step) {
+    const panel = document.getElementById(`step-panel-${step}`);
+    if (!panel) return true;
+
+    let isValid = true;
+    const requiredInputs = panel.querySelectorAll('input[required], select[required], textarea[required]');
+
+    requiredInputs.forEach(function(input) {
+        if (!input.value || input.value.trim() === '') {
+            input.classList.add('is-invalid');
+            isValid = false;
+        } else {
+            input.classList.remove('is-invalid');
+        }
+    });
+
+    if (!isValid) {
+        const firstInvalid = panel.querySelector('.is-invalid');
+        if (firstInvalid) firstInvalid.focus();
+    }
+    return isValid;
+}
+
 // Live Search per row
 function filterAssetOptions(input) {
     const entry = input.closest('.asset-entry');
@@ -1099,6 +1122,20 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.asset-select').forEach(sel => {
         if (sel.value) onAssetUnitSelected(sel);
     });
+
+    // ── Multi-Step Submit Guard ───────────────────────────────────────────
+    const form = document.getElementById('editEmployeeForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            for (let s = 1; s <= totalSteps; s++) {
+                if (!validateStep(s)) {
+                    e.preventDefault();
+                    goToStep(s);
+                    return false;
+                }
+            }
+        });
+    }
 });
 </script>
 

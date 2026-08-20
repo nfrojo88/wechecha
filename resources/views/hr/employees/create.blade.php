@@ -111,7 +111,7 @@
 
 <div class="card border-0 shadow-sm">
     <div class="card-body p-4">
-        <form method="POST" action="{{ route('employees.store') }}" id="employeeForm" enctype="multipart/form-data">
+        <form method="POST" action="{{ route('employees.store') }}" id="employeeForm" enctype="multipart/form-data" novalidate>
             @csrf
             
             {{-- Display Validation Errors --}}
@@ -1169,5 +1169,23 @@ function updateRemoveButtons() {
         }
     });
 }
+
+// ── Multi-Step Form Submit Handler ───────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('employeeForm');
+    if (!form) return;
+
+    form.addEventListener('submit', function (e) {
+        // Validate all steps in sequence; jump to first failing step
+        for (let s = 1; s <= totalSteps; s++) {
+            if (!validateStep(s)) {
+                e.preventDefault();
+                goToStep(s);
+                return false;
+            }
+        }
+        // All valid – allow native submit
+    });
+});
 </script>
 @endsection
