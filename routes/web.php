@@ -1472,6 +1472,7 @@ Route::middleware(['auth'])->group(function () {
     // ─── Phase 5 Finance ────────────────────────────────────────────────────
 
     Route::resource('coa', App\Http\Controllers\ChartOfAccountController::class)->except(['show', 'destroy']);
+    Route::resource('coa-transfers', App\Http\Controllers\CoaTransferController::class)->only(['index', 'create', 'store', 'show']);
     Route::resource('bank-accounts', App\Http\Controllers\BankAccountController::class)->except(['destroy']);
     
     Route::resource('income', App\Http\Controllers\IncomeController::class)->except(['edit', 'update', 'destroy']);

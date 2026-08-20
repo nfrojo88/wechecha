@@ -733,9 +733,15 @@
         </li>
         @if(auth()->check() && auth()->user()->hasAnyRole(['Finance head', 'finance_head', 'admin', 'global_admin']))
         <li class="sidebar-nav-item">
-            <a href="{{ route('coa.index') }}" class="sidebar-nav-link {{ request()->routeIs('coa.*') ? 'active' : '' }}">
+            <a href="{{ route('coa.index') }}" class="sidebar-nav-link {{ request()->routeIs('coa.*') && !request()->routeIs('coa-transfers.*') ? 'active' : '' }}">
                 <i class="fa-solid fa-sitemap"></i>
                 <span>Chart of Accounts</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{{ route('coa-transfers.index') }}" class="sidebar-nav-link {{ request()->routeIs('coa-transfers.*') ? 'active' : '' }}">
+                <i class="fa-solid fa-money-bill-transfer text-success"></i>
+                <span>COA Money Transfers</span>
             </a>
         </li>
         @endif
